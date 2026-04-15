@@ -6,22 +6,27 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ProductImage extends Model
+class Review extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'product_id',
-        'image_url',
-        'url',
-        'is_primary',
+        'rating',
+        'comment',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_primary' => 'boolean',
+            'rating' => 'integer',
         ];
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function product(): BelongsTo

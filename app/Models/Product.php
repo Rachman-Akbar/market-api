@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -14,11 +13,15 @@ class Product extends Model
     use HasFactory;
 
     protected $fillable = [
+        'store_id',
+        'category_id',
         'seller_id',
         'name',
         'slug',
         'description',
         'price',
+        'stock',
+        'thumbnail',
         'status',
     ];
 
@@ -26,7 +29,18 @@ class Product extends Model
     {
         return [
             'price' => 'decimal:2',
+            'stock' => 'integer',
         ];
+    }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class);
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
     }
 
     public function seller(): BelongsTo
@@ -39,9 +53,9 @@ class Product extends Model
         return $this->hasMany(ProductImage::class);
     }
 
-    public function categories(): BelongsToMany
+    public function reviews(): HasMany
     {
-        return $this->belongsToMany(Category::class, 'product_categories');
+        return $this->hasMany(Review::class);
     }
 
     public function stock(): HasOne

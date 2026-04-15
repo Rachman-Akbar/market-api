@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\MarketplaceController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -27,6 +28,13 @@ Route::get('/', function () {
         'version_prefix' => '/api/v1',
     ]);
 });
+
+Route::get('/products', [MarketplaceController::class, 'products']);
+Route::get('/products/{slug}', [MarketplaceController::class, 'productBySlug']);
+Route::get('/categories', [MarketplaceController::class, 'categories']);
+Route::get('/stores/{slug}', [MarketplaceController::class, 'storeBySlug']);
+Route::post('/cart', [MarketplaceController::class, 'upsertCart']);
+Route::post('/orders', [MarketplaceController::class, 'createOrder']);
 
 Route::prefix('v1')->group(function () use ($domainRouteFiles): void {
     foreach ($domainRouteFiles as $routeFile) {

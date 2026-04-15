@@ -3,7 +3,6 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -15,7 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['firebase_uid', 'email', 'name', 'avatar', 'is_email_verified'])]
+#[Fillable(['firebase_uid', 'email', 'name', 'avatar', 'is_email_verified', 'password', 'role'])]
 #[Hidden([])]
 class User extends Authenticatable
 {
@@ -25,6 +24,11 @@ class User extends Authenticatable
     protected $keyType = 'string';
 
     public $incrementing = false;
+
+    public function store(): HasOne
+    {
+        return $this->hasOne(Store::class);
+    }
 
     public function roles(): BelongsToMany
     {
@@ -52,6 +56,16 @@ class User extends Authenticatable
         return $this->hasOne(Cart::class);
     }
 
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
     public function addresses(): HasMany
     {
         return $this->hasMany(Address::class);
@@ -66,6 +80,7 @@ class User extends Authenticatable
     {
         return [
             'is_email_verified' => 'boolean',
+            'password' => 'hashed',
         ];
     }
 }
