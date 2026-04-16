@@ -5,31 +5,79 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
-use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
-use App\Models\Store;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class MarketplaceController extends Controller
 {
+    private function sourceDb(): string
+    {
+        return (string) config('database.connections.mysql.database', 'kisha_api');
+    }
+
     public function products(Request $request): JsonResponse
     {
-        $products = Product::query()
-            ->with([
-                'store:id,name,slug,logo',
-                'category:id,name,slug',
-                'images:id,product_id,image_url,url,is_primary',
+        $sourceDb = $this->sourceDb();
+
+        $rows = DB::table("{$sourceDb}.products as p")
+            ->leftJoin("{$sourceDb}.product_categories as c", 'c.id', '=', 'p.category_id')
+            ->leftJoin("{$sourceDb}.sellers as s", 's.id', '=', 'p.seller_id')
+            ->where('p.status', 'active')
+            ->select([
+                'p.id',
+                'p.name',
+                'p.slug',
+                'p.description',
+                'p.price',
+                'p.stock',
+                'p.main_image_path',
+                'p.category_id',
+                'c.name as category_name',
+                's.id as seller_id',
+                's.store_name',
+                's.store_slug',
+                's.store_logo',
             ])
-            ->when($request->filled('category'), function ($query) use ($request): void {
-                $query->whereHas('category', function ($categoryQuery) use ($request): void {
-                    $categoryQuery->where('slug', $request->string('category')->toString());
-                });
-            })
-            ->latest('id')
+            ->orderByDesc('p.id')
             ->get();
+
+        $products = $rows->map(function ($row) {
+            $categorySlug = $row->category_name ? Str::slug($row->category_name) : null;
+
+            return [
+                'id' => (int) $row->id,
+                'name' => $row->name,
+                'slug' => $row->slug,
+                'description' => $row->description,
+                'price' => (float) $row->price,
+                'stock' => (int) ($row->stock ?? 0),
+                'thumbnail' => $row->main_image_path,
+                'category' => $row->category_id ? [
+                    'id' => (int) $row->category_id,
+                    'name' => $row->category_name,
+                    'slug' => $categorySlug,
+                ] : null,
+                'store' => $row->seller_id ? [
+                    'id' => (int) $row->seller_id,
+                    'name' => $row->store_name,
+                    'slug' => $row->store_slug,
+                    'logo' => $row->store_logo,
+                ] : null,
+                'images' => [],
+            ];
+        });
+
+        if ($request->filled('category')) {
+            $categorySlug = $request->string('category')->toString();
+
+            $products = $products->filter(function (array $item) use ($categorySlug): bool {
+                return isset($item['category']['slug']) && $item['category']['slug'] === $categorySlug;
+            })->values();
+        }
 
         return response()->json([
             'data' => $products,
@@ -38,16 +86,56 @@ class MarketplaceController extends Controller
 
     public function productBySlug(string $slug): JsonResponse
     {
-        $product = Product::query()
-            ->with([
-                'store:id,name,slug,description,logo',
-                'category:id,name,slug',
-                'images:id,product_id,image_url,url,is_primary',
-                'reviews:id,user_id,product_id,rating,comment,created_at',
-                'reviews.user:id,name,email',
+        $sourceDb = $this->sourceDb();
+
+        $row = DB::table("{$sourceDb}.products as p")
+            ->leftJoin("{$sourceDb}.product_categories as c", 'c.id', '=', 'p.category_id')
+            ->leftJoin("{$sourceDb}.sellers as s", 's.id', '=', 'p.seller_id')
+            ->where('p.slug', $slug)
+            ->where('p.status', 'active')
+            ->select([
+                'p.id',
+                'p.name',
+                'p.slug',
+                'p.description',
+                'p.price',
+                'p.stock',
+                'p.main_image_path',
+                'p.category_id',
+                'c.name as category_name',
+                's.id as seller_id',
+                's.store_name',
+                's.store_slug',
+                's.store_logo',
+                's.store_description',
             ])
-            ->where('slug', $slug)
-            ->firstOrFail();
+            ->first();
+
+        abort_unless($row, 404);
+
+        $product = [
+            'id' => (int) $row->id,
+            'name' => $row->name,
+            'slug' => $row->slug,
+            'description' => $row->description,
+            'price' => (float) $row->price,
+            'stock' => (int) ($row->stock ?? 0),
+            'thumbnail' => $row->main_image_path,
+            'category' => $row->category_id ? [
+                'id' => (int) $row->category_id,
+                'name' => $row->category_name,
+                'slug' => Str::slug((string) $row->category_name),
+            ] : null,
+            'store' => $row->seller_id ? [
+                'id' => (int) $row->seller_id,
+                'name' => $row->store_name,
+                'slug' => $row->store_slug,
+                'logo' => $row->store_logo,
+                'description' => $row->store_description,
+            ] : null,
+            'images' => [],
+            'reviews' => [],
+        ];
 
         return response()->json([
             'data' => $product,
@@ -56,10 +144,27 @@ class MarketplaceController extends Controller
 
     public function categories(): JsonResponse
     {
-        $categories = Category::query()
-            ->withCount('products')
-            ->orderBy('name')
-            ->get();
+        $sourceDb = $this->sourceDb();
+
+        $categories = DB::table("{$sourceDb}.product_categories as c")
+            ->leftJoin("{$sourceDb}.products as p", function ($join): void {
+                $join->on('p.category_id', '=', 'c.id')
+                    ->where('p.status', '=', 'active');
+            })
+            ->where('c.is_active', 1)
+            ->groupBy('c.id', 'c.name')
+            ->orderBy('c.name')
+            ->selectRaw('c.id, c.name, COUNT(p.id) as products_count')
+            ->get()
+            ->map(function ($category) {
+                return [
+                    'id' => (int) $category->id,
+                    'name' => $category->name,
+                    'slug' => Str::slug($category->name),
+                    'products_count' => (int) $category->products_count,
+                ];
+            })
+            ->values();
 
         return response()->json([
             'data' => $categories,
@@ -68,15 +173,64 @@ class MarketplaceController extends Controller
 
     public function storeBySlug(string $slug): JsonResponse
     {
-        $store = Store::query()
-            ->with([
-                'products' => function ($query): void {
-                    $query->with(['category:id,name,slug'])
-                        ->orderByDesc('id');
-                },
+        $sourceDb = $this->sourceDb();
+
+        $seller = DB::table("{$sourceDb}.sellers")
+            ->where('store_slug', $slug)
+            ->select([
+                'id',
+                'store_name',
+                'store_slug',
+                'store_description',
+                'store_logo',
             ])
-            ->where('slug', $slug)
-            ->firstOrFail();
+            ->first();
+
+        abort_unless($seller, 404);
+
+        $products = DB::table("{$sourceDb}.products as p")
+            ->leftJoin("{$sourceDb}.product_categories as c", 'c.id', '=', 'p.category_id')
+            ->where('p.seller_id', $seller->id)
+            ->where('p.status', 'active')
+            ->select([
+                'p.id',
+                'p.name',
+                'p.slug',
+                'p.description',
+                'p.price',
+                'p.stock',
+                'p.main_image_path',
+                'p.category_id',
+                'c.name as category_name',
+            ])
+            ->orderByDesc('p.id')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'id' => (int) $row->id,
+                    'name' => $row->name,
+                    'slug' => $row->slug,
+                    'description' => $row->description,
+                    'price' => (float) $row->price,
+                    'stock' => (int) ($row->stock ?? 0),
+                    'thumbnail' => $row->main_image_path,
+                    'category' => $row->category_id ? [
+                        'id' => (int) $row->category_id,
+                        'name' => $row->category_name,
+                        'slug' => Str::slug((string) $row->category_name),
+                    ] : null,
+                ];
+            })
+            ->values();
+
+        $store = [
+            'id' => (int) $seller->id,
+            'name' => $seller->store_name,
+            'slug' => $seller->store_slug,
+            'description' => $seller->store_description,
+            'logo' => $seller->store_logo,
+            'products' => $products,
+        ];
 
         return response()->json([
             'data' => $store,
