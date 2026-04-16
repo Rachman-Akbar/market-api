@@ -154,7 +154,7 @@ class MarketplaceController extends Controller
             ->where('c.is_active', 1)
             ->groupBy('c.id', 'c.name')
             ->orderBy('c.name')
-            ->selectRaw('c.id, c.name, COUNT(p.id) as products_count')
+            ->selectRaw('c.id, c.name, COUNT(p.id) as products_count, MAX(p.main_image_path) as image_url')
             ->get()
             ->map(function ($category) {
                 return [
@@ -162,6 +162,7 @@ class MarketplaceController extends Controller
                     'name' => $category->name,
                     'slug' => Str::slug($category->name),
                     'products_count' => (int) $category->products_count,
+                    'image_url' => $category->image_url,
                 ];
             })
             ->values();

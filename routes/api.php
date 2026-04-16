@@ -39,7 +39,7 @@ Route::post('/orders', [MarketplaceController::class, 'createOrder']);
 Route::prefix('v1')->group(function () use ($domainRouteFiles): void {
     foreach ($domainRouteFiles as $routeFile) {
         if (file_exists($routeFile)) {
-            require_once $routeFile;
+            require $routeFile;
         }
     }
 });

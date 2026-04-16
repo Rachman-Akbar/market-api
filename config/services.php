@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'firebase' => [
+        'auth_enabled' => env('FIREBASE_AUTH_ENABLED', false),
+    ],
+
 ];
