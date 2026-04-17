@@ -5,6 +5,7 @@ namespace App\Domains\Identity\Application\Actions;
 use App\Domains\Identity\Infrastructure\Persistence\Eloquent\UserRepository;
 use Illuminate\Validation\ValidationException;
 
+
 final class LoginWithFirebaseAction
 {
     public function __construct(
@@ -24,22 +25,21 @@ final class LoginWithFirebaseAction
             ]);
         }
 
-        $firebaseUid = (string) ($claims['uid'] ?? '');
-
        $firebaseUid = (string) ($claims['uid'] ?? '');
 $email = (string) ($claims['email'] ?? '');
 
-// 1️⃣ cari berdasarkan firebase uid
 $user = $this->users->findByFirebaseUid($firebaseUid);
 
-// 2️⃣ kalau tidak ada → cari berdasarkan email
-if ($user === null && $email !== '') {
+if (!$user && $email !== '') {
     $user = $this->users->findByEmail($email);
 
-    // jika user ditemukan → LINK akun firebase
-    if ($user !== null) {
+    if ($user) {
         $user = $this->users->syncIdentityFields($user, $claims);
     }
+}
+
+if (!$user) {
+    $user = $this->registerUser->execute($claims);
 }
 
 // 3️⃣ jika tetap tidak ada → register baru

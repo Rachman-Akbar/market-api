@@ -53,7 +53,7 @@ public function syncIdentityFields(User $user, array $claims): User
     ])->save();
 
     return $user->refresh();
-}
+} 
  public function createWithPassword(
     string $name,
     string $email,

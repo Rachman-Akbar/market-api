@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\MarketplaceController;
 use Illuminate\Support\Facades\Route;
+use App\Domains\Identity\Presentation\Http\Controllers\AuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,3 +44,4 @@ Route::prefix('v1')->group(function () use ($domainRouteFiles): void {
         }
     }
 });
+

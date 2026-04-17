@@ -3,7 +3,6 @@
 namespace App\Domains\Identity\Presentation\Http\Controllers;
 
 use App\Domains\Identity\Application\Actions\LoginWithFirebaseAction;
-use App\Domains\Identity\Application\Actions\LoginWithPasswordAction;
 use App\Domains\Identity\Application\Actions\RegisterWithPasswordAction;
 use App\Domains\Identity\Application\Actions\SwitchRoleAction;
 use App\Http\Controllers\Controller;
@@ -60,15 +59,6 @@ final class AuthController extends Controller
         );
     }
 
-    public function login(Request $request, LoginWithPasswordAction $action): JsonResponse
-    {
-        $validated = $request->validate([
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
-        ]);
-
-        return response()->json($action->execute($validated['email'], $validated['password']));
-    }
 
     public function firebaseLogin(Request $request, LoginWithFirebaseAction $action): JsonResponse
     {
