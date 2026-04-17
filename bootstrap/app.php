@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'api.token' => App\Http\Middleware\EnsureApiTokenIsValid::class,
             'firebase.token' => App\Http\Middleware\ValidateFirebaseToken::class,
+            'firebase.auth' => App\Domains\Identity\Infrastructure\Firebase\VerifyFirebaseToken::class,
             'verified.email' => App\Http\Middleware\EnsureEmailIsVerified::class,
             'role' => App\Http\Middleware\EnsureUserHasRole::class,
         ]);

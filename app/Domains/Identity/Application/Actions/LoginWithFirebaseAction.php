@@ -26,13 +26,26 @@ final class LoginWithFirebaseAction
 
         $firebaseUid = (string) ($claims['uid'] ?? '');
 
-        $user = $this->users->findByFirebaseUid($firebaseUid);
-        if ($user === null) {
-            $user = $this->registerUser->execute($claims);
-        } else {
-            $user = $this->users->syncIdentityFields($user, $claims);
-        }
+       $firebaseUid = (string) ($claims['uid'] ?? '');
+$email = (string) ($claims['email'] ?? '');
 
+// 1️⃣ cari berdasarkan firebase uid
+$user = $this->users->findByFirebaseUid($firebaseUid);
+
+// 2️⃣ kalau tidak ada → cari berdasarkan email
+if ($user === null && $email !== '') {
+    $user = $this->users->findByEmail($email);
+
+    // jika user ditemukan → LINK akun firebase
+    if ($user !== null) {
+        $user = $this->users->syncIdentityFields($user, $claims);
+    }
+}
+
+// 3️⃣ jika tetap tidak ada → register baru
+if ($user === null) {
+    $user = $this->registerUser->execute($claims);
+}
         $roles = $this->users->getRoleNames($user);
         if ($roles === []) {
             $this->users->assignRoleByName($user, 'buyer');
