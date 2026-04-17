@@ -25,76 +25,67 @@ final class UserRepository
     /**
      * @param array<string, mixed> $claims
      */
-    public function createFromFirebaseClaims(array $claims): User
-    {
-        /** @var User $user */
-        $user = User::query()->create([
-            'firebase_uid' => $claims['uid'],
-            'email' => $claims['email'],
-            'name' => $claims['name'] ?? null,
-            'avatar' => $claims['picture'] ?? null,
-            'is_email_verified' => (bool) ($claims['email_verified'] ?? false),
-        ]);
+public function createFromFirebaseClaims(array $claims): User
+{
+    $existing = $this->findByEmail($claims['email']);
 
-        return $user;
+    if ($existing) {
+        return $this->syncIdentityFields($existing, $claims);
     }
 
-    public function syncIdentityFields(User $user, array $claims): User
-    {
-        $user->forceFill([
-            'email' => $claims['email'] ?: $user->email,
-            'name' => $claims['name'] ?? $user->name,
-            'avatar' => $claims['picture'] ?? $user->avatar,
-            'is_email_verified' => (bool) ($claims['email_verified'] ?? false),
-        ])->save();
+    return User::query()->create([
+        'firebase_uid' => $claims['uid'],
+        'email' => $claims['email'],
+        'name' => $claims['name'] ?? null,
+        'avatar' => $claims['picture'] ?? null,
+        'is_email_verified' => (bool) ($claims['email_verified'] ?? false),
+    ]);
+}
 
-        return $user->refresh();
+public function syncIdentityFields(User $user, array $claims): User
+{
+    $user->forceFill([
+        'firebase_uid' => $claims['uid'] ?? $user->firebase_uid,
+        'email' => $claims['email'] ?? $user->email,
+        'name' => $claims['name'] ?? $user->name,
+        'avatar' => $claims['picture'] ?? $user->avatar,
+        'is_email_verified' => (bool) ($claims['email_verified'] ?? false),
+    ])->save();
+
+    return $user->refresh();
+}
+ public function createWithPassword(
+    string $name,
+    string $email,
+    string $password,
+    string $firebaseUid
+): User {
+
+    $payload = [
+        'firebase_uid' => $firebaseUid,
+        'email' => $email,
+        'name' => $name,
+        'password' => Hash::make($password),
+        'is_email_verified' => false,
+    ];
+
+    if (Schema::hasColumn('users', 'role')) {
+        $payload['role'] = 'buyer';
     }
 
-    public function createWithPassword(string $name, string $email, string $password): User
-    {
-        $payload = [
-            'email' => $email,
-            'name' => $name,
-            'password' => Hash::make($password),
-        ];
+    if (Schema::hasColumn('users', 'id')) {
+        $idColumnType = Schema::getColumnType('users', 'id');
 
-        if (Schema::hasColumn('users', 'firebase_uid')) {
-            $payload['firebase_uid'] = 'local_'.str_replace('-', '', (string) Str::uuid());
+        if (! str_contains($idColumnType, 'int')) {
+            $payload['id'] = (string) Str::uuid();
         }
-
-        if (Schema::hasColumn('users', 'is_email_verified')) {
-            $payload['is_email_verified'] = true;
-        }
-
-        if (Schema::hasColumn('users', 'role')) {
-            $payload['role'] = 'buyer';
-        }
-
-        if (Schema::hasColumn('users', 'id')) {
-            $idColumnType = Schema::getColumnType('users', 'id');
-
-            if (! str_contains($idColumnType, 'int')) {
-                $payload['id'] = (string) Str::uuid();
-            }
-        }
-
-        $insertedId = DB::table('users')->insertGetId($payload);
-
-        if (is_numeric($insertedId)) {
-            /** @var User|null $user */
-            $user = User::query()->find((int) $insertedId);
-
-            if ($user !== null) {
-                return $user;
-            }
-        }
-
-        /** @var User $user */
-        $user = User::query()->where('email', $email)->firstOrFail();
-
-        return $user;
     }
+
+    /** @var User $user */
+    $user = User::query()->create($payload);
+
+    return $user->refresh();
+}
 
     public function assignRoleByName(User $user, string $roleName): void
     {
