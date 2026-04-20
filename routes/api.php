@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\MarketplaceController;
 use Illuminate\Support\Facades\Route;
 use App\Domains\Identity\Presentation\Http\Controllers\AuthController;
+use App\Domains\Catalog\Presentation\Http\ProductController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,6 +24,7 @@ $domainRouteFiles = [
     app_path('Domains/Realtime/Presentation/routes.php'),
 ];
 
+
 Route::get('/', function () {
     return response()->json([
         'message' => 'UKOMP API is running.',
@@ -30,8 +32,7 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/products', [MarketplaceController::class, 'products']);
-Route::get('/products/{slug}', [MarketplaceController::class, 'productBySlug']);
+
 Route::get('/categories', [MarketplaceController::class, 'categories']);
 Route::get('/stores/{slug}', [MarketplaceController::class, 'storeBySlug']);
 Route::post('/cart', [MarketplaceController::class, 'upsertCart']);

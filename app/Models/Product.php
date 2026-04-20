@@ -4,9 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Product extends Model
 {
@@ -25,41 +22,18 @@ class Product extends Model
         'status',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'price' => 'decimal:2',
-            'stock' => 'integer',
-        ];
-    }
-
-    public function store(): BelongsTo
-    {
-        return $this->belongsTo(Store::class);
-    }
-
-    public function category(): BelongsTo
-    {
-        return $this->belongsTo(Category::class);
-    }
-
-    public function seller(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'seller_id');
-    }
-
-    public function images(): HasMany
+    public function images()
     {
         return $this->hasMany(ProductImage::class);
     }
 
-    public function reviews(): HasMany
+    public function store()
     {
-        return $this->hasMany(Review::class);
+        return $this->belongsTo(Store::class);
     }
 
-    public function stock(): HasOne
+    public function category()
     {
-        return $this->hasOne(Stock::class);
+        return $this->belongsTo(Category::class);
     }
 }

@@ -2,30 +2,48 @@
 
 namespace App\Providers;
 
-use App\Domains\Identity\Infrastructure\Firebase\FirebaseTokenVerifier;
-use Kreait\Firebase\Contract\Auth;
 use Illuminate\Support\ServiceProvider;
+use Kreait\Firebase\Contract\Auth;
+use App\Domains\Identity\Infrastructure\Firebase\FirebaseTokenVerifier;
+
+// ✅ IMPORT INTERFACE
+use App\Domains\Catalog\Domain\Repositories\ProductRepositoryInterface;
+use App\Domains\Catalog\Domain\Repositories\EntityRepositoryInterface;
+use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
+
+// ✅ IMPORT IMPLEMENTATION
+use App\Domains\Catalog\Infrastructure\Persistence\EloquentProductRepository;
+use App\Domains\Catalog\Infrastructure\Persistence\EloquentEntityRepository;
+use App\Domains\Catalog\Infrastructure\Persistence\EloquentCategoryRepository;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        $this->app->bind(FirebaseTokenVerifier::class, function ($app): FirebaseTokenVerifier {
-            /** @var Auth $auth */
+        // Firebase
+        $this->app->bind(FirebaseTokenVerifier::class, function ($app) {
             $auth = $app->make(Auth::class);
-
             return new FirebaseTokenVerifier($auth);
         });
+
+        // ✅ PRODUCT
+        $this->app->bind(
+            ProductRepositoryInterface::class,
+            EloquentProductRepository::class
+        );
+
+        // ✅ ENTITY
+        $this->app->bind(
+            EntityRepositoryInterface::class,
+            EloquentEntityRepository::class
+        );
+
+        // ✅ CATEGORY
+        $this->app->bind(
+            CategoryRepositoryInterface::class,
+            EloquentCategoryRepository::class
+        );
     }
 
-    /**
-     * Bootstrap any application services.
-     */
-    public function boot(): void
-    {
-        //
-    }
+    public function boot(): void {}
 }
