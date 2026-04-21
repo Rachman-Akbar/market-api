@@ -4,7 +4,7 @@ namespace App\Domains\Catalog\Application\UseCases\Product;
 
 use App\Domains\Catalog\Domain\Repositories\ProductRepositoryInterface;
 
-class DeleteProductUseCase
+final class DeleteProductUseCase
 {
     public function __construct(
         private ProductRepositoryInterface $repository

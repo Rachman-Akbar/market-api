@@ -2,35 +2,31 @@
 
 namespace App\Domains\Catalog\Infrastructure\Persistence\Mappers;
 
+use Illuminate\Support\Str;
 use App\Domains\Catalog\Domain\Entities\Category;
 use App\Domains\Catalog\Infrastructure\Persistence\Models\CategoryModel;
 
-class CategoryMapper
+final class CategoryMapper
 {
-    /**
-     * Model → Entity
-     */
     public static function toEntity(CategoryModel $model): Category
     {
         return new Category(
-            id: $model->id,
-            entityId: $model->entity_id,
-            name: $model->name,
-            slug: $model->slug,
-            description: $model->description
+            $model->id,
+            $model->entity_id ?? (string) Str::uuid(),
+            $model->name,
+            $model->slug,
+            $model->description
         );
     }
 
-    /**
-     * Entity → Array (for database)
-     */
-    public static function toPersistence(Category $category): array
+    public static function toModel(Category $entity): CategoryModel
     {
-        return [
-            'entity_id' => $category->entityId(),
-            'name' => $category->name(),
-            'slug' => $category->slug(),
-            'description' => $category->description(),
-        ];
+        return new CategoryModel([
+            'id' => $entity->id(),
+            'entity_id' => $entity->entityId(),
+            'name' => $entity->name(),
+            'slug' => $entity->slug(),
+            'description' => $entity->description(),
+        ]);
     }
 }

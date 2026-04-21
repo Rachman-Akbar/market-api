@@ -2,9 +2,9 @@
 
 namespace App\Domains\Catalog\Presentation\Http\Controllers;
 
-use App\Domains\Catalog\Application\Actions\CreateProductAction;
-use App\Domains\Catalog\Application\Actions\GetProductDetailAction;
-use App\Domains\Catalog\Application\Actions\UpdateProductAction;
+use App\Domains\Catalog\Application\UseCases\Product\CreateProductUseCase;
+use App\Domains\Catalog\Application\UseCases\Product\GetProductDetailUseCase;
+use App\Domains\Catalog\Application\UseCases\Product\UpdateProductUseCase;
 use App\Domains\Catalog\Application\UseCases\Product\ListProductsUseCase;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
@@ -19,14 +19,14 @@ final class CatalogController extends Controller
         ]);
     }
 
-    public function show(int $id, GetProductDetailAction $action): JsonResponse
+    public function show(int $id, GetProductDetailUseCase $action): JsonResponse
     {
         return response()->json([
             'data' => $action->execute($id),
         ]);
     }
 
-    public function store(Request $request, CreateProductAction $action): JsonResponse
+    public function store(Request $request, CreateProductUseCase $action): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -49,7 +49,7 @@ final class CatalogController extends Controller
         ], 201);
     }
 
-    public function update(int $id, Request $request, UpdateProductAction $action): JsonResponse
+    public function update(int $id, Request $request, UpdateProductUseCase $action): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],

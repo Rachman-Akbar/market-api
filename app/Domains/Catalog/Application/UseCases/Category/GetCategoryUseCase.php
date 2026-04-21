@@ -4,7 +4,7 @@ namespace App\Domains\Catalog\Application\UseCases\Category;
 
 use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
 
-class GetCategoriesUseCase
+class GetCategoryUseCase
 {
     private $categories;
     public function __construct(CategoryRepositoryInterface $categories)

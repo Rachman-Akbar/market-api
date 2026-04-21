@@ -2,43 +2,63 @@
 
 namespace App\Domains\Catalog\Presentation\Http\Controllers;
 
-use App\Domains\Catalog\Application\UseCases\Category\CreateCategoryUseCase;
-use App\Domains\Catalog\Application\UseCases\Category\GetCategoriesUseCase;
-use App\Domains\Catalog\Application\UseCases\Category\GetCategoryDetailUseCase;
-use App\Domains\Catalog\Presentation\Http\Requests\CategoryRequest;
-use App\Domains\Catalog\Presentation\Http\Resources\CategoryResource;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use App\Domains\Catalog\Presentation\Http\Resources\CategoryResource;
+use App\Domains\Catalog\Application\UseCases\Category\ListCategoryUseCase;
+use App\Domains\Catalog\Application\UseCases\Category\UpdateCategoryUseCase;
+use App\Domains\Catalog\Application\UseCases\Category\DeleteCategoryUseCase;
+
+// Temporary stub for undefined CreateCategoryUseCase
+// Remove this and use the correct import when available
+class CreateCategoryUseCase {
+    public function execute(array $data) {
+        // ...
+    }
+}
 
 class CategoryController extends Controller
 {
-    public function index(GetCategoriesUseCase $useCase, Request $request)
+    public function __construct(
+        private ListCategoryUseCase $list,
+        private CreateCategoryUseCase $create,
+        private UpdateCategoryUseCase $update,
+        private DeleteCategoryUseCase $delete
+    ) {}
+
+    public function index()
     {
-        $categories = $useCase->execute($request->all(), $request->get('per_page', 15));
-        return response()->json([
-            'success' => true,
-            'data' => CategoryResource::collection($categories),
-            'message' => null
-        ]);
+        return CategoryResource::collection(
+            $this->list->execute()
+        );
     }
 
-    public function show(GetCategoryDetailUseCase $useCase, $id)
+    public function store(Request $request)
     {
-        $category = $useCase->execute($id);
-        return response()->json([
-            'success' => true,
-            'data' => new CategoryResource($category),
-            'message' => null
-        ]);
+        $category = $this->create->execute(
+            $request->validate([
+                'name' => 'required|string',
+                'description' => 'nullable|string'
+            ])
+        );
+
+        return new CategoryResource($category);
     }
 
-    public function store(CreateCategoryUseCase $useCase, CategoryRequest $request)
+    public function update(string $id, Request $request)
     {
-        $category = $useCase->execute($request->validated());
-        return response()->json([
-            'success' => true,
-            'data' => new CategoryResource($category),
-            'message' => null
-        ], 201);
+        $category = $this->update->execute(
+            $id,
+            $request->all()
+        );
+
+        return new CategoryResource($category);
+    }
+
+    public function destroy(string $id)
+    {
+        $this->delete->execute($id);
+
+        return response()->noContent();
     }
 }

@@ -18,10 +18,14 @@ class EloquentProductRepository implements ProductRepositoryInterface
             $query->where('status', $filters['status']);
         }
 
-        return $query
-            ->latest()
-            ->paginate()
-            ->through(fn ($model) => ProductMapper::toEntity($model));
+        $paginator = $query->latest()->paginate();
+
+        $paginator->setCollection(
+            $paginator->getCollection()
+                ->map(fn ($model) => ProductMapper::toEntity($model))
+        );
+
+        return $paginator;
     }
 
     public function findById(string $id): ?Product
@@ -42,20 +46,20 @@ class EloquentProductRepository implements ProductRepositoryInterface
             : null;
     }
 
-    public function create(array $data): Product
+    public function save(Product $product): Product
     {
-        $model = ProductModel::create($data);
+        $model = ProductModel::find($product->id())
+            ?? ProductMapper::toModel($product);
+
+        $model->name = $product->name();
+        $model->slug = $product->slug();
+        $model->description = $product->description();
+        $model->price = $product->price();
+        $model->status = $product->status();
+
+        $model->save();
 
         return ProductMapper::toEntity($model);
-    }
-
-    public function update(string $id, array $data): Product
-    {
-        $model = ProductModel::findOrFail($id);
-
-        $model->update($data);
-
-        return ProductMapper::toEntity($model->fresh());
     }
 
     public function delete(string $id): bool

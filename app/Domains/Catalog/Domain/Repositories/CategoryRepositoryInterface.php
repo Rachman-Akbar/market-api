@@ -3,16 +3,15 @@
 namespace App\Domains\Catalog\Domain\Repositories;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Domains\Catalog\Domain\Entities\Category;
 
 interface CategoryRepositoryInterface
 {
     public function paginate(array $filters = []): LengthAwarePaginator;
 
-    public function findById(string $id);
+    public function findById(string $id): ?Category;
 
-    public function create(array $data);
-
-    public function update(string $id, array $data);
+    public function save(Category $category): Category;
 
     public function delete(string $id): bool;
 }

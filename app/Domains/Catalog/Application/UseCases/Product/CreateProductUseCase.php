@@ -6,17 +6,24 @@ use App\Domains\Catalog\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Catalog\Domain\Entities\Product;
 use Illuminate\Support\Str;
 
-class CreateProductUseCase
+final class CreateProductUseCase
 {
     public function __construct(
         private ProductRepositoryInterface $repository
     ) {}
 
-    public function execute(array $data): Product
+    public function execute(string $userId, array $data): Product
     {
-        $data['slug'] = Str::slug($data['name']);
-        $data['status'] ??= 'inactive';
+        $product = new Product(
+            id: (string) Str::uuid(),
+            userId: $userId,
+            name: $data['name'],
+            slug: Str::slug($data['name']),
+            description: $data['description'] ?? null,
+            price: $data['price'],
+            status: $data['status'] ?? 'draft'
+        );
 
-        return $this->repository->create($data);
+        return $this->repository->save($product);
     }
 }

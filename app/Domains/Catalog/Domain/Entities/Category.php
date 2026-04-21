@@ -2,20 +2,50 @@
 
 namespace App\Domains\Catalog\Domain\Entities;
 
-class Category
+final class Category
 {
-    public $id;
-    public $entity_id;
-    public $name;
-    public $slug;
-    public $description;
+    public function __construct(
+        private string $id,
+        private string $entityId,
+        private string $name,
+        private string $slug,
+        private ?string $description
+    ) {}
 
-    public function __construct($id, $entity_id, $name, $slug, $description = null)
+    public function id(): string
     {
-        $this->id = $id;
-        $this->entity_id = $entity_id;
+        return $this->id;
+    }
+
+    public function entityId(): string
+    {
+        return $this->entityId;
+    }
+
+    public function name(): string
+    {
+        return $this->name;
+    }
+
+    public function slug(): string
+    {
+        return $this->slug;
+    }
+
+    public function description(): ?string
+    {
+        return $this->description;
+    }
+
+    // === DOMAIN BEHAVIOR ===
+
+    public function rename(string $name): void
+    {
         $this->name = $name;
-        $this->slug = $slug;
+    }
+
+    public function changeDescription(?string $description): void
+    {
         $this->description = $description;
     }
 }

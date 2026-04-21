@@ -1,51 +1,52 @@
 <?php
 
-namespace App\Domains\Catalog\Infrastructure\Persistence;
+namespace App\Domains\Catalog\Infrastructure\Persistence\Repositories;
 
-use App\Models\Category;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Domains\Catalog\Domain\Entities\Category;
 use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
 use App\Domains\Catalog\Infrastructure\Persistence\Models\CategoryModel;
+use App\Domains\Catalog\Infrastructure\Persistence\Mappers\CategoryMapper;
 
-class EloquentCategoryRepository implements CategoryRepositoryInterface
+final class EloquentCategoryRepository implements CategoryRepositoryInterface
 {
-    private function toEntity(CategoryModel $model): Category
-    {
-    return new Category(
-        $model->id,
-        $model->entity_id,
-        $model->name,
-        $model->slug,
-        $model->description
-    );
-    }
-
     public function paginate(array $filters = []): LengthAwarePaginator
     {
-        return Category::latest()->paginate(15);
+        $paginator = CategoryModel::latest()->paginate(15);
+
+        $paginator->setCollection(
+            $paginator->getCollection()
+                ->map(fn ($model) => CategoryMapper::toEntity($model))
+        );
+
+        return $paginator;
     }
 
-    public function findById(string $id)
+    public function findById(string $id): ?Category
     {
-        return Category::find($id);
+        $model = CategoryModel::find($id);
+
+        return $model
+            ? CategoryMapper::toEntity($model)
+            : null;
     }
 
-    public function create(array $data)
+    public function save(Category $category): Category
     {
-        return Category::create($data);
-    }
+        $model = CategoryModel::find($category->id())
+            ?? CategoryMapper::toModel($category);
 
-    public function update(string $id, array $data)
-    {
-        $category = Category::findOrFail($id);
-        $category->update($data);
+        $model->name = $category->name();
+        $model->slug = $category->slug();
+        $model->description = $category->description();
 
-        return $category;
+        $model->save();
+
+        return CategoryMapper::toEntity($model);
     }
 
     public function delete(string $id): bool
     {
-        return Category::findOrFail($id)->delete();
+        return CategoryModel::where('id', $id)->delete() > 0;
     }
-
 }
