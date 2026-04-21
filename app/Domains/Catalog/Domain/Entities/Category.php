@@ -6,7 +6,7 @@ final class Category
 {
     public function __construct(
         private string $id,
-        private string $entityId,
+        private string $catalogGroupId,
         private string $name,
         private string $slug,
         private ?string $description
@@ -17,9 +17,9 @@ final class Category
         return $this->id;
     }
 
-    public function entityId(): string
+    public function catalogGroupId(): string
     {
-        return $this->entityId;
+        return $this->catalogGroupId;
     }
 
     public function name(): string

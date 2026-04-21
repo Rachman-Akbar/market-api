@@ -8,12 +8,12 @@ use App\Domains\Identity\Infrastructure\Firebase\FirebaseTokenVerifier;
 
 // ✅ IMPORT INTERFACE
 use App\Domains\Catalog\Domain\Repositories\ProductRepositoryInterface;
-use App\Domains\Catalog\Domain\Repositories\EntityRepositoryInterface;
+use App\Domains\Catalog\Domain\Repositories\CatalogGroupRepositoryInterface;
 use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
 
 // ✅ IMPORT IMPLEMENTATION
 use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentProductRepository;
-use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentEntityRepository;
+use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentCatalogGroupRepository;
 use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentCategoryRepository;
 
 class AppServiceProvider extends ServiceProvider
@@ -34,8 +34,8 @@ class AppServiceProvider extends ServiceProvider
 
         // ✅ ENTITY
         $this->app->bind(
-            EntityRepositoryInterface::class,
-            EloquentEntityRepository::class
+            CatalogGroupRepositoryInterface::class,
+            EloquentCatalogGroupRepository::class
         );
 
         // ✅ CATEGORY

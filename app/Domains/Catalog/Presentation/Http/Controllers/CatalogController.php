@@ -49,7 +49,7 @@ final class CatalogController extends Controller
         ], 201);
     }
 
-    public function update(int $id, Request $request, UpdateProductUseCase $action): JsonResponse
+    public function update(int $id, Request $request, $action): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],

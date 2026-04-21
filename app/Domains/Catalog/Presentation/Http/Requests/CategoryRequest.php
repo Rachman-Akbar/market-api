@@ -9,7 +9,7 @@ class CategoryRequest extends FormRequest
     public function rules()
     {
         return [
-            'entity_id' => 'required|exists:entities,id',
+            'catalog_group_id' => 'required|exists:catalog_groups,id',
             'name' => 'required|string|max:255',
             'slug' => 'required|string|max:255',
             'description' => 'nullable|string',

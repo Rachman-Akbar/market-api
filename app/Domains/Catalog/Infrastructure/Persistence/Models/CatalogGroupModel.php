@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Str;
 
-class EntityModel extends Model
+class CatalogGroupModel extends Model
 {
     use HasFactory;
 
-    protected $table = 'entities';
+    protected $table = 'catalog_groups';
 
     protected $fillable = [
         'name',
@@ -30,6 +30,6 @@ class EntityModel extends Model
 
     public function categories()
     {
-        return $this->hasMany(CategoryModel::class, 'entity_id');
+        return $this->hasMany(CategoryModel::class, 'catalog_group_id');
     }
 }

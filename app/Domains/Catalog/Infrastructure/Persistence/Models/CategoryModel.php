@@ -10,7 +10,7 @@ class CategoryModel extends Model
 
     protected $fillable = [
         'id',
-        'entity_id',
+        'catalog_group_id',
         'name',
         'slug',
         'description'
@@ -19,4 +19,9 @@ class CategoryModel extends Model
     public $incrementing = false;
 
     protected $keyType = 'string';
+
+    public function catalogGroup()
+    {
+        return $this->belongsTo(CatalogGroupModel::class, 'catalog_group_id');
+    }
 }
