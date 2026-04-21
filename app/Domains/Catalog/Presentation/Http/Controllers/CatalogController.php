@@ -4,15 +4,15 @@ namespace App\Domains\Catalog\Presentation\Http\Controllers;
 
 use App\Domains\Catalog\Application\Actions\CreateProductAction;
 use App\Domains\Catalog\Application\Actions\GetProductDetailAction;
-use App\Domains\Catalog\Application\Actions\ListProductsAction;
 use App\Domains\Catalog\Application\Actions\UpdateProductAction;
+use App\Domains\Catalog\Application\UseCases\Product\ListProductsUseCase;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class CatalogController extends Controller
 {
-    public function index(ListProductsAction $action): JsonResponse
+    public function index(ListProductsUseCase $action): JsonResponse
     {
         return response()->json([
             'data' => $action->execute(),

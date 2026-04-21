@@ -3,33 +3,36 @@
 namespace App\Domains\Catalog\Domain\Repositories;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Domains\Catalog\Domain\Entities\Product;
 
 interface ProductRepositoryInterface
 {
     /**
-     * Ambil daftar product (catalog listing)
+     * Catalog listing
+     *
+     * @return LengthAwarePaginator<Product>
      */
     public function paginate(array $filters = []): LengthAwarePaginator;
 
     /**
-     * Ambil 1 product berdasarkan ID
+     * Find product by ID
      */
-    public function findById(string $id);
+    public function findById(string $id): ?Product;
 
     /**
-     * Ambil product berdasarkan slug
+     * Find product by slug
      */
-    public function findBySlug(string $slug);
+    public function findBySlug(string $slug): ?Product;
 
     /**
-     * Buat product baru
+     * Create new product
      */
-    public function create(array $data);
+    public function create(array $data): Product;
 
     /**
      * Update product
      */
-    public function update(string $id, array $data);
+    public function update(string $id, array $data): Product;
 
     /**
      * Delete product

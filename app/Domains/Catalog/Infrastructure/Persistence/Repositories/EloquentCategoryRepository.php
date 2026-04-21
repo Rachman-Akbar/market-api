@@ -5,9 +5,21 @@ namespace App\Domains\Catalog\Infrastructure\Persistence;
 use App\Models\Category;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
+use App\Domains\Catalog\Infrastructure\Persistence\Models\CategoryModel;
 
 class EloquentCategoryRepository implements CategoryRepositoryInterface
 {
+    private function toEntity(CategoryModel $model): Category
+    {
+    return new Category(
+        $model->id,
+        $model->entity_id,
+        $model->name,
+        $model->slug,
+        $model->description
+    );
+    }
+
     public function paginate(array $filters = []): LengthAwarePaginator
     {
         return Category::latest()->paginate(15);
@@ -35,4 +47,5 @@ class EloquentCategoryRepository implements CategoryRepositoryInterface
     {
         return Category::findOrFail($id)->delete();
     }
+
 }

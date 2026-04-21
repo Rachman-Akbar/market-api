@@ -12,9 +12,9 @@ use App\Domains\Catalog\Domain\Repositories\EntityRepositoryInterface;
 use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
 
 // ✅ IMPORT IMPLEMENTATION
-use App\Domains\Catalog\Infrastructure\Persistence\EloquentProductRepository;
-use App\Domains\Catalog\Infrastructure\Persistence\EloquentEntityRepository;
-use App\Domains\Catalog\Infrastructure\Persistence\EloquentCategoryRepository;
+use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentProductRepository;
+use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentEntityRepository;
+use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentCategoryRepository;
 
 class AppServiceProvider extends ServiceProvider
 {

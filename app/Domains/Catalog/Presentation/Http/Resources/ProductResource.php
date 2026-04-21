@@ -6,18 +6,16 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class ProductResource extends JsonResource
 {
-    public function toArray($request)
-    {
-        return [
-            'id' => $this->id,
-            'slug' => $this->slug,
-            'name' => $this->name,
-            'description' => $this->description,
-            'price' => $this->price,
-            'categories' => $this->whenLoaded('categories'),
-            'images' => $this->images->pluck('url'),
-            'stock' => $this->stock->quantity ?? 0,
-            'status' => $this->status,
-        ];
-    }
+public function toArray($request): array
+{
+    return [
+        'id' => $this->resource->id(),
+        'seller_id' => $this->resource->sellerId(),
+        'name' => $this->resource->name(),
+        'slug' => $this->resource->slug(),
+        'description' => $this->resource->description(),
+        'price' => $this->resource->price(),
+        'status' => $this->resource->status(),
+    ];
+}
 }

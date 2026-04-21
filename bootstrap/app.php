@@ -12,8 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
         ->withProviders([
-        App\Domains\Catalog\Infrastructure\Providers\CatalogServiceProvider::class,
-    ])
+        App\Domains\Catalog\Infrastructure\Providers\CatalogServiceProvider::class,    ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'api.token' => App\Http\Middleware\EnsureApiTokenIsValid::class,

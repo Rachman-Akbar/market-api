@@ -2,65 +2,70 @@
 
 namespace App\Domains\Catalog\Presentation\Http\Controllers;
 
-
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use App\Domains\Catalog\Application\Actions\Product\CreateProductAction;
-use App\Domains\Catalog\Application\Actions\Product\ListProductsAction;
-use App\Domains\Catalog\Application\Actions\Product\GetProductAction;
-use App\Domains\Catalog\Presentation\Http\Requests\ProductRequest;
+
+use App\Domains\Catalog\Application\UseCases\Product\{
+    CreateProductUseCase,
+    ListProductsUseCase,
+    GetProductUseCase,
+    UpdateProductUseCase,
+    DeleteProductUseCase
+};
+
 use App\Domains\Catalog\Presentation\Http\Resources\ProductResource;
 
 class ProductController extends Controller
 {
+    public function index(
+        Request $request,
+        ListProductsUseCase $useCase
+    ) {
+        $products = $useCase->execute($request->all());
 
-    public function __construct(
-        private CreateProductAction $createProduct,
-        private ListProductsAction $listProducts,
-        private GetProductAction $getProductDetail
-    ) {}
+        return ProductResource::collection($products);
+    }
 
+    public function store(
+        Request $request,
+        CreateProductUseCase $useCase
+    ) {
+        $product = $useCase->execute($request->all());
 
-    public function index(\Illuminate\Http\Request $request)
-    {
-        $filters = $request->only(['search', 'category_id', 'min_price', 'max_price']);
-        $perPage = $request->get('per_page', 15);
-        $products = $this->listProducts->handle($filters, $perPage);
+        return new ProductResource($product);
+    }
+
+    public function show(
+        string $id,
+        GetProductUseCase $useCase
+    ) {
+        $product = $useCase->execute($id);
+
+        abort_if(!$product, 404);
+
+        return new ProductResource($product);
+    }
+
+    public function update(
+        Request $request,
+        string $id,
+        UpdateProductUseCase $useCase
+    ) {
+        $product = $useCase->execute($id, $request->all());
+
+        return new ProductResource($product);
+    }
+
+    public function destroy(
+        string $id,
+        DeleteProductUseCase $useCase
+    ) {
+        $useCase->execute($id);
 
         return response()->json([
-            'success' => true,
-            'data' => ProductResource::collection($products),
-            'message' => null,
+            'message' => 'Product deleted'
         ]);
     }
 
-    public function show($idOrSlug)
-    {
-        $product = $this->getProductDetail->handle($idOrSlug);
-
-        if (!$product) {
-            return response()->json([
-                'success' => false,
-                'data' => null,
-                'message' => 'Product not found',
-            ], 404);
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => new ProductResource($product),
-            'message' => null,
-        ]);
-    }
-
-    public function store(ProductRequest $request)
-    {
-        $dto = new \App\Domains\Catalog\Application\DTOs\CreateProductData($request->validated());
-        $product = $this->createProduct->handle($dto);
-
-        return response()->json([
-            'success' => true,
-            'data' => new ProductResource($product),
-            'message' => null,
-        ], 201);
-    }
+    
 }

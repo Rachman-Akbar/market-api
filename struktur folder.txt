@@ -1,0 +1,77 @@
+Catalog/
+├── README.md
+├── Application/
+│   ├── Actions/
+│   │   ├── Banner/
+│   │   │   └── ListBannersAction.php
+│   │   ├── Category/
+│   │   │   ├── CreateCategoryAction.php
+│   │   │   └── ListCategoriesAction.php
+│   │   ├── Entity/
+│   │   │   └── ListEntitiesAction.php
+│   │   ├── Product/
+│   │   │   ├── CreateProductAction.php
+│   │   │   ├── DeleteProductAction.php
+│   │   │   ├── GetProductAction.php
+│   │   │   ├── GetProductDetailAction.php
+│   │   │   ├── ListProductsAction.php
+│   │   │   └── UpdateProductAction.php
+│   │   └── Store/
+│   │       ├── CreateStoreAction.php
+│   │       └── GetStoreProductsAction.php
+│   ├── DTOs/
+│   │   ├── CreateProductData.php
+│   │   └── UpdateProductData.php
+│   └── UseCases/
+│       ├── Category/
+│       │   ├── CreateCategoryUseCase.php
+│       │   ├── GetCategoriesUseCase.php
+│       │   └── GetCategoryDetailUseCase.php
+│       ├── Entity/
+│       │   ├── CreateEntityUseCase.php
+│       │   ├── GetEntitiesUseCase.php
+│       │   └── UpdateEntityUseCase.php
+│       └── Product/
+│           └── CreateProduct.php
+├── Domain/
+│   ├── Entities/
+│   │   ├── Banner.php
+│   │   ├── Category.php
+│   │   ├── Entity.php
+│   │   ├── Product.php
+│   │   └── Store.php
+│   └── Repositories/
+│       ├── CategoryRepositoryInterface.php
+│       └── ProductRepositoryInterface.php
+├── Infrastructure/
+│   ├── Persistence/
+│   │   ├── Mappers/
+│   │   │   ├── CategoryMapper.php
+│   │   │   └── ProductMapper.php
+│   │   ├── Models/
+│   │   │   ├── CategoryModel.php
+│   │   │   ├── EntityModel.php
+│   │   │   └── ProductModel.php
+│   │   └── Repositories/
+│   │       ├── EloquentCategoryRepository.php
+│   │       └── EloquentProductRepository.php
+│   └── Providers/
+│   └── Services/
+└── Presentation/
+    ├── routes.php
+    └── Http/
+        ├── Controllers/
+        │   ├── BannerController.php
+        │   ├── CatalogController.php
+        │   ├── CategoryController.php
+        │   ├── EntityController.php
+        │   ├── ProductController.php
+        │   └── StoreController.php
+        ├── Requests/
+        │   ├── CategoryRequest.php
+        │   ├── EntityRequest.php
+        │   └── ProductRequest.php
+        └── Resources/
+            ├── CategoryResource.php
+            ├── EntityResource.php
+            └── ProductResource.php

@@ -1,16 +1,17 @@
 <?php
 
-namespace App\Domains\Catalog\Application\Actions\Product;
+namespace App\Domains\Catalog\Application\UseCases\Product;
 
 use App\Domains\Catalog\Domain\Repositories\ProductRepositoryInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
-class ListProductsAction
+class ListProductsUseCase
 {
     public function __construct(
         private ProductRepositoryInterface $repository
     ) {}
 
-    public function handle(array $filters = [], int $perPage = 15)
+    public function execute(array $filters = []): LengthAwarePaginator
     {
         return $this->repository->paginate($filters);
     }
