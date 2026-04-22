@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Domains\Catalog\Presentation\Http\Controllers\ProductController;
 use App\Domains\Catalog\Presentation\Http\Controllers\CatalogGroupController;
 use App\Domains\Catalog\Presentation\Http\Controllers\CategoryController;
+use App\Domains\Catalog\Presentation\Http\Controllers\StoreController;
 
 Route::prefix('catalog')->group(function () {
 
@@ -19,5 +20,7 @@ Route::prefix('catalog')->group(function () {
     Route::post('categories', [CategoryController::class, 'store']);
 
     Route::get('banners', [BannerController::class, 'index']);
+
+    Route::get('stores', [StoreController::class,'index']);
 
 });

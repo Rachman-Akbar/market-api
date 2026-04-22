@@ -2,6 +2,8 @@
 
 namespace App\Domains\Catalog\Infrastructure\Providers;
 
+use App\Domains\Catalog\Domain\Repositories\StoreRepositoryInterface;
+use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentStoreRepository;
 use App\Domains\Catalog\Domain\Repositories\BannerRepositoryInterface;
 use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
 use App\Domains\Catalog\Domain\Repositories\CatalogGroupRepositoryInterface;
@@ -34,6 +36,11 @@ class CatalogServiceProvider extends ServiceProvider
         $this->app->bind(
             BannerRepositoryInterface::class,
             EloquentBannerRepository::class
+        );
+
+        $this->app->bind(
+            StoreRepositoryInterface::class,
+            EloquentStoreRepository::class
         );
     }
 }
