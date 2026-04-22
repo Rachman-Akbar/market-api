@@ -1,24 +1,6 @@
 Catalog/
 ├── README.md
 ├── Application/
-│   ├── Actions/
-│   │   ├── Banner/
-│   │   │   └── ListBannersAction.php
-│   │   ├── Category/
-│   │   │   ├── CreateCategoryAction.php
-│   │   │   └── ListCategoriesAction.php
-│   │   ├── Entity/
-│   │   │   └── ListEntitiesAction.php
-│   │   ├── Product/
-│   │   │   ├── CreateProductAction.php
-│   │   │   ├── DeleteProductAction.php
-│   │   │   ├── GetProductAction.php
-│   │   │   ├── GetProductDetailAction.php
-│   │   │   ├── ListProductsAction.php
-│   │   │   └── UpdateProductAction.php
-│   │   └── Store/
-│   │       ├── CreateStoreAction.php
-│   │       └── GetStoreProductsAction.php
 │   ├── DTOs/
 │   │   ├── CreateProductData.php
 │   │   └── UpdateProductData.php

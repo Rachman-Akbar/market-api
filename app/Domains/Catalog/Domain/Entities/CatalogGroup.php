@@ -1,3 +1,5 @@
+<?php
+
 namespace App\Domains\Catalog\Domain\Entities;
 
 class CatalogGroup
