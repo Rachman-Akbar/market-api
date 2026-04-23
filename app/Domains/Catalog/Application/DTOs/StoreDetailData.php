@@ -2,24 +2,24 @@
 
 namespace App\Domains\Catalog\Application\DTOs;
 
-class StoreDetailData
+final class StoreDetailData
 {
     public function __construct(
         public ?int $id,
-        public int $store_id,
-        public string $description,
-        public ?string $created_at = null,
-        public ?string $updated_at = null,
+        public int $storeId,
+        public ?string $description = null,
+        public ?string $address = null,
+        public ?string $phone = null,
     ) {}
 
     public static function fromEntity($entity): self
     {
         return new self(
-            id: $entity->id ?? null,
-            store_id: $entity->store_id,
-            description: $entity->description,
-            created_at: $entity->created_at ?? null,
-            updated_at: $entity->updated_at ?? null,
+            id: $entity->id(),
+            storeId: $entity->storeId(),
+            description: $entity->description(),
+            address: $entity->address(),
+            phone: $entity->phone(),
         );
     }
 }

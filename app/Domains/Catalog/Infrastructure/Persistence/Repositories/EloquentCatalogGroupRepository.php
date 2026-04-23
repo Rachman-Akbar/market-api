@@ -8,45 +8,48 @@ use App\Domains\Catalog\Infrastructure\Persistence\Models\CatalogGroupModel;
 use App\Domains\Catalog\Infrastructure\Persistence\Mappers\CatalogGroupMapper;
 use Illuminate\Support\Collection;
 
-class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInterface
+final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInterface
 {
-    public function getAll(): Collection
+    public function getAll(array $filters = []): Collection
     {
-        return CatalogGroupModel::query()
-            ->get()
-            ->map(fn ($model) => CatalogGroupMapper::toDomain($model));
-    }
+        $query = CatalogGroupModel::query()
+            ->with(['categories' => fn ($q) => $q->withCount('products')]);
 
-    public function findById(string $id): ?CatalogGroup
-    {
-        $model = CatalogGroupModel::find($id);
-
-        if (!$model) {
-            return null;
+        if (array_key_exists('is_active', $filters)) {
+            $query->where('is_active', (bool) $filters['is_active']);
         }
 
-        return CatalogGroupMapper::toDomain($model);
+        return $query->get()
+            ->map(fn ($model) => CatalogGroupMapper::toEntity($model));
+    }
+
+    public function findById(int $id): ?CatalogGroup
+    {
+        $model = CatalogGroupModel::with(['categories' => fn ($q) => $q->withCount('products')])
+            ->find($id);
+
+        return $model ? CatalogGroupMapper::toEntity($model) : null;
     }
 
     public function create(CatalogGroup $data): CatalogGroup
     {
-        $model = CatalogGroupModel::create([
-            'id' => $data->id,
-            'name' => $data->name,
-        ]);
+        $model = CatalogGroupMapper::toModel($data);
+        $model->save();
+        $model->load('categories');
 
-        return CatalogGroupMapper::toDomain($model);
+        return CatalogGroupMapper::toEntity($model);
     }
 
-    public function update(string $id, array $data): CatalogGroup
+    public function update(int $id, array $data): CatalogGroup
     {
         $model = CatalogGroupModel::findOrFail($id);
         $model->update($data);
+        $model->load('categories');
 
-        return CatalogGroupMapper::toDomain($model);
+        return CatalogGroupMapper::toEntity($model);
     }
 
-    public function delete(string $id): bool
+    public function delete(int $id): bool
     {
         return CatalogGroupModel::destroy($id) > 0;
     }

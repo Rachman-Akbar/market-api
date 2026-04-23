@@ -2,68 +2,32 @@
 
 namespace App\Domains\Catalog\Domain\Entities;
 
-class CatalogGroup
+final class CatalogGroup
 {
-    private ?string $id;
-    private string $name;
-    private string $slug;
-    private ?string $description;
-
     public function __construct(
-        ?string $id,
-        string $name,
-        string $slug,
-        ?string $description = null
-    ) {
-        $this->id = $id;
-        $this->name = $name;
-        $this->slug = $slug;
-        $this->description = $description;
-    }
+        private ?int $id,
+        private string $name,
+        private string $slug,
+        private ?string $description = null,
+        private ?string $imageUrl = null,
+        private ?string $coverImageUrl = null,
+        private bool $isActive = true,
+        private array $categories = [],
+    ) {}
 
-    /* =======================
-        GETTERS
-    ======================= */
+    public function id(): ?int { return $this->id; }
+    public function name(): string { return $this->name; }
+    public function slug(): string { return $this->slug; }
+    public function description(): ?string { return $this->description; }
+    public function imageUrl(): ?string { return $this->imageUrl; }
+    public function coverImageUrl(): ?string { return $this->coverImageUrl; }
+    public function isActive(): bool { return $this->isActive; }
+    public function categories(): array { return $this->categories; }
 
-    public function id(): ?string
-    {
-        return $this->id;
-    }
-
-    public function name(): string
-    {
-        return $this->name;
-    }
-
-    public function slug(): string
-    {
-        return $this->slug;
-    }
-
-    public function description(): ?string
-    {
-        return $this->description;
-    }
-
-    /* =======================
-        BUSINESS BEHAVIOR
-    ======================= */
-
-    public function rename(string $name): void
-    {
-        if (strlen($name) < 3) {
-            throw new \DomainException('Catalog Group name too short');
-        }
-
-        $this->name = $name;
-    }
-
-    public function changeSlug(string $slug): void
-    {
-        if (empty($slug)) {
-            throw new \DomainException('Slug cannot be empty');
-        }
-
-        $this->slug = $slug;
-    }
+    public function rename(string $name): void { $this->name = $name; }
+    public function changeSlug(string $slug): void { $this->slug = $slug; }
+    public function changeDescription(?string $description): void { $this->description = $description; }
+    public function changeImageUrl(?string $imageUrl): void { $this->imageUrl = $imageUrl; }
+    public function changeCoverImageUrl(?string $coverImageUrl): void { $this->coverImageUrl = $coverImageUrl; }
+    public function changeIsActive(bool $isActive): void { $this->isActive = $isActive; }
 }

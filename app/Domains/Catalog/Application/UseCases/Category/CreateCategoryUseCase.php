@@ -15,11 +15,9 @@ final class CreateCategoryUseCase
     public function execute(array $data): Category
     {
         $category = new Category(
-            id: (string) Str::uuid(),
-            entityId: (string) Str::uuid(),
+            id: null,
             name: $data['name'],
-            slug: Str::slug($data['name']),
-            description: $data['description'] ?? null
+            slug: $data['slug'] ?? Str::slug($data['name']),
         );
 
         return $this->repository->save($category);

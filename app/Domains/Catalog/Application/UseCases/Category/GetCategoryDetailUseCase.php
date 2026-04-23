@@ -10,7 +10,7 @@ final class GetCategoryDetailUseCase
         private CategoryRepositoryInterface $repository
     ) {}
 
-    public function execute(string $id)
+    public function execute(int $id)
     {
         return $this->repository->findById($id);
     }

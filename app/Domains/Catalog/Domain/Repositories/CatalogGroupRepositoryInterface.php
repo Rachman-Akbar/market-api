@@ -7,13 +7,13 @@ use Illuminate\Support\Collection;
 
 interface CatalogGroupRepositoryInterface
 {
-    public function getAll(): Collection;
+    public function getAll(array $filters = []): Collection;
 
-    public function findById(string $id): ?CatalogGroup;
+    public function findById(int $id): ?CatalogGroup;
 
     public function create(CatalogGroup $data): CatalogGroup;
 
-    public function update(string $id, array $data): CatalogGroup;
+    public function update(int $id, array $data): CatalogGroup;
 
-    public function delete(string $id): bool;
+    public function delete(int $id): bool;
 }

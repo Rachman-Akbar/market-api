@@ -3,7 +3,7 @@
 namespace App\Domains\Catalog\Application\UseCases\Category;
 
 use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
-use App\Domains\Catalog\Domain\Entities\Category;
+use Illuminate\Support\Str;
 
 final class UpdateCategoryUseCase
 {
@@ -11,20 +11,24 @@ final class UpdateCategoryUseCase
         private CategoryRepositoryInterface $repository
     ) {}
 
-    public function execute(string $id, array $data): Category
+    public function execute(int $id, array $data)
     {
         $category = $this->repository->findById($id);
 
         if (!$category) {
-            throw new \Exception('Category not found');
+            throw new \RuntimeException('Category not found');
         }
 
         if (isset($data['name'])) {
             $category->rename($data['name']);
+
+            if (!isset($data['slug'])) {
+                $category->changeSlug(Str::slug($data['name']));
+            }
         }
 
-        if (isset($data['description'])) {
-            $category->changeDescription($data['description']);
+        if (isset($data['slug'])) {
+            $category->changeSlug($data['slug']);
         }
 
         return $this->repository->save($category);

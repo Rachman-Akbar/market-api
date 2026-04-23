@@ -57,3 +57,33 @@ Catalog/
             ├── CategoryResource.php
             ├── EntityResource.php
             └── ProductResource.php
+
+
+Catalog/Application/UseCases/Category/GetCategoriesUseCase.php
+Catalog/Application/UseCases/Category/GetCategoryDetailUseCase.php
+
+Catalog/Domain/Repositories/CategoryRepositoryInterface.php
+Catalog/Domain/Repositories/ProductRepositoryInterface.php
+
+Catalog/Infrastructure/Persistence/Repositories/EloquentCategoryRepository.php
+Catalog/Infrastructure/Persistence/Repositories/EloquentProductRepository.php
+
+Catalog/Infrastructure/Persistence/Models/ProductModel.php
+Catalog/Infrastructure/Persistence/Models/CategoryModel.php
+Catalog/Infrastructure/Persistence/Models/EntityModel.php
+
+Catalog/Infrastructure/Persistence/Mappers/ProductMapper.php
+Catalog/Infrastructure/Persistence/Mappers/CategoryMapper.php
+
+Catalog/Domain/Entities/Banner.php
+Catalog/Domain/Entities/Store.php
+
+Catalog/Presentation/Http/Resources/EntityResource.php
+
+Catalog/Infrastructure/Persistence/Models/BannerModel.php
+Catalog/Infrastructure/Persistence/Models/StoreModel.php
+Catalog/Infrastructure/Persistence/Models/StoreDetailModel.php
+Catalog/Infrastructure/Persistence/Models/CatalogGroupModel.php
+
+Catalog/Infrastructure/Persistence/Repositories/EloquentBannerRepository.php
+Catalog/Infrastructure/Persistence/Repositories/EloquentStoreRepository.php

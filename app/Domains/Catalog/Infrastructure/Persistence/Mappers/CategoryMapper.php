@@ -2,7 +2,6 @@
 
 namespace App\Domains\Catalog\Infrastructure\Persistence\Mappers;
 
-use Illuminate\Support\Str;
 use App\Domains\Catalog\Domain\Entities\Category;
 use App\Domains\Catalog\Infrastructure\Persistence\Models\CategoryModel;
 
@@ -11,22 +10,28 @@ final class CategoryMapper
     public static function toEntity(CategoryModel $model): Category
     {
         return new Category(
-            $model->id,
-            $model->entity_id ?? (string) Str::uuid(),
-            $model->name,
-            $model->slug,
-            $model->description
+            id: $model->id,
+            catalogGroupId: $model->catalog_group_id,
+            name: $model->name,
+            slug: $model->slug,
+            description: $model->description,
+            imageUrl: $model->image_url,
+            coverImageUrl: $model->cover_image_url,
+            productsCount: $model->products_count ?? null,
+            isActive: (bool) ($model->is_active ?? true),
         );
     }
 
-    public static function toModel(Category $entity): CategoryModel
+    public static function toModel(Category $category): CategoryModel
     {
         return new CategoryModel([
-            'id' => $entity->id(),
-            'entity_id' => $entity->entityId(),
-            'name' => $entity->name(),
-            'slug' => $entity->slug(),
-            'description' => $entity->description(),
+            'catalog_group_id' => $category->catalogGroupId(),
+            'name' => $category->name(),
+            'slug' => $category->slug(),
+            'description' => $category->description(),
+            'image_url' => $category->imageUrl(),
+            'cover_image_url' => $category->coverImageUrl(),
+            'is_active' => $category->isActive(),
         ]);
     }
 }

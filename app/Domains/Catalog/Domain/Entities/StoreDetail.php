@@ -2,14 +2,19 @@
 
 namespace App\Domains\Catalog\Domain\Entities;
 
-class StoreDetail
+final class StoreDetail
 {
     public function __construct(
-        public ?string $logo,
-        public ?string $description,
-        public ?string $address,
-        public ?float $latitude,
-        public ?float $longitude,
-        public ?string $phone
+        private ?int $id,
+        private int $storeId,
+        private ?string $description = null,
+        private ?string $address = null,
+        private ?string $phone = null,
     ) {}
+
+    public function id(): ?int { return $this->id; }
+    public function storeId(): int { return $this->storeId; }
+    public function description(): ?string { return $this->description; }
+    public function address(): ?string { return $this->address; }
+    public function phone(): ?string { return $this->phone; }
 }

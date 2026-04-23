@@ -4,19 +4,20 @@ namespace App\Domains\Catalog\Application\UseCases\CatalogGroup;
 
 use App\Domains\Catalog\Domain\Repositories\CatalogGroupRepositoryInterface;
 use App\Domains\Catalog\Domain\Entities\CatalogGroup;
+use Illuminate\Support\Str;
 
-class CreateCatalogGroupUseCase
+final class CreateCatalogGroupUseCase
 {
     public function __construct(
         private CatalogGroupRepositoryInterface $repository
     ) {}
 
-    public function execute(array $data)
+    public function execute(array $data): CatalogGroup
     {
         $group = new CatalogGroup(
             id: null,
             name: $data['name'],
-            slug: $data['slug'],
+            slug: $data['slug'] ?? Str::slug($data['name']),
             description: $data['description'] ?? null,
         );
 

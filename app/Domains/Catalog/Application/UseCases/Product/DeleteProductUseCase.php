@@ -10,7 +10,7 @@ final class DeleteProductUseCase
         private ProductRepositoryInterface $repository
     ) {}
 
-    public function execute(string $id): bool
+    public function execute(int $id): bool
     {
         return $this->repository->delete($id);
     }

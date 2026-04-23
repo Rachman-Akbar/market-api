@@ -3,16 +3,15 @@
 namespace App\Domains\Catalog\Domain\Repositories;
 
 use App\Domains\Catalog\Domain\Entities\Store;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface StoreRepositoryInterface
 {
-    public function all();
+    public function all(): array;
 
-    public function paginate(int $perPage = 15): LengthAwarePaginator;
+    public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator;
 
-    public function findById(string $id): ?Store;
+    public function findById(int $id): ?Store;
 
     public function create(Store $store): Store;
-
 }

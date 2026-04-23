@@ -11,8 +11,8 @@ final class ListCategoryUseCase
         private CategoryRepositoryInterface $repository
     ) {}
 
-    public function execute(array $filters = []): LengthAwarePaginator
+    public function execute(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        return $this->repository->paginate($filters);
+        return $this->repository->paginate($filters, $perPage);
     }
 }

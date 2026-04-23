@@ -10,7 +10,7 @@ final class DeleteCategoryUseCase
         private CategoryRepositoryInterface $repository
     ) {}
 
-    public function execute(string $id): bool
+    public function execute(int $id): bool
     {
         return $this->repository->delete($id);
     }

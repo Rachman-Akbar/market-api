@@ -6,34 +6,42 @@ use App\Domains\Catalog\Domain\Entities\Store;
 use App\Domains\Catalog\Domain\Entities\StoreDetail;
 use App\Domains\Catalog\Infrastructure\Persistence\Models\StoreModel;
 
-class StoreMapper
+final class StoreMapper
 {
     public static function toEntity(StoreModel $model): Store
     {
-        $detail = new StoreDetail(
-            logo: null,
-            description: null,
-            address: null,
-            latitude: null,
-            longitude: null,
-            phone: null
-        );
+        $detail = null;
+
+        if ($model->relationLoaded('detail') && $model->detail) {
+            $detail = new StoreDetail(
+                id: $model->detail->id,
+                storeId: $model->detail->store_id,
+                description: $model->detail->description,
+                address: $model->detail->address,
+                phone: $model->detail->phone,
+            );
+        }
 
         return new Store(
             id: $model->id,
+            userId: $model->user_id,
             name: $model->name,
             slug: $model->slug,
-            isActive: (bool) $model->is_active,
-            detail: $detail
+            description: $model->description,
+            logo: $model->logo,
+            isActive: (bool) ($model->is_active ?? true),
+            detail: $detail,
         );
     }
 
     public static function toModel(Store $store): array
     {
         return [
-            'id' => $store->id(),
+            'user_id' => $store->userId(),
             'name' => $store->name(),
             'slug' => $store->slug(),
+            'description' => $store->description(),
+            'logo' => $store->logo(),
             'is_active' => $store->isActive(),
         ];
     }

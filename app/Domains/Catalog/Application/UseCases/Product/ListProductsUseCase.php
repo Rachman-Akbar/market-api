@@ -11,8 +11,8 @@ final class ListProductsUseCase
         private ProductRepositoryInterface $repository
     ) {}
 
-    public function execute(array $filters = []): LengthAwarePaginator
+    public function execute(array $filters = [], int $perPage = 16): LengthAwarePaginator
     {
-        return $this->repository->paginate($filters);
+        return $this->repository->paginate($filters, $perPage);
     }
 }

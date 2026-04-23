@@ -8,17 +8,30 @@ use App\Domains\Catalog\Infrastructure\Persistence\Models\ProductModel;
 use App\Domains\Catalog\Infrastructure\Persistence\Mappers\ProductMapper;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
-class EloquentProductRepository implements ProductRepositoryInterface
+final class EloquentProductRepository implements ProductRepositoryInterface
 {
-    public function paginate(array $filters = []): LengthAwarePaginator
+    public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        $query = ProductModel::query();
+        $query = ProductModel::query()
+            ->with(['category', 'store', 'images']);
 
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
-        $paginator = $query->latest()->paginate();
+        if (!empty($filters['category_id'])) {
+            $query->where('category_id', $filters['category_id']);
+        }
+
+        if (!empty($filters['store_id'])) {
+            $query->where('store_id', $filters['store_id']);
+        }
+
+        if (!empty($filters['search'])) {
+            $query->where('name', 'like', '%' . $filters['search'] . '%');
+        }
+
+        $paginator = $query->latest()->paginate($perPage);
 
         $paginator->setCollection(
             $paginator->getCollection()
@@ -28,41 +41,50 @@ class EloquentProductRepository implements ProductRepositoryInterface
         return $paginator;
     }
 
-    public function findById(string $id): ?Product
+    public function findById(int $id): ?Product
     {
-        $model = ProductModel::find($id);
+        $model = ProductModel::with(['category', 'store', 'images'])->find($id);
 
-        return $model
-            ? ProductMapper::toEntity($model)
-            : null;
+        return $model ? ProductMapper::toEntity($model) : null;
     }
 
     public function findBySlug(string $slug): ?Product
     {
-        $model = ProductModel::where('slug', $slug)->first();
+        $model = ProductModel::with(['category', 'store', 'images'])
+            ->where('slug', $slug)
+            ->first();
 
-        return $model
-            ? ProductMapper::toEntity($model)
-            : null;
+        return $model ? ProductMapper::toEntity($model) : null;
     }
 
     public function save(Product $product): Product
     {
-        $model = ProductModel::find($product->id())
-            ?? ProductMapper::toModel($product);
+        $model = $product->id()
+            ? ProductModel::find($product->id())
+            : null;
 
-        $model->name = $product->name();
-        $model->slug = $product->slug();
-        $model->description = $product->description();
-        $model->price = $product->price();
-        $model->status = $product->status();
+        if (!$model) {
+            $model = ProductMapper::toModel($product);
+        } else {
+            $model->store_id = $product->storeId();
+            $model->category_id = $product->categoryId();
+            $model->seller_id = $product->sellerId();
+            $model->name = $product->name();
+            $model->slug = $product->slug();
+            $model->description = $product->description();
+            $model->price = $product->price();
+            $model->stock = $product->stock();
+            $model->thumbnail = $product->thumbnail();
+            $model->status = $product->status();
+        }
 
         $model->save();
+        $model->load(['category', 'store', 'images']);
 
         return ProductMapper::toEntity($model);
     }
 
-    public function delete(string $id): bool
+    public function delete(int $id): bool
     {
         return ProductModel::where('id', $id)->delete() > 0;
     }

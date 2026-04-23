@@ -3,35 +3,45 @@
 namespace App\Domains\Catalog\Infrastructure\Persistence\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProductModel extends Model
 {
     protected $table = 'products';
 
     protected $fillable = [
+        'store_id',
+        'category_id',
         'seller_id',
         'name',
         'slug',
         'description',
         'price',
+        'stock',
+        'thumbnail',
         'status',
     ];
-    // Relasi ke kategori (many-to-many)
-    public function categories()
+
+    protected $casts = [
+        'store_id' => 'integer',
+        'category_id' => 'integer',
+        'price' => 'float',
+        'stock' => 'integer',
+    ];
+
+    public function category(): BelongsTo
     {
-        // Asumsi pivot table: category_product, foreign keys: product_id, category_id
-        return $this->belongsToMany(\App\Models\Category::class, 'product_categories', 'product_id', 'category_id');
+        return $this->belongsTo(CategoryModel::class, 'category_id');
     }
 
-    // Relasi ke gambar produk (one-to-many)
-    public function images()
+    public function store(): BelongsTo
     {
-        return $this->hasMany(\App\Models\ProductImage::class, 'product_id');
+        return $this->belongsTo(StoreModel::class, 'store_id');
     }
 
-    // Relasi ke stok (one-to-one)
-    public function stock()
+    public function images(): HasMany
     {
-        return $this->hasOne(\App\Models\Stock::class, 'product_id');
+        return $this->hasMany(ProductImageModel::class, 'product_id');
     }
 }

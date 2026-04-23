@@ -11,7 +11,7 @@ final class GetProductDetailUseCase
         private ProductRepositoryInterface $repository
     ) {}
 
-    public function execute(string $id): ?Product
+    public function execute(int $id): ?Product
     {
         return $this->repository->findById($id);
     }

@@ -15,13 +15,17 @@ final class CreateProductUseCase
     public function execute(string $userId, array $data): Product
     {
         $product = new Product(
-            id: (string) Str::uuid(),
-            userId: $userId,
+            id: null,
+            storeId: $data['store_id'] ?? null,
+            categoryId: $data['category_id'] ?? null,
+            sellerId: $userId,
             name: $data['name'],
-            slug: Str::slug($data['name']),
+            slug: $data['slug'] ?? Str::slug($data['name']),
             description: $data['description'] ?? null,
-            price: $data['price'],
-            status: $data['status'] ?? 'draft'
+            price: (float) $data['price'],
+            stock: (int) ($data['stock'] ?? 0),
+            thumbnail: $data['thumbnail'] ?? null,
+            status: $data['status'] ?? 'draft',
         );
 
         return $this->repository->save($product);
