@@ -9,7 +9,12 @@ use App\Domains\Catalog\Presentation\Http\Controllers\StoreController;
 
 Route::prefix('catalog')->group(function () {
     Route::get('products', [ProductController::class, 'index']);
-    Route::get('products/{id}', [ProductController::class, 'show']);
+
+    Route::get('products/{slug}', [ProductController::class, 'showBySlug'])
+        ->where('slug', '[A-Za-z0-9\-]+');
+
+    Route::get('products/id/{id}', [ProductController::class, 'show'])
+        ->whereNumber('id');
 
     Route::get('catalog-groups', [CatalogGroupController::class, 'index']);
 
@@ -18,4 +23,10 @@ Route::prefix('catalog')->group(function () {
     Route::get('banners', [BannerController::class, 'index']);
 
     Route::get('stores', [StoreController::class, 'index']);
+
+    Route::get('stores/{slug}', [StoreController::class, 'showBySlug'])
+        ->where('slug', '[A-Za-z0-9\-]+');
+
+    Route::get('stores/{slug}/products', [StoreController::class, 'productsBySlug'])
+        ->where('slug', '[A-Za-z0-9\-]+');
 });

@@ -9,6 +9,7 @@ use App\Domains\Catalog\Application\UseCases\Product\{
     CreateProductUseCase,
     ListProductsUseCase,
     GetProductUseCase,
+    GetProductBySlugUseCase,
     UpdateProductUseCase,
     DeleteProductUseCase
 };
@@ -67,5 +68,17 @@ class ProductController extends Controller
         ]);
     }
 
+
+public function showBySlug(
+    string $slug,
+    GetProductBySlugUseCase $useCase
+) {
+    $product = $useCase->execute($slug);
+
+    abort_if(!$product, 404);
+
+    return new ProductResource($product);
+}
+    
 
 }

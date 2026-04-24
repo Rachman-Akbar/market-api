@@ -1,9 +1,5 @@
     <?php
-
-    use App\Http\Controllers\Api\MarketplaceController;
     use Illuminate\Support\Facades\Route;
-    use App\Domains\Identity\Presentation\Http\Controllers\AuthController;
-    use App\Domains\Catalog\Presentation\Http\ProductController;
 
     /*
     |--------------------------------------------------------------------------
@@ -32,11 +28,6 @@
         ]);
     });
 
-
-    Route::get('/categories', [MarketplaceController::class, 'categories']);
-    Route::get('/stores/{slug}', [MarketplaceController::class, 'storeBySlug']);
-    Route::post('/cart', [MarketplaceController::class, 'upsertCart']);
-    Route::post('/orders', [MarketplaceController::class, 'createOrder']);
 
     Route::prefix('v1')->group(function () use ($domainRouteFiles): void {
         foreach ($domainRouteFiles as $routeFile) {

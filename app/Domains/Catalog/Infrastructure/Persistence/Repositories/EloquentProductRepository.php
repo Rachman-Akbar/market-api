@@ -2,6 +2,7 @@
 
 namespace App\Domains\Catalog\Infrastructure\Persistence\Repositories;
 
+use Illuminate\Support\Collection;
 use App\Domains\Catalog\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Catalog\Domain\Entities\Product;
 use App\Domains\Catalog\Infrastructure\Persistence\Models\ProductModel;
@@ -88,4 +89,16 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     {
         return ProductModel::where('id', $id)->delete() > 0;
     }
+
+    public function findPublishedByStoreId(int $storeId): Collection
+{
+    return ProductModel::query()
+        ->with(['category', 'store', 'images'])
+        ->where('store_id', $storeId)
+        ->where('status', 'published')
+        ->latest()
+        ->get()
+        ->map(fn ($model) => ProductMapper::toEntity($model));
+}
+    
 }

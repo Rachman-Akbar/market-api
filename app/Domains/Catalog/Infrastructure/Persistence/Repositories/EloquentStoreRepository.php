@@ -54,4 +54,13 @@ final class EloquentStoreRepository implements StoreRepositoryInterface
 
         return $paginator;
     }
+
+    public function findBySlug(string $slug): ?Store
+{
+    $model = StoreModel::query()
+        ->where('slug', $slug)
+        ->first();
+
+    return $model ? StoreMapper::toEntity($model) : null;
+}
 }
