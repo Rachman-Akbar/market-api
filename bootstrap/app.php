@@ -1,8 +1,13 @@
 <?php
 
+use App\Http\Middleware\EnsureApiTokenIsValid;
+use App\Http\Middleware\EnsureEmailIsVerified;
+use App\Http\Middleware\EnsureUserHasRole;
+use App\Http\Middleware\ValidateFirebaseToken;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\HandleCors;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -11,17 +16,24 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
-        ->withProviders([
-        App\Domains\Catalog\Infrastructure\Providers\CatalogServiceProvider::class,    ])
+    ->withProviders([
+        App\Domains\Catalog\Infrastructure\Providers\CatalogServiceProvider::class,
+
+        // Aktifkan ini kalau file provider-nya memang ada:
+        // App\Domains\Identity\Infrastructure\Providers\IdentityServiceProvider::class,
+    ])
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->prepend(HandleCors::class);
+
         $middleware->alias([
-            'api.token' => App\Http\Middleware\EnsureApiTokenIsValid::class,
-            'firebase.token' => App\Http\Middleware\ValidateFirebaseToken::class,
+            'api.token' => EnsureApiTokenIsValid::class,
+            'firebase.token' => ValidateFirebaseToken::class,
             'firebase.auth' => App\Domains\Identity\Infrastructure\Firebase\VerifyFirebaseToken::class,
-            'verified.email' => App\Http\Middleware\EnsureEmailIsVerified::class,
-            'role' => App\Http\Middleware\EnsureUserHasRole::class,
+            'verified.email' => EnsureEmailIsVerified::class,
+            'role' => EnsureUserHasRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
-    })->create();
+    })
+    ->create();

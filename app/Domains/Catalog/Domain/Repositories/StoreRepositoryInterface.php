@@ -14,4 +14,10 @@ interface StoreRepositoryInterface
     public function findById(int $id): ?Store;
 
     public function create(Store $store): Store;
+
+    public function listStores(array $filters = []);
+
+    public function findBySlug(string $slug);
+
+    public function listProductsByStoreSlug(string $slug);
 }

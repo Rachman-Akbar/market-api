@@ -5,28 +5,37 @@ namespace App\Domains\Identity\Presentation\Http\Controllers;
 use App\Domains\Identity\Application\Actions\LoginWithFirebaseAction;
 use App\Domains\Identity\Application\Actions\RegisterWithPasswordAction;
 use App\Domains\Identity\Application\Actions\SwitchRoleAction;
+use App\Domains\Identity\Infrastructure\Persistence\Eloquent\UserRepository;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class AuthController extends Controller
 {
-    public function me(Request $request): JsonResponse
-    {
-        /** @var \App\Models\User $user */
-        $user = $request->user();
 
-        return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'firebase_uid' => $user->firebase_uid,
-                'email' => $user->email,
-                'name' => $user->name,
-                'avatar' => $user->avatar,
-                'is_email_verified' => (bool) ($user->is_email_verified ?? false),
-            ],
-        ]);
-    }
+    public function me(Request $request, UserRepository $users): JsonResponse
+{
+    /** @var \App\Models\User $user */
+    $user = $request->user();
+
+    $roles = $users->getRoleNames($user);
+    $activeRole = $user->currentAccessToken()?->can('role:seller')
+        ? 'seller'
+        : ($user->currentAccessToken()?->can('role:buyer') ? 'buyer' : ($roles[0] ?? 'buyer'));
+
+    return response()->json([
+        'user' => [
+            'id' => $user->id,
+            'firebase_uid' => $user->firebase_uid,
+            'email' => $user->email,
+            'name' => $user->name,
+            'avatar' => $user->avatar,
+            'is_email_verified' => (bool) ($user->is_email_verified ?? false),
+        ],
+        'roles' => $roles,
+        'active_role' => $activeRole,
+    ]);
+}
 
     public function logout(Request $request): JsonResponse
     {
@@ -54,11 +63,14 @@ final class AuthController extends Controller
         ]);
 
         return response()->json(
-            $action->execute($validated['name'], $validated['email'], $validated['password']),
+            $action->execute(
+                $validated['name'],
+                $validated['email'],
+                $validated['password']
+            ),
             201
         );
     }
-
 
     public function firebaseLogin(Request $request, LoginWithFirebaseAction $action): JsonResponse
     {

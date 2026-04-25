@@ -42,10 +42,6 @@ if (!$user) {
     $user = $this->registerUser->execute($claims);
 }
 
-// 3️⃣ jika tetap tidak ada → register baru
-if ($user === null) {
-    $user = $this->registerUser->execute($claims);
-}
         $roles = $this->users->getRoleNames($user);
         if ($roles === []) {
             $this->users->assignRoleByName($user, 'buyer');

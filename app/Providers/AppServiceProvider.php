@@ -10,11 +10,13 @@ use App\Domains\Identity\Infrastructure\Firebase\FirebaseTokenVerifier;
 use App\Domains\Catalog\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Catalog\Domain\Repositories\CatalogGroupRepositoryInterface;
 use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
+use App\Domains\Catalog\Domain\Repositories\StoreRepositoryInterface;
 
 // ✅ IMPORT IMPLEMENTATION
 use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentProductRepository;
 use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentCatalogGroupRepository;
 use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentCategoryRepository;
+use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentStoreRepository;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -42,6 +44,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             CategoryRepositoryInterface::class,
             EloquentCategoryRepository::class
+        );
+        // ✅ STORE
+        $this->app->bind(
+            StoreRepositoryInterface::class,
+            EloquentStoreRepository::class
         );
     }
 

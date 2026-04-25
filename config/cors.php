@@ -14,7 +14,13 @@ return [
         '/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/',
     ],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => [
+        'Accept',
+        'Authorization',
+        'Content-Type',
+        'X-Requested-With',
+        'X-XSRF-TOKEN',
+    ],
 
     'exposed_headers' => [],
 
