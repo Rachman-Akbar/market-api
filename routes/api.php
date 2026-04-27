@@ -18,6 +18,7 @@
         app_path('Domains/Payments/Presentation/routes.php'),
         app_path('Domains/Reviews/Presentation/routes.php'),
         app_path('Domains/Realtime/Presentation/routes.php'),
+        app_path('Domains/Cart/Presentation/routes.php'),
     ];
 
 

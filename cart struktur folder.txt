@@ -1,0 +1,70 @@
+Cart/
+├── README.md
+├── Application/
+│   ├── DTOs/
+│   │   ├── AddCartItemData.php
+│   │   ├── UpdateCartItemData.php
+│   │   └── CartSummaryData.php
+│   │
+│   └── UseCases/
+│       ├── GetCartUseCase.php
+│       ├── AddItemToCartUseCase.php
+│       ├── UpdateCartItemQuantityUseCase.php
+│       ├── RemoveItemFromCartUseCase.php
+│       └── ClearCartUseCase.php
+│
+├── Domain/
+│   ├── Entities/
+│   │   ├── Cart.php
+│   │   └── CartItem.php
+│   │
+│   ├── ValueObjects/
+│   │   ├── CartStatus.php
+│   │   ├── Quantity.php
+│   │   └── Money.php
+│   │
+│   ├── Repositories/
+│   │   ├── CartRepositoryInterface.php
+│   │   └── ProductForCartReaderInterface.php
+│   │
+│   └── Services/
+│       └── CartPricingService.php
+│
+├── Infrastructure/
+│   ├── Persistence/
+│   │   ├── Mappers/
+│   │   │   ├── CartMapper.php
+│   │   │   └── CartItemMapper.php
+│   │   │
+│   │   ├── Models/
+│   │   │   ├── CartModel.php
+│   │   │   └── CartItemModel.php
+│   │   │
+│   │   ├── Repositories/
+│   │   │   └── EloquentCartRepository.php
+│   │   │
+│   │   └── Readers/
+│   │       └── EloquentProductForCartReader.php
+│   │
+│   ├── Providers/
+│   │   └── CartServiceProvider.php
+│   │
+│   └── Services/
+│       └── CartStockValidator.php
+│
+└── Presentation/
+    ├── routes.php
+    └── Http/
+        ├── Controllers/
+        │   └── CartController.php
+        │
+        ├── Requests/
+        │   ├── AddCartItemRequest.php
+        │   └── UpdateCartItemRequest.php
+        │
+        └── Resources/
+            ├── CartResource.php
+            └── CartItemResource.php
+
+
+ALTER TABLE carts ADD UNIQUE KEY carts_active_user_id_unique (active_user_id);

@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withProviders([
         App\Domains\Catalog\Infrastructure\Providers\CatalogServiceProvider::class,
+        App\Domains\Cart\Infrastructure\Providers\CartServiceProvider::class,
 
         // Aktifkan ini kalau file provider-nya memang ada:
         // App\Domains\Identity\Infrastructure\Providers\IdentityServiceProvider::class,

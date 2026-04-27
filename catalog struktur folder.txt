@@ -1,0 +1,100 @@
+###############################################################
+# Dokumentasi Fungsi Masing-Masing Folder Catalog
+###############################################################
+
+# Catalog/README.md
+#   Penjelasan umum tentang domain Catalog, tujuan, dan guideline penggunaan folder.
+
+# Application/
+#   Berisi logika aplikasi (use case, DTO, service) yang mengatur proses bisnis utama.
+#   - DTOs/: Data Transfer Object, struktur data untuk input/output antar lapisan aplikasi.
+#   - UseCases/: Implementasi proses bisnis utama (misal: CreateProduct, GetCategories).
+
+# Domain/
+#   Berisi inti domain bisnis, entitas, dan kontrak repository.
+#   - Entities/: Kelas yang merepresentasikan objek utama domain (Product, Category, Store, dsb).
+#   - Repositories/: Interface/kontrak repository yang mendefinisikan operasi data domain.
+
+# Infrastructure/
+#   Berisi implementasi teknis, persistence, integrasi eksternal, dan service.
+#   - Persistence/: Implementasi penyimpanan data (database, mapper, model, repository).
+#     - Mappers/: Konversi antara model database dan entitas domain.
+#     - Models/: Representasi tabel database (Eloquent Model).
+#     - Repositories/: Implementasi repository berbasis database (Eloquent).
+#   - Providers/: Service provider untuk dependency injection, binding, dsb.
+#   - Services/: Service teknis (misal: integrasi API eksternal, helper).
+
+# Presentation/
+#   Berisi layer presentasi (API, HTTP, View).
+#   - routes.php: Definisi routing endpoint untuk domain Catalog.
+#   - Http/: Layer HTTP (Controller, Request, Resource).
+#     - Controllers/: Meng-handle request, memanggil use case, dan mengembalikan response.
+#     - Requests/: Validasi dan otorisasi input dari user.
+#     - Resources/: Transformasi data domain ke format response API (JSON, dsb).
+
+
+Catalog/
+├── README.md
+├── Application/
+│   ├── DTOs/
+│   │   ├── CreateProductData.php
+│   │   └── UpdateProductData.php
+│   └── UseCases/
+│       ├── Category/
+│       │   ├── CreateCategoryUseCase.php
+│       │   ├── GetCategoriesUseCase.php
+│       │   └── GetCategoryDetailUseCase.php
+│       ├── Entity/
+│       │   ├── CreateEntityUseCase.php
+│       │   ├── GetEntitiesUseCase.php
+│       │   └── UpdateEntityUseCase.php
+│       └── Product/
+│           └── CreateProduct.php
+├── Domain/
+│   ├── Entities/
+│   │   ├── Banner.php
+│   │   ├── Category.php
+│   │   ├── Entity.php
+│   │   ├── Product.php
+│   │   └── Store.php
+│   └── Repositories/
+│       ├── CategoryRepositoryInterface.php
+│       └── ProductRepositoryInterface.php
+├── Infrastructure/
+│   ├── Persistence/
+│   │   ├── Mappers/
+│   │   │   ├── CategoryMapper.php
+│   │   │   └── ProductMapper.php
+│   │   ├── Models/
+│   │   │   ├── CategoryModel.php
+│   │   │   ├── EntityModel.php
+│   │   │   ├── ProductModel.php
+│   │   │   ├── BannerModel.php
+│   │   │   ├── StoreModel.php
+│   │   │   ├── StoreDetailModel.php
+│   │   │   └── CatalogGroupModel.php
+│   │   └── Repositories/
+│   │       ├── EloquentCategoryRepository.php
+│   │       ├── EloquentProductRepository.php
+│   │       ├── EloquentBannerRepository.php
+│   │       └── EloquentStoreRepository.php
+│   └── Providers/
+│   └── Services/
+└── Presentation/
+    ├── routes.php
+    └── Http/
+        ├── Controllers/
+        │   ├── BannerController.php
+        │   ├── CatalogController.php
+        │   ├── CategoryController.php
+        │   ├── EntityController.php
+        │   ├── ProductController.php
+        │   └── StoreController.php
+        ├── Requests/
+        │   ├── CategoryRequest.php
+        │   ├── EntityRequest.php
+        │   └── ProductRequest.php
+        └── Resources/
+            ├── CategoryResource.php
+            ├── EntityResource.php
+            └── ProductResource.php
