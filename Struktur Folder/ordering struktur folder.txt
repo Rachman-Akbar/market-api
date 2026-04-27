@@ -1,0 +1,82 @@
+Ordering/
+├── README.md
+├── Application/
+│   ├── DTOs/
+│   │   ├── CreateOrderData.php
+│   │   ├── CreateOrderItemData.php
+│   │   ├── ShippingAddressData.php
+│   │   ├── CancelOrderData.php
+│   │   └── UpdateOrderStatusData.php
+│   │
+│   └── UseCases/
+│       └── Order/
+│           ├── CreateOrderFromCartUseCase.php
+│           ├── GetOrdersUseCase.php
+│           ├── GetOrderDetailUseCase.php
+│           ├── CancelOrderUseCase.php
+│           └── UpdateOrderStatusUseCase.php
+│
+├── Domain/
+│   ├── Entities/
+│   │   ├── Order.php
+│   │   ├── OrderItem.php
+│   │   └── OrderStatusHistory.php
+│   │
+│   ├── ValueObjects/
+│   │   ├── OrderNumber.php
+│   │   ├── OrderStatus.php
+│   │   ├── PaymentStatus.php
+│   │   ├── ShippingAddress.php
+│   │   └── Money.php
+│   │
+│   ├── Repositories/
+│   │   ├── OrderRepositoryInterface.php
+│   │   ├── CartForOrderReaderInterface.php
+│   │   └── ProductStockRepositoryInterface.php
+│   │
+│   └── Services/
+│       ├── OrderNumberGenerator.php
+│       ├── OrderTotalCalculator.php
+│       └── OrderStatusTransitionService.php
+│
+├── Infrastructure/
+│   ├── Persistence/
+│   │   ├── Mappers/
+│   │   │   ├── OrderMapper.php
+│   │   │   ├── OrderItemMapper.php
+│   │   │   └── OrderStatusHistoryMapper.php
+│   │   │
+│   │   ├── Models/
+│   │   │   ├── OrderModel.php
+│   │   │   ├── OrderItemModel.php
+│   │   │   └── OrderStatusHistoryModel.php
+│   │   │
+│   │   ├── Repositories/
+│   │   │   ├── EloquentOrderRepository.php
+│   │   │   └── EloquentProductStockRepository.php
+│   │   │
+│   │   └── Readers/
+│   │       └── EloquentCartForOrderReader.php
+│   │
+│   ├── Providers/
+│   │   └── OrderingServiceProvider.php
+│   │
+│   └── Services/
+│       └── OrderTransactionService.php
+│
+└── Presentation/
+    ├── routes.php
+    └── Http/
+        ├── Controllers/
+        │   └── OrderController.php
+        │
+        ├── Requests/
+        │   ├── CreateOrderRequest.php
+        │   ├── CancelOrderRequest.php
+        │   └── UpdateOrderStatusRequest.php
+        │
+        └── Resources/
+            ├── OrderResource.php
+            ├── OrderItemResource.php
+            └── OrderStatusHistoryResource.php
+

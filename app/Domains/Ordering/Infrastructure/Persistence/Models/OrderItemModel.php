@@ -1,0 +1,37 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Ordering\Infrastructure\Persistence\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+final class OrderItemModel extends Model
+{
+    protected $table = 'order_items';
+
+    protected $fillable = [
+        'order_id',
+        'product_id',
+        'product_name',
+        'sku',
+        'quantity',
+        'currency',
+        'unit_price',
+        'subtotal',
+    ];
+
+    protected $casts = [
+        'order_id' => 'integer',
+        'product_id' => 'integer',
+        'quantity' => 'integer',
+        'unit_price' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+    ];
+
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(OrderModel::class, 'order_id');
+    }
+}
