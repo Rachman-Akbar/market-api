@@ -1,10 +1,13 @@
 <?php
 
-namespace App\Domains\Catalog\Infrastructure\Persistence\Models;
+declare(strict_types=1);
+
+namespace App\Domains\Stores\Infrastructure\Persistence\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Domains\Catalog\Infrastructure\Persistence\Models\ProductModel;
 
 class StoreModel extends Model
 {

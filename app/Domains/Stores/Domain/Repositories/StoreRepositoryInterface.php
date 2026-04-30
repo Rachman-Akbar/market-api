@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Domains\Catalog\Domain\Repositories;
+namespace App\Domains\Stores\Domain\Repositories;
 
-use App\Domains\Catalog\Domain\Entities\Store;
+use App\Domains\Stores\Domain\Entities\Store;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface StoreRepositoryInterface

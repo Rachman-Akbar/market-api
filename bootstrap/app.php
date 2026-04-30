@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withProviders([
         App\Domains\Catalog\Infrastructure\Providers\CatalogServiceProvider::class,
+        App\Domains\Stores\Infrastructure\Providers\StoreServiceProvider::class,
         App\Domains\Cart\Infrastructure\Providers\CartServiceProvider::class,
         App\Domains\Ordering\Infrastructure\Providers\OrderingServiceProvider::class,
 

@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Domains\Catalog\Infrastructure\Persistence\Mappers;
+namespace App\Domains\Stores\Infrastructure\Persistence\Mappers;
 
-use App\Domains\Catalog\Domain\Entities\Store;
-use App\Domains\Catalog\Domain\Entities\StoreDetail;
-use App\Domains\Catalog\Infrastructure\Persistence\Models\StoreModel;
+use App\Domains\Stores\Domain\Entities\Store;
+use App\Domains\Stores\Domain\Entities\StoreDetail;
+use App\Domains\Stores\Infrastructure\Persistence\Models\StoreModel;
 
 final class StoreMapper
 {

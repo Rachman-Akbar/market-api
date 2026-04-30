@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Domains\Catalog\Infrastructure\Persistence\Repositories;
+namespace App\Domains\Stores\Infrastructure\Persistence\Repositories;
 
 use Illuminate\Support\Collection;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use App\Domains\Catalog\Domain\Entities\Store as StoreEntity;
-use App\Domains\Catalog\Domain\Repositories\StoreRepositoryInterface;
-use App\Domains\Catalog\Infrastructure\Persistence\Models\StoreModel;
-use App\Domains\Catalog\Infrastructure\Persistence\Mappers\StoreMapper;
+use App\Domains\Stores\Domain\Entities\Store as StoreEntity;
+use App\Domains\Stores\Domain\Repositories\StoreRepositoryInterface;
+use App\Domains\Stores\Infrastructure\Persistence\Models\StoreModel;
+use App\Domains\Stores\Infrastructure\Persistence\Mappers\StoreMapper;
 use App\Models\Product;
 
 final class EloquentStoreRepository implements StoreRepositoryInterface
