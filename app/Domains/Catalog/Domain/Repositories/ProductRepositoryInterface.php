@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\Domain\Repositories;
 
 use Illuminate\Support\Collection;
@@ -16,7 +18,14 @@ interface ProductRepositoryInterface
 
     public function findPublishedByStoreId(int $storeId): Collection;
 
+    public function findPublishedByCategorySlug(
+        string $categorySlug,
+        array $filters = [],
+        int $perPage = 15
+    ): LengthAwarePaginator;
+
     public function save(Product $product): Product;
 
     public function delete(int $id): bool;
+
 }

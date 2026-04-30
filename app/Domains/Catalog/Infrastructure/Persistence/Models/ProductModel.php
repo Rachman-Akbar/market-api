@@ -1,12 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\Infrastructure\Persistence\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Domains\Stores\Infrastructure\Persistence\Models\StoreModel;
 
-class ProductModel extends Model
+final class ProductModel extends Model
 {
     protected $table = 'products';
 
@@ -24,20 +27,18 @@ class ProductModel extends Model
     ];
 
     protected $casts = [
-        'store_id' => 'integer',
-        'category_id' => 'integer',
-        'price' => 'float',
+        'price' => 'decimal:2',
         'stock' => 'integer',
     ];
-
-    public function category(): BelongsTo
-    {
-        return $this->belongsTo(CategoryModel::class, 'category_id');
-    }
 
     public function store(): BelongsTo
     {
         return $this->belongsTo(StoreModel::class, 'store_id');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(CategoryModel::class, 'category_id');
     }
 
     public function images(): HasMany

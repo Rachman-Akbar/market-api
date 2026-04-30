@@ -90,7 +90,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         return ProductModel::where('id', $id)->delete() > 0;
     }
 
-    public function findPublishedByStoreId(int $storeId): Collection
+public function findPublishedByStoreId(int $storeId): Collection
 {
     return ProductModel::query()
         ->with(['category', 'store', 'images'])
@@ -100,5 +100,30 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         ->get()
         ->map(fn ($model) => ProductMapper::toEntity($model));
 }
-    
+
+public function findPublishedByCategorySlug(
+    string $categorySlug,
+    array $filters = [],
+    int $perPage = 15
+): LengthAwarePaginator {
+    $query = ProductModel::query()
+        ->with(['category', 'store', 'images'])
+        ->whereHas('category', function ($query) use ($categorySlug) {
+            $query->where('slug', $categorySlug);
+        })
+        ->where('status', 'published');
+
+    if (! empty($filters['search'])) {
+        $query->where('name', 'like', '%' . $filters['search'] . '%');
+    }
+
+    if (! empty($filters['store_id'])) {
+        $query->where('store_id', $filters['store_id']);
+    }
+
+    return $query
+        ->latest()
+        ->paginate($perPage);
+}
+
 }
