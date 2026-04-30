@@ -41,7 +41,7 @@ final class EloquentProductCatalogReader implements ProductCatalogReaderInterfac
                 'stores.id as store_ref_id',
                 'stores.name as store_name',
                 'stores.slug as store_slug',
-                'stores.logo_url as store_logo_url',
+                'stores.logo as store_logo_url',
 
                 'categories.id as category_ref_id',
                 'categories.name as category_name',
