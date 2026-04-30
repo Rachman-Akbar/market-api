@@ -10,7 +10,9 @@ final class EnsureApiTokenIsValid
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->user() || $request->user()->currentAccessToken() === null) {
+        $user = $request->user();
+
+        if (! $user || $user->currentAccessToken() === null) {
             return response()->json([
                 'message' => 'Valid API token required.',
             ], 401);

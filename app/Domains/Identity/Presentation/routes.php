@@ -1,28 +1,76 @@
 <?php
 
-use App\Domains\Identity\Presentation\Http\Controllers\AuthController;
+use App\Http\Middleware\EnsureApiTokenIsValid;
+use App\Http\Middleware\ValidateFirebaseToken;
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('identity')
-    ->name('identity.')
-    ->group(function (): void {
-        Route::prefix('auth')->group(function (): void {
-            Route::post('register', [AuthController::class, 'register']);
-            Route::post('login', [AuthController::class, 'login']);
+function authUserPayload(User $user): array
+{
+    $roles = $user->roles()->pluck('name')->values();
 
-            Route::middleware(['auth:sanctum', 'api.token'])->group(function (): void {
-                Route::get('me', [AuthController::class, 'me']);
-                Route::post('logout', [AuthController::class, 'logout']);
-            });
+    return [
+        'user' => [
+            'id' => $user->id,
+            'firebase_uid' => $user->firebase_uid,
+            'email' => $user->email,
+            'name' => $user->name,
+            'avatar' => $user->avatar,
+            'is_email_verified' => $user->is_email_verified,
+        ],
+        'roles' => $roles,
+        'active_role' => $roles->first() ?? 'customer',
+    ];
+}
 
-            if ((bool) config('services.firebase.auth_enabled', false)) {
-                Route::get('firebase-login', [AuthController::class, 'firebaseLoginInfo']);
+Route::prefix('identity/auth')->group(function () {
+    Route::middleware([ValidateFirebaseToken::class])->group(function () {
+        Route::post('/firebase-login', function (Request $request) {
+            /** @var User $user */
+            $user = $request->user();
 
-                Route::post('firebase-login', [AuthController::class, 'firebaseLogin'])
-                    ->middleware('firebase.token');
-            }
+            $token = $user->createToken('web-session', ['web'])->plainTextToken;
+
+            return response()->json([
+                ...authUserPayload($user),
+                'api_token' => $token,
+            ]);
         });
 
-        Route::post('switch-role', [AuthController::class, 'switchRole'])
-            ->middleware(['auth:sanctum', 'api.token', 'verified.email']);
+        Route::post('/firebase-register', function (Request $request) {
+            /** @var User $user */
+            $user = $request->user();
+
+            if ($request->filled('name')) {
+                $user->forceFill([
+                    'name' => $request->string('name')->toString(),
+                ])->save();
+            }
+
+            $token = $user->createToken('web-session', ['web'])->plainTextToken;
+
+            return response()->json([
+                ...authUserPayload($user->fresh()),
+                'api_token' => $token,
+            ], 201);
+        });
     });
+
+    Route::middleware(['auth:sanctum', EnsureApiTokenIsValid::class])->group(function () {
+        Route::get('/me', function (Request $request) {
+            /** @var User $user */
+            $user = $request->user();
+
+            return response()->json(authUserPayload($user));
+        });
+
+        Route::post('/logout', function (Request $request) {
+            $request->user()?->currentAccessToken()?->delete();
+
+            return response()->json([
+                'message' => 'Logged out successfully.',
+            ]);
+        });
+    });
+});
