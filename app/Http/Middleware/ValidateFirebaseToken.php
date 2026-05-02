@@ -146,10 +146,10 @@ final class ValidateFirebaseToken
         }
 
         $role = Role::query()->firstOrCreate(
-            ['name' => 'customer'],
+            ['name' => 'buyer'],
             [
-                'label' => 'Customer',
-                'description' => 'Default customer role.',
+                'label' => 'buyer',
+                'description' => 'Default buyer role.',
             ]
         );
 

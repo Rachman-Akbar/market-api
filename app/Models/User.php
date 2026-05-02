@@ -2,40 +2,50 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
-final class User extends Authenticatable
+class User extends Authenticatable
 {
     use HasApiTokens;
-    use HasFactory;
+    use HasUuids;
 
     protected $table = 'users';
+
+    protected $primaryKey = 'id';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
 
     protected $fillable = [
         'firebase_uid',
         'email',
+        'password',
+        'role',
         'name',
         'avatar',
         'is_email_verified',
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
     ];
 
     protected $casts = [
         'is_email_verified' => 'boolean',
     ];
 
-    protected $hidden = [
-        'remember_token',
-    ];
-
-    public function roles()
+    public function roles(): BelongsToMany
     {
         return $this->belongsToMany(
             Role::class,
             'user_roles',
             'user_id',
-            'role_id'
-        );
+            'role_id',
+        )->withTimestamps();
     }
 }
