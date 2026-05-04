@@ -1,0 +1,300 @@
+import "server-only";
+
+import { cookies } from "next/headers";
+
+import { API_BASE_URL } from "@/lib/http/config";
+import { API_TOKEN_COOKIE } from "@/domains/auth/constants";
+import { CART_ENDPOINTS } from "@/domains/cart/constants";
+import { normalizeCart, type RawCart } from "@/domains/cart/mapper";
+
+import type { CartApiResponse, CartSummary } from "@/domains/cart/types";
+
+type CartResponse = CartApiResponse | RawCart;
+
+function resolveCartSummary(response: CartResponse): CartSummary {
+  const cart = "data" in response ? response.data : response;
+  const normalizedCart = normalizeCart(cart as RawCart);
+
+  return {
+    total_quantity: normalizedCart.total_quantity,
+  };
+}
+
+export async function getServerCartSummary(): Promise<CartSummary> {
+  const cookieStore = await cookies();
+  const apiToken = cookieStore.get(API_TOKEN_COOKIE)?.value;
+
+  if (!apiToken) {
+    return {
+      total_quantity: 0,
+    };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${CART_ENDPOINTS.root}`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${apiToken}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        total_quantity: 0,
+      };
+    }
+
+    const data = (await response.json()) as CartResponse;
+
+    return resolveCartSummary(data);
+  } catch {
+    return {
+      total_quantity: 0,
+    };
+  }
+}
+
+import { api, getAxiosErrorMessage } from "@/lib/axios";
+import { getAuthSession } from "@/domains/auth/services/session";
+
+import { CART_ENDPOINTS } from "./constants";
+import { normalizeCart, type RawCart } from "./mapper";
+
+import type {
+  AddCartItemPayload,
+  Cart,
+  CartApiResponse,
+  UpdateCartItemPayload,
+} from "./types";
+
+type CartResponse = CartApiResponse | Cart | RawCart;
+
+function ensureBackendSession(): void {
+  const session = getAuthSession();
+
+  if (!session?.api_token) {
+    throw new Error("Silakan login terlebih dahulu.");
+  }
+}
+
+function resolveCartResponse(response: CartResponse): Cart {
+  const cart = "data" in response ? response.data : response;
+  return normalizeCart(cart as RawCart);
+}
+
+async function cartRequest<T>(
+  method: "GET" | "POST" | "PATCH" | "DELETE",
+  url: string,
+  data?: unknown,
+): Promise<T> {
+  ensureBackendSession();
+
+  try {
+    const response = await api.request<T>({
+      url,
+      method,
+      data,
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    throw new Error(getAxiosErrorMessage(error, "Request cart gagal."));
+  }
+}
+
+export async function getCart(): Promise<Cart> {
+  const response = await cartRequest<CartResponse>("GET", CART_ENDPOINTS.root);
+  return resolveCartResponse(response);
+}
+
+export async function addCartItem(payload: AddCartItemPayload): Promise<Cart> {
+  const response = await cartRequest<CartResponse>(
+    "POST",
+    CART_ENDPOINTS.items,
+    payload,
+  );
+
+  return resolveCartResponse(response);
+}
+
+export async function updateCartItem(
+  productId: number,
+  payload: UpdateCartItemPayload,
+): Promise<Cart> {
+  const response = await cartRequest<CartResponse>(
+    "PATCH",
+    CART_ENDPOINTS.item(productId),
+    payload,
+  );
+
+  return resolveCartResponse(response);
+}
+
+export async function removeCartItem(productId: number): Promise<Cart> {
+  const response = await cartRequest<CartResponse>(
+    "DELETE",
+    CART_ENDPOINTS.item(productId),
+  );
+
+  return resolveCartResponse(response);
+}
+
+export async function clearCart(): Promise<Cart> {
+  const response = await cartRequest<CartResponse>(
+    "DELETE",
+    CART_ENDPOINTS.root,
+  );
+
+  return resolveCartResponse(response);
+}
+
+"use client";
+
+import {
+  addCartItem,
+  clearCart,
+  getCart,
+  removeCartItem,
+  updateCartItem,
+} from "../api";
+import type { Cart } from "../types";
+import {
+  createContext,
+  useCallback,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+
+type CartContextValue = {
+  cart: Cart | null;
+  loading: boolean;
+  mutating: boolean;
+  error: string | null;
+  fetchCart: () => Promise<void>;
+  addItem: (productId: number, quantity?: number) => Promise<void>;
+  updateItem: (productId: number, quantity: number) => Promise<void>;
+  removeItem: (productId: number) => Promise<void>;
+  clear: () => Promise<void>;
+};
+
+export const CartContext = createContext<CartContextValue | null>(null);
+
+export function CartProvider({ children }: { children: ReactNode }) {
+  const [cart, setCart] = useState<Cart | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [mutating, setMutating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleError = useCallback((err: unknown) => {
+    const message =
+      err instanceof Error ? err.message : "Terjadi kesalahan cart.";
+
+    setError(message);
+    throw err;
+  }, []);
+
+  const fetchCart = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const result = await getCart();
+      setCart(result);
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [handleError]);
+
+  const runMutation = useCallback(
+    async (action: () => Promise<Cart>) => {
+      try {
+        setMutating(true);
+        setError(null);
+
+        const result = await action();
+        setCart(result);
+      } catch (err) {
+        handleError(err);
+      } finally {
+        setMutating(false);
+      }
+    },
+    [handleError],
+  );
+
+  const addItem = useCallback(
+    async (productId: number, quantity = 1) => {
+      await runMutation(() =>
+        addCartItem({
+          product_id: productId,
+          quantity,
+        }),
+      );
+    },
+    [runMutation],
+  );
+
+  const updateItem = useCallback(
+    async (productId: number, quantity: number) => {
+      await runMutation(() =>
+        updateCartItem(productId, {
+          quantity,
+        }),
+      );
+    },
+    [runMutation],
+  );
+
+  const removeItem = useCallback(
+    async (productId: number) => {
+      await runMutation(() => removeCartItem(productId));
+    },
+    [runMutation],
+  );
+
+  const clear = useCallback(async () => {
+    await runMutation(clearCart);
+  }, [runMutation]);
+
+  const value = useMemo(
+    () => ({
+      cart,
+      loading,
+      mutating,
+      error,
+      fetchCart,
+      addItem,
+      updateItem,
+      removeItem,
+      clear,
+    }),
+    [
+      cart,
+      loading,
+      mutating,
+      error,
+      fetchCart,
+      addItem,
+      updateItem,
+      removeItem,
+      clear,
+    ],
+  );
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+}
+
+export const CART_ENDPOINTS = {
+  root: "/carts",
+  items: "/carts/items",
+  item: (productId: number) => `/carts/items/${productId}`,
+} as const;
+
+perbaiki frontendnya karena tadi order dan checkout telah di modifikasi  di backend jadi cart
