@@ -11,14 +11,14 @@
 
     $domainRouteFiles = [
         app_path('Domains/Identity/Presentation/routes.php'),
-        app_path('Domains/Users/Presentation/routes.php'),
+        // app_path('Domains/Users/Presentation/routes.php'),
         app_path('Domains/Catalog/Presentation/routes.php'),
         app_path('Domains/Stores/Presentation/routes.php'),
-        app_path('Domains/Inventory/Presentation/routes.php'),
-        app_path('Domains/Orders/Presentation/routes.php'),
-        app_path('Domains/Payments/Presentation/routes.php'),
-        app_path('Domains/Reviews/Presentation/routes.php'),
-        app_path('Domains/Realtime/Presentation/routes.php'),
+        // app_path('Domains/Inventory/Presentation/routes.php'),
+        app_path('Domains/Ordering/Presentation/routes.php'),
+        // app_path('Domains/Payments/Presentation/routes.php'),
+        // app_path('Domains/Reviews/Presentation/routes.php'),
+        // app_path('Domains/Realtime/Presentation/routes.php'),
         app_path('Domains/Cart/Presentation/routes.php'),
     ];
 

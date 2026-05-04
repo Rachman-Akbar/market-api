@@ -6,7 +6,7 @@ namespace App\Domains\Ordering\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-final class CreateOrderRequest extends FormRequest
+final class CheckoutRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -22,11 +22,13 @@ final class CreateOrderRequest extends FormRequest
             'shipping_address.address_line' => ['required', 'string', 'max:500'],
             'shipping_address.province' => ['required', 'string', 'max:100'],
             'shipping_address.city' => ['required', 'string', 'max:100'],
-            'shipping_address.district' => ['required', 'string', 'max:100'],
-            'shipping_address.postal_code' => ['required', 'string', 'max:20'],
+            'shipping_address.district' => ['nullable', 'string', 'max:100'],
+            'shipping_address.postal_code' => ['nullable', 'string', 'max:20'],
+            'shipping_address.courier_note' => ['nullable', 'string', 'max:500'],
             'shipping_address.notes' => ['nullable', 'string', 'max:500'],
+
+            'payment_method' => ['required', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:1000'],
-            'payment_method' => ['nullable', 'string', 'max:64'],
         ];
     }
 }

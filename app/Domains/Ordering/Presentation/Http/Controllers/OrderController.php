@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace App\Domains\Ordering\Presentation\Http\Controllers;
 
 use App\Domains\Ordering\Application\DTOs\CancelOrderData;
-use App\Domains\Ordering\Application\DTOs\CreateOrderData;
 use App\Domains\Ordering\Application\DTOs\UpdateOrderStatusData;
 use App\Domains\Ordering\Application\UseCases\Order\CancelOrderUseCase;
-use App\Domains\Ordering\Application\UseCases\Order\CreateOrderFromCartUseCase;
 use App\Domains\Ordering\Application\UseCases\Order\GetOrderDetailUseCase;
 use App\Domains\Ordering\Application\UseCases\Order\GetOrdersUseCase;
 use App\Domains\Ordering\Application\UseCases\Order\UpdateOrderStatusUseCase;
 use App\Domains\Ordering\Presentation\Http\Requests\CancelOrderRequest;
-use App\Domains\Ordering\Presentation\Http\Requests\CreateOrderRequest;
 use App\Domains\Ordering\Presentation\Http\Requests\UpdateOrderStatusRequest;
 use App\Domains\Ordering\Presentation\Http\Resources\OrderResource;
 use DomainException;
@@ -39,19 +36,11 @@ final class OrderController extends Controller
         return OrderResource::collection($orders)->response();
     }
 
-    public function store(CreateOrderRequest $request, CreateOrderFromCartUseCase $useCase): JsonResponse
-    {
-        try {
-            $order = $useCase->execute(CreateOrderData::fromArray($request->validated(), $this->currentUserId($request)));
-
-            return (new OrderResource($order))->response()->setStatusCode(201);
-        } catch (DomainException $exception) {
-            return response()->json(['message' => $exception->getMessage()], 422);
-        }
-    }
-
-    public function show(Request $request, string $order, GetOrderDetailUseCase $useCase): OrderResource
-    {
+    public function show(
+        Request $request,
+        string $order,
+        GetOrderDetailUseCase $useCase,
+    ): OrderResource {
         $orderEntity = $useCase->execute(
             identifier: $order,
             authenticatedUserId: $this->currentUserId($request),
@@ -61,8 +50,11 @@ final class OrderController extends Controller
         return new OrderResource($orderEntity);
     }
 
-    public function cancel(CancelOrderRequest $request, string $order, CancelOrderUseCase $useCase): JsonResponse
-    {
+    public function cancel(
+        CancelOrderRequest $request,
+        string $order,
+        CancelOrderUseCase $useCase,
+    ): JsonResponse {
         try {
             $orderEntity = $useCase->execute(new CancelOrderData(
                 orderIdentifier: $order,
@@ -73,12 +65,17 @@ final class OrderController extends Controller
 
             return (new OrderResource($orderEntity))->response();
         } catch (DomainException $exception) {
-            return response()->json(['message' => $exception->getMessage()], 422);
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
         }
     }
 
-    public function updateStatus(UpdateOrderStatusRequest $request, string $order, UpdateOrderStatusUseCase $useCase): JsonResponse
-    {
+    public function updateStatus(
+        UpdateOrderStatusRequest $request,
+        string $order,
+        UpdateOrderStatusUseCase $useCase,
+    ): JsonResponse {
         if (! $this->canManageOrders($request)) {
             throw new AuthorizationException('You are not allowed to update order status.');
         }
@@ -93,7 +90,9 @@ final class OrderController extends Controller
 
             return (new OrderResource($orderEntity))->response();
         } catch (DomainException $exception) {
-            return response()->json(['message' => $exception->getMessage()], 422);
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
         }
     }
 
@@ -107,6 +106,8 @@ final class OrderController extends Controller
         $user = $request->user();
 
         return (bool) ($user->is_admin ?? false)
-            || (method_exists($user, 'can') && ($user->can('manage-orders') || $user->can('orders.manage')));
+            || (method_exists($user, 'can') && (
+                $user->can('manage-orders') || $user->can('orders.manage')
+            ));
     }
 }
