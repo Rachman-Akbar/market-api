@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class OrderStatusHistory extends Model
 {
@@ -16,12 +19,17 @@ final class OrderStatusHistory extends Model
         'changed_by',
     ];
 
-    public function order()
+    protected $casts = [
+        'order_id' => 'integer',
+        'changed_by' => 'integer',
+    ];
+
+    public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
     }
 
-    public function changedBy()
+    public function changedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'changed_by');
     }

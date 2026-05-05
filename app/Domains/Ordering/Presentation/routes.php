@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 use App\Domains\Ordering\Presentation\Http\Controllers\CheckoutController;
 use App\Domains\Ordering\Presentation\Http\Controllers\MidtransPaymentController;
+use App\Domains\Ordering\Presentation\Http\Controllers\MidtransNotificationController;
 use App\Domains\Ordering\Presentation\Http\Controllers\OrderController;
 use App\Http\Middleware\EnsureApiTokenIsValid;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/midtrans/notifications', MidtransNotificationController::class)
+    ->name('midtrans.notifications');
 
 Route::middleware(['auth:sanctum', EnsureApiTokenIsValid::class])->group(function (): void {
     Route::post('/checkout', [CheckoutController::class, 'store'])
