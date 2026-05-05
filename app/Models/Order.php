@@ -22,6 +22,13 @@ final class Order extends Model
         'shipping_address',
         'payment_method',
         'notes',
+        'midtrans_order_id',
+        'midtrans_transaction_id',
+        'midtrans_snap_token',
+        'midtrans_redirect_url',
+        'midtrans_payment_type',
+        'midtrans_payload',
+        'paid_at',
     ];
 
     protected $casts = [
@@ -31,6 +38,8 @@ final class Order extends Model
         'discount_total' => 'decimal:2',
         'tax_total' => 'decimal:2',
         'grand_total' => 'decimal:2',
+        'midtrans_payload' => 'array',
+        'paid_at' => 'datetime',
     ];
 
     public function user()

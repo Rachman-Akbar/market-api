@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Ordering\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 final class CheckoutRequest extends FormRequest
 {
@@ -27,7 +28,17 @@ final class CheckoutRequest extends FormRequest
             'shipping_address.courier_note' => ['nullable', 'string', 'max:500'],
             'shipping_address.notes' => ['nullable', 'string', 'max:500'],
 
-            'payment_method' => ['required', 'string', 'max:100'],
+            'payment_method' => [
+                'required',
+                'string',
+                Rule::in([
+                    'manual_transfer',
+                    'bank_transfer',
+                    'cod',
+                    'midtrans',
+                ]),
+            ],
+
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
