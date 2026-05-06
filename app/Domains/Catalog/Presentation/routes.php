@@ -32,23 +32,30 @@ Route::prefix('catalog')
                 Route::get('/', [CatalogGroupController::class, 'index'])
                     ->name('index');
             });
+            
+            Route::prefix('categories')
+    ->name('categories.')
+    ->group(function () {
+        Route::get('/', [CategoryController::class, 'index'])
+            ->name('index');
 
-        Route::prefix('categories')
-            ->name('categories.')
-            ->group(function () {
-                Route::get('/', [CategoryController::class, 'index'])
-                    ->name('index');
+        /**
+         * Penting:
+         * Route static seperti /menu wajib sebelum route dynamic /{slug}
+         */
+        Route::get('/menu', [CategoryController::class, 'menu'])
+            ->name('menu');
 
-                Route::get('/{slug}', [CategoryController::class, 'showBySlug'])
-                    ->where('slug', '[A-Za-z0-9\-]+')
-                    ->name('show-by-slug');
+        Route::get('/{slug}/products', [CategoryController::class, 'productsBySlug'])
+            ->where('slug', '[A-Za-z0-9\-]+')
+            ->name('products');
 
-                Route::get('/{slug}/products', [CategoryController::class, 'productsBySlug'])
-                    ->where('slug', '[A-Za-z0-9\-]+')
-                    ->name('products');
-            });
+        Route::get('/{slug}', [CategoryController::class, 'showBySlug'])
+            ->where('slug', '[A-Za-z0-9\-]+')
+            ->name('show-by-slug');
+    });
 
-        Route::prefix('banners')
+            Route::prefix('banners')
             ->name('banners.')
             ->group(function () {
                 Route::get('/', [BannerController::class, 'index'])

@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use App\Domains\Catalog\Application\UseCases\Category\ListCategoryUseCase;
 use App\Domains\Catalog\Application\UseCases\Category\ListCategoryMenuUseCase;
-use App\Domains\Catalog\Application\UseCases\Category\GetCategoryDetailUseCase;
+use App\Domains\Catalog\Application\UseCases\Category\GetCategoryBySlugUseCase;
 use App\Domains\Catalog\Application\UseCases\Category\ListProductsByCategorySlugUseCase;
 use App\Domains\Catalog\Presentation\Http\Resources\CategoryResource;
 use App\Domains\Catalog\Presentation\Http\Resources\ProductResource;
@@ -35,7 +35,7 @@ final class CategoryController extends Controller
 
     public function showBySlug(
         string $slug,
-        GetCategoryDetailUseCase $useCase
+        GetCategoryBySlugUseCase $useCase
     ) {
         $category = $useCase->execute($slug);
 
