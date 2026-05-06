@@ -11,10 +11,37 @@ final class ProductMapper
 {
     public static function toEntity(ProductModel $model): Product
     {
+        $primaryCategory = null;
+
+        if ($model->relationLoaded('primaryCategory') && $model->primaryCategory) {
+            $primaryCategory = CategoryMapper::toEntity($model->primaryCategory);
+        }
+
+        $categories = [];
+        $categoryIds = [];
+
+        if ($model->relationLoaded('categories')) {
+            $categories = $model->categories
+                ->map(fn ($category) => CategoryMapper::toEntity($category))
+                ->values()
+                ->all();
+
+            $categoryIds = $model->categories
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+        }
+
+        if (empty($categoryIds) && $model->primary_category_id) {
+            $categoryIds = [(int) $model->primary_category_id];
+        }
+
         return new Product(
             id: $model->id,
             storeId: $model->store_id,
-            categoryId: $model->category_id,
+            primaryCategoryId: $model->primary_category_id,
+            categoryIds: $categoryIds,
             sellerId: (string) $model->seller_id,
             name: $model->name,
             slug: $model->slug,
@@ -23,20 +50,19 @@ final class ProductMapper
             stock: (int) $model->stock,
             thumbnail: $model->thumbnail,
             status: $model->status,
-            category: $model->relationLoaded('category') && $model->category
-                ? CategoryMapper::toEntity($model->category)
-                : null,
+            primaryCategory: $primaryCategory,
+            categories: $categories,
             images: $model->relationLoaded('images')
                 ? $model->images->all()
                 : [],
         );
     }
 
-    public static function toModel(Product $product): array
+    public static function toModel(Product $product): ProductModel
     {
-        return [
+        return new ProductModel([
             'store_id' => $product->storeId(),
-            'category_id' => $product->categoryId(),
+            'primary_category_id' => $product->primaryCategoryId(),
             'seller_id' => $product->sellerId(),
             'name' => $product->name(),
             'slug' => $product->slug(),
@@ -45,6 +71,6 @@ final class ProductMapper
             'stock' => $product->stock(),
             'thumbnail' => $product->thumbnail(),
             'status' => $product->status(),
-        ];
+        ]);
     }
 }

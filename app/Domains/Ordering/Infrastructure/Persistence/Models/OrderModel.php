@@ -26,15 +26,14 @@ final class OrderModel extends Model
         'notes',
         'payment_method',
     ];
-
+    
     protected $casts = [
-        'user_id' => 'integer',
-        'subtotal' => 'decimal:2',
-        'shipping_cost' => 'decimal:2',
-        'discount_total' => 'decimal:2',
-        'tax_total' => 'decimal:2',
-        'grand_total' => 'decimal:2',
         'shipping_address' => 'array',
+        'source_cart_item_ids' => 'array',
+        'midtrans_payload' => 'array',
+        'payment_instructions' => 'array',
+        'paid_at' => 'datetime',
+        'payment_expires_at' => 'datetime',
     ];
 
     public function items(): HasMany

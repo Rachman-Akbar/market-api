@@ -6,143 +6,123 @@ namespace App\Domains\Catalog\Presentation\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Str;
-use App\Domains\Catalog\Domain\Entities\Product as ProductEntity;
+use App\Domains\Catalog\Domain\Entities\Category;
+use App\Domains\Catalog\Domain\Entities\Product;
 
 final class ProductResource extends JsonResource
 {
+    /**
+     * @param Request $request
+     * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
-        if ($this->resource instanceof ProductEntity) {
-            return $this->fromEntity($this->resource);
-        }
-
-        return $this->fromModel();
-    }
-
-    private function fromEntity(ProductEntity $product): array
-    {
-        $category = $product->category();
+        /** @var Product $product */
+        $product = $this->resource;
 
         return [
             'id' => $product->id(),
             'store_id' => $product->storeId(),
-            'category_id' => $product->categoryId(),
+
+            /**
+             * Field baru.
+             */
+            'primary_category_id' => $product->primaryCategoryId(),
+            'category_ids' => $product->categoryIds(),
+
+            /**
+             * Field lama untuk sementara.
+             * Boleh kamu hapus nanti setelah frontend selesai migrasi.
+             */
+            'category_id' => $product->primaryCategoryId(),
+
             'seller_id' => $product->sellerId(),
 
             'name' => $product->name(),
             'slug' => $product->slug(),
             'description' => $product->description(),
+
             'price' => $product->price(),
             'stock' => $product->stock(),
             'thumbnail' => $product->thumbnail(),
             'status' => $product->status(),
 
-            'category' => $category ? $this->categoryToArray($category) : null,
+            /**
+             * Field baru.
+             */
+            'primary_category' => $this->mapCategory($product->primaryCategory()),
+            'categories' => $this->mapCategories($product->categories()),
 
             /**
-             * Store detail tidak diambil dari Domain Entity.
-             * Entity Product cukup menyimpan store_id.
+             * Field lama untuk sementara.
+             * Isinya sama dengan primary_category.
              */
-            'store' => null,
+            'category' => $this->mapCategory($product->primaryCategory()),
 
-            'images' => collect($product->images())
-                ->map(fn ($image) => $this->imageToArray($image))
-                ->values()
-                ->all(),
+            'images' => $this->mapImages($product->images()),
         ];
     }
 
-    private function fromModel(): array
+    private function mapCategory(?Category $category): ?array
     {
+        if (! $category) {
+            return null;
+        }
+
         return [
-            'id' => $this->resource->id,
-            'store_id' => $this->resource->store_id,
-            'category_id' => $this->resource->category_id,
-            'seller_id' => $this->resource->seller_id,
+            'id' => $category->id(),
+            'catalog_group_id' => $category->catalogGroupId(),
+            'parent_id' => $category->parentId(),
 
-            'name' => $this->resource->name,
-            'slug' => $this->resource->slug,
-            'description' => $this->resource->description,
-            'price' => (float) $this->resource->price,
-            'stock' => (int) $this->resource->stock,
-            'thumbnail' => $this->resource->thumbnail,
-            'status' => $this->resource->status,
+            'name' => $category->name(),
+            'slug' => $category->slug(),
+            'full_slug' => $category->fullSlug(),
 
-            'category' => $this->whenLoaded('category', fn () => [
-                'id' => $this->resource->category?->id,
-                'name' => $this->resource->category?->name,
-                'slug' => $this->resource->category?->slug,
-            ]),
+            'image_url' => $category->imageUrl(),
+            'icon_url' => $category->iconUrl(),
 
-            'store' => $this->whenLoaded('store', fn () => [
-                'id' => $this->resource->store?->id,
-                'name' => $this->resource->store?->name,
-                'slug' => $this->resource->store?->slug,
-                'logo_url' => $this->resource->store?->logo_url
-                    ?? $this->resource->store?->logo
-                    ?? null,
-            ]),
+            'level' => $category->level(),
+            'sort_order' => $category->sortOrder(),
 
-            'images' => $this->whenLoaded('images', fn () => $this->resource->images
-                ->map(fn ($image) => $this->imageToArray($image))
-                ->values()
-                ->all()
-            ),
+            'is_active' => $category->isActive(),
+            'is_visible_in_menu' => $category->isVisibleInMenu(),
         ];
     }
 
-    private function categoryToArray(mixed $category): array
+    /**
+     * @param array<int, Category> $categories
+     * @return array<int, array<string, mixed>>
+     */
+    private function mapCategories(array $categories): array
     {
-        return [
-            'id' => $this->read($category, 'id'),
-            'name' => $this->read($category, 'name'),
-            'slug' => $this->read($category, 'slug'),
-        ];
+        return array_values(array_filter(array_map(
+            fn (Category $category): ?array => $this->mapCategory($category),
+            $categories
+        )));
     }
 
-    private function imageToArray(mixed $image): array
+    /**
+     * @param array<int, mixed> $images
+     * @return array<int, array<string, mixed>>
+     */
+    private function mapImages(array $images): array
     {
-        return [
-            'id' => $this->read($image, 'id'),
-            'image_url' => $this->read($image, 'image_url')
-                ?? $this->read($image, 'imageUrl')
-                ?? $this->read($image, 'url'),
-            'url' => $this->read($image, 'url')
-                ?? $this->read($image, 'image_url')
-                ?? $this->read($image, 'imageUrl'),
-            'is_primary' => (bool) (
-                $this->read($image, 'is_primary')
-                ?? $this->read($image, 'isPrimary')
-                ?? false
-            ),
-        ];
-    }
+        return array_map(function (mixed $image): array {
+            if (is_array($image)) {
+                return [
+                    'id' => $image['id'] ?? null,
+                    'image_url' => $image['image_url'] ?? $image['url'] ?? null,
+                    'url' => $image['url'] ?? $image['image_url'] ?? null,
+                    'is_primary' => (bool) ($image['is_primary'] ?? false),
+                ];
+            }
 
-    private function read(mixed $source, string $key, mixed $default = null): mixed
-    {
-        if ($source === null) {
-            return $default;
-        }
-
-        if (is_array($source)) {
-            return data_get($source, $key, $default);
-        }
-
-        if (! is_object($source)) {
-            return $default;
-        }
-
-        if (method_exists($source, $key)) {
-            return $source->{$key}();
-        }
-
-        $camelKey = Str::camel($key);
-
-        if (method_exists($source, $camelKey)) {
-            return $source->{$camelKey}();
-        }
-
-        return data_get($source, $key, $default);
+            return [
+                'id' => $image->id ?? null,
+                'image_url' => $image->image_url ?? $image->url ?? null,
+                'url' => $image->url ?? $image->image_url ?? null,
+                'is_primary' => (bool) ($image->is_primary ?? false),
+            ];
+        }, $images);
     }
 }

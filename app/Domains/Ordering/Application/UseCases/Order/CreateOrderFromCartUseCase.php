@@ -18,6 +18,7 @@ use App\Domains\Ordering\Domain\ValueObjects\OrderNumber;
 use App\Domains\Ordering\Domain\ValueObjects\ShippingAddress;
 use App\Domains\Ordering\Infrastructure\Services\OrderTransactionService;
 use DomainException;
+use Illuminate\Support\Facades\DB;
 
 final readonly class CreateOrderFromCartUseCase
 {
@@ -40,6 +41,19 @@ final readonly class CreateOrderFromCartUseCase
                 throw new DomainException('Cart is empty or not found.');
             }
 
+            $cartId = $cart['id'] ?? null;
+
+            if (! $cartId) {
+                throw new DomainException('Cart id is missing.');
+            }
+
+            $cartItemIds = array_values(array_filter(array_map(
+                static fn (array $item): ?int => isset($item['id'])
+                    ? (int) $item['id']
+                    : null,
+                $cart['items'],
+            )));
+
             $itemData = array_map(
                 static fn (array $item): CreateOrderItemData => CreateOrderItemData::fromArray($item),
                 $cart['items'],
@@ -54,6 +68,10 @@ final readonly class CreateOrderFromCartUseCase
                 $itemData,
             );
 
+            /*
+             * Saat checkout, cukup validasi stock.
+             * Jangan decrease stock dulu sebelum payment sukses.
+             */
             $this->stockRepository->assertProductsAreAvailable($stockPayload);
 
             $items = array_map(
@@ -69,7 +87,12 @@ final readonly class CreateOrderFromCartUseCase
 
             $subtotal = $this->totalCalculator->calculateSubtotal($items);
 
-            $paymentMethod = $data->paymentMethod ?: 'manual_transfer';
+            /*
+             * Untuk flow Midtrans, jangan default ke manual_transfer.
+             * Payment method asli nanti diisi dari webhook Midtrans:
+             * qris / gopay / shopeepay / bank_transfer / credit_card / dll.
+             */
+            $paymentMethod = $data->paymentMethod ?: 'midtrans';
 
             $order = Order::create(
                 orderNumber: new OrderNumber($this->orderNumberGenerator->generate()),
@@ -83,18 +106,26 @@ final readonly class CreateOrderFromCartUseCase
 
             $createdOrder = $this->orderRepository->create($order);
 
-            $this->stockRepository->decreaseMany($stockPayload);
+            /*
+             * Simpan sumber cart ke table orders.
+             * Ini dipakai nanti saat payment sukses untuk mengosongkan cart yang benar.
+             */
+            DB::table('orders')
+                ->where('id', (int) $createdOrder->id())
+                ->update([
+                    'source_cart_id' => (int) $cartId,
+                    'source_cart_item_ids' => json_encode($cartItemIds),
+                    'updated_at' => now(),
+                ]);
 
-            $cartId = $cart['id'] ?? null;
-
-            if (! $cartId) {
-                throw new DomainException('Cart id is missing.');
-            }
-
-            $this->cartReader->markAsOrdered(
-                (int) $cartId,
-                (int) $createdOrder->id(),
-            );
+            /*
+             * JANGAN LAKUKAN INI DI CHECKOUT:
+             *
+             * $this->stockRepository->decreaseMany($stockPayload);
+             * $this->cartReader->markAsOrdered((int) $cartId, (int) $createdOrder->id());
+             *
+             * Dua aksi itu harus dilakukan setelah payment sukses.
+             */
 
             return $createdOrder;
         });

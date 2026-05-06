@@ -7,6 +7,7 @@ namespace App\Domains\Catalog\Presentation\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use App\Domains\Catalog\Application\UseCases\Category\ListCategoryUseCase;
+use App\Domains\Catalog\Application\UseCases\Category\ListCategoryMenuUseCase;
 use App\Domains\Catalog\Application\UseCases\Category\GetCategoryDetailUseCase;
 use App\Domains\Catalog\Application\UseCases\Category\ListProductsByCategorySlugUseCase;
 use App\Domains\Catalog\Presentation\Http\Resources\CategoryResource;
@@ -17,6 +18,15 @@ final class CategoryController extends Controller
     public function index(
         Request $request,
         ListCategoryUseCase $useCase
+    ) {
+        $categories = $useCase->execute($request->all());
+
+        return CategoryResource::collection($categories);
+    }
+
+    public function menu(
+        Request $request,
+        ListCategoryMenuUseCase $useCase
     ) {
         $categories = $useCase->execute($request->all());
 

@@ -14,21 +14,23 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         $query = ProductModel::query()
-            ->with(['category', 'store', 'images']);
+            ->with(['primaryCategory', 'categories', 'store', 'images']);
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
-        if (!empty($filters['category_id'])) {
-            $query->where('category_id', $filters['category_id']);
+        if (! empty($filters['category_id'])) {
+            $query->whereHas('categories', function ($query) use ($filters) {
+                $query->where('categories.id', $filters['category_id']);
+            });
         }
 
-        if (!empty($filters['store_id'])) {
+        if (! empty($filters['store_id'])) {
             $query->where('store_id', $filters['store_id']);
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $query->where('name', 'like', '%' . $filters['search'] . '%');
         }
 
@@ -44,14 +46,17 @@ final class EloquentProductRepository implements ProductRepositoryInterface
 
     public function findById(int $id): ?Product
     {
-        $model = ProductModel::with(['category', 'store', 'images'])->find($id);
+        $model = ProductModel::query()
+            ->with(['primaryCategory', 'categories', 'store', 'images'])
+            ->find($id);
 
         return $model ? ProductMapper::toEntity($model) : null;
     }
 
     public function findBySlug(string $slug): ?Product
     {
-        $model = ProductModel::with(['category', 'store', 'images'])
+        $model = ProductModel::query()
+            ->with(['primaryCategory', 'categories', 'store', 'images'])
             ->where('slug', $slug)
             ->first();
 
@@ -64,11 +69,11 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             ? ProductModel::find($product->id())
             : null;
 
-        if (!$model) {
+        if (! $model) {
             $model = ProductMapper::toModel($product);
         } else {
             $model->store_id = $product->storeId();
-            $model->category_id = $product->categoryId();
+            $model->primary_category_id = $product->primaryCategoryId();
             $model->seller_id = $product->sellerId();
             $model->name = $product->name();
             $model->slug = $product->slug();
@@ -80,7 +85,16 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         }
 
         $model->save();
-        $model->load(['category', 'store', 'images']);
+
+        if (method_exists($product, 'categoryIds')) {
+            $categoryIds = $product->categoryIds();
+
+            if (! empty($categoryIds)) {
+                $model->categories()->sync($categoryIds);
+            }
+        }
+
+        $model->load(['primaryCategory', 'categories', 'store', 'images']);
 
         return ProductMapper::toEntity($model);
     }
@@ -90,40 +104,41 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         return ProductModel::where('id', $id)->delete() > 0;
     }
 
-public function findPublishedByStoreId(int $storeId): Collection
-{
-    return ProductModel::query()
-        ->with(['category', 'store', 'images'])
-        ->where('store_id', $storeId)
-        ->where('status', 'published')
-        ->latest()
-        ->get()
-        ->map(fn ($model) => ProductMapper::toEntity($model));
-}
-
-public function findPublishedByCategorySlug(
-    string $categorySlug,
-    array $filters = [],
-    int $perPage = 15
-): LengthAwarePaginator {
-    $query = ProductModel::query()
-        ->with(['category', 'store', 'images'])
-        ->whereHas('category', function ($query) use ($categorySlug) {
-            $query->where('slug', $categorySlug);
-        })
-        ->where('status', 'published');
-
-    if (! empty($filters['search'])) {
-        $query->where('name', 'like', '%' . $filters['search'] . '%');
+    public function findPublishedByStoreId(int $storeId): Collection
+    {
+        return ProductModel::query()
+            ->with(['primaryCategory', 'categories', 'store', 'images'])
+            ->where('store_id', $storeId)
+            ->where('status', 'published')
+            ->latest()
+            ->get()
+            ->map(fn ($model) => ProductMapper::toEntity($model));
     }
 
-    if (! empty($filters['store_id'])) {
-        $query->where('store_id', $filters['store_id']);
+    public function findPublishedByCategorySlug(
+        string $categorySlug,
+        array $filters = [],
+        int $perPage = 15
+    ): LengthAwarePaginator {
+        $query = ProductModel::query()
+            ->with(['primaryCategory', 'categories', 'store', 'images'])
+            ->whereHas('categories', function ($query) use ($categorySlug) {
+                $query
+                    ->where('categories.slug', $categorySlug)
+                    ->orWhere('categories.full_slug', $categorySlug);
+            })
+            ->where('status', 'published');
+
+        if (! empty($filters['search'])) {
+            $query->where('name', 'like', '%' . $filters['search'] . '%');
+        }
+
+        if (! empty($filters['store_id'])) {
+            $query->where('store_id', $filters['store_id']);
+        }
+
+        return $query
+            ->latest()
+            ->paginate($perPage);
     }
-
-    return $query
-        ->latest()
-        ->paginate($perPage);
-}
-
 }

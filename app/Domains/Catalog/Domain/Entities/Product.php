@@ -9,7 +9,8 @@ final class Product
     public function __construct(
         private ?int $id,
         private ?int $storeId,
-        private ?int $categoryId,
+        private ?int $primaryCategoryId,
+        private array $categoryIds,
         private string $sellerId,
         private string $name,
         private string $slug,
@@ -18,7 +19,8 @@ final class Product
         private int $stock,
         private ?string $thumbnail,
         private string $status,
-        private ?Category $category = null,
+        private ?Category $primaryCategory = null,
+        private array $categories = [],
         private array $images = [],
     ) {}
 
@@ -32,9 +34,23 @@ final class Product
         return $this->storeId;
     }
 
+    public function primaryCategoryId(): ?int
+    {
+        return $this->primaryCategoryId;
+    }
+
+    /**
+     * Alias sementara agar kode lama yang masih memanggil categoryId()
+     * tidak langsung rusak.
+     */
     public function categoryId(): ?int
     {
-        return $this->categoryId;
+        return $this->primaryCategoryId;
+    }
+
+    public function categoryIds(): array
+    {
+        return $this->categoryIds;
     }
 
     public function sellerId(): string
@@ -77,9 +93,22 @@ final class Product
         return $this->status;
     }
 
+    public function primaryCategory(): ?Category
+    {
+        return $this->primaryCategory;
+    }
+
+    /**
+     * Alias sementara untuk kompatibilitas resource lama.
+     */
     public function category(): ?Category
     {
-        return $this->category;
+        return $this->primaryCategory;
+    }
+
+    public function categories(): array
+    {
+        return $this->categories;
     }
 
     public function images(): array
@@ -127,8 +156,22 @@ final class Product
         $this->storeId = $storeId;
     }
 
+    public function assignPrimaryCategory(?int $primaryCategoryId): void
+    {
+        $this->primaryCategoryId = $primaryCategoryId;
+    }
+
+    /**
+     * Alias sementara agar use case lama yang memanggil assignCategory()
+     * masih jalan.
+     */
     public function assignCategory(?int $categoryId): void
     {
-        $this->categoryId = $categoryId;
+        $this->assignPrimaryCategory($categoryId);
+    }
+
+    public function assignCategories(array $categoryIds): void
+    {
+        $this->categoryIds = array_values(array_unique($categoryIds));
     }
 }
