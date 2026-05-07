@@ -10,11 +10,20 @@ class StoreDetailModel extends Model
     protected $table = 'store_details';
 
     protected $fillable = [
-        'store_id',
-        'description',
-        'address',
-        'phone',
-    ];
+    'store_id',
+    'owner_name',
+    'owner_phone',
+    'description',
+    'shipping_policy',
+    'return_policy',
+    'open_days',
+    'open_time',
+    'close_time',
+    'whatsapp_url',
+    'instagram_url',
+    'tiktok_url',
+    'website_url',
+];
 
     public function store(): BelongsTo
     {

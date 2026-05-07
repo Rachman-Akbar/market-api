@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Stores\Infrastructure\Persistence\Models;
 
+use App\Domains\Catalog\Domain\Entities\Product;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use App\Domains\Catalog\Infrastructure\Persistence\Models\ProductModel;
 
 class StoreModel extends Model
 {
@@ -18,8 +18,15 @@ class StoreModel extends Model
         'name',
         'slug',
         'description',
-        'logo',
+        'short_description',
+        'phone',
+        'email',
+        'city',
+        'province',
+        'address',
         'is_active',
+        'logo',
+        'banner_url',
     ];
 
     protected $casts = [
@@ -33,6 +40,6 @@ class StoreModel extends Model
 
     public function products(): HasMany
     {
-        return $this->hasMany(ProductModel::class, 'store_id');
+        return $this->hasMany(Product::class, 'store_id');
     }
 }
