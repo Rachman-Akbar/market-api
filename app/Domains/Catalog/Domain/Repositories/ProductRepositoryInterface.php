@@ -27,5 +27,4 @@ interface ProductRepositoryInterface
     public function save(Product $product): Product;
 
     public function delete(int $id): bool;
-
 }

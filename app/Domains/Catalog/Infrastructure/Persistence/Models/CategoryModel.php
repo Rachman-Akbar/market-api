@@ -55,7 +55,15 @@ class CategoryModel extends Model
 
     public function childrenRecursive(): HasMany
     {
-        return $this->children()->with('childrenRecursive');
+        return $this->children()->with([
+            'childrenRecursive' => function ($query) {
+                $query
+                    ->where('is_active', true)
+                    ->where('is_visible_in_menu', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('name');
+            },
+        ]);
     }
 
     public function products(): BelongsToMany

@@ -113,29 +113,29 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
             ->map(fn ($model) => CategoryMapper::toEntity($model));
     }
 
-    public function getMenuTree(?int $catalogGroupId = null): Collection
-    {
-        return CategoryModel::query()
-            ->whereNull('parent_id')
-            ->when($catalogGroupId, function ($query) use ($catalogGroupId) {
-                $query->where('catalog_group_id', $catalogGroupId);
-            })
-            ->where('is_active', true)
-            ->where('is_visible_in_menu', true)
-            ->with([
-                'childrenRecursive' => function ($query) {
-                    $query
-                        ->where('is_active', true)
-                        ->where('is_visible_in_menu', true)
-                        ->orderBy('sort_order')
-                        ->orderBy('name');
-                },
-            ])
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get()
-            ->map(fn ($model) => CategoryMapper::toEntity($model));
-    }
+public function getMenuTree(?int $catalogGroupId = null): Collection
+{
+    return CategoryModel::query()
+        ->whereNull('parent_id')
+        ->when($catalogGroupId, function ($query) use ($catalogGroupId) {
+            $query->where('catalog_group_id', $catalogGroupId);
+        })
+        ->where('is_active', true)
+        ->where('is_visible_in_menu', true)
+        ->with([
+            'childrenRecursive' => function ($query) {
+                $query
+                    ->where('is_active', true)
+                    ->where('is_visible_in_menu', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('name');
+            },
+        ])
+        ->orderBy('sort_order')
+        ->orderBy('name')
+        ->get()
+        ->map(fn ($model) => CategoryMapper::toEntity($model));
+}
 
     public function save(Category $category): Category
     {

@@ -11,38 +11,35 @@ use App\Domains\Catalog\Presentation\Http\Controllers\BannerController;
 Route::prefix('catalog')
     ->name('catalog.')
     ->group(function () {
-        Route::prefix('products')
-            ->name('products.')
-            ->group(function () {
-                Route::get('/', [ProductController::class, 'index'])
-                    ->name('index');
 
-                Route::get('/id/{id}', [ProductController::class, 'show'])
-                    ->whereNumber('id')
-                    ->name('show');
+    Route::prefix('products')
+    ->name('products.')
+    ->group(function () {
+        Route::get('/', [ProductController::class, 'index'])
+            ->name('index');
 
-                Route::get('/{slug}', [ProductController::class, 'showBySlug'])
-                    ->where('slug', '[A-Za-z0-9\-]+')
-                    ->name('show-by-slug');
-            });
+        Route::get('/id/{id}', [ProductController::class, 'show'])
+            ->whereNumber('id')
+            ->name('show');
 
-        Route::prefix('catalog-groups')
+        Route::get('/{slug}', [ProductController::class, 'showBySlug'])
+            ->where('slug', '[A-Za-z0-9\-]+')
+            ->name('show-by-slug');
+    });
+    
+    Route::prefix('catalog-groups')
             ->name('catalog-groups.')
             ->group(function () {
                 Route::get('/', [CatalogGroupController::class, 'index'])
                     ->name('index');
             });
-            
-            Route::prefix('categories')
+
+Route::prefix('categories')
     ->name('categories.')
     ->group(function () {
         Route::get('/', [CategoryController::class, 'index'])
             ->name('index');
 
-        /**
-         * Penting:
-         * Route static seperti /menu wajib sebelum route dynamic /{slug}
-         */
         Route::get('/menu', [CategoryController::class, 'menu'])
             ->name('menu');
 

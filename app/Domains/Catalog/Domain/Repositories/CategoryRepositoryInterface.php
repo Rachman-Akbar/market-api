@@ -14,8 +14,6 @@ interface CategoryRepositoryInterface
 
     public function findBySlug(string $slug): ?Category;
 
-    public function getTree(?int $catalogGroupId = null): Collection;
-
     public function getMenuTree(?int $catalogGroupId = null): Collection;
 
     public function save(Category $category): Category;
