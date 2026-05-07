@@ -1,0 +1,38 @@
+Firebase -> Sanctum -> Domain (Request Flow)
+
+1) Firebase login/register
+   Client
+     -> POST /api/v1/identity/auth/firebase-login
+        or POST /api/v1/identity/auth/firebase-register
+        Authorization: Bearer <Firebase ID token>
+     -> ValidateFirebaseToken
+     -> Upsert local user + assign default role
+     -> Create Sanctum token (api_token)
+     <- Response includes api_token
+
+2) Use Sanctum token for protected domains
+   Client
+     -> Authorization: Bearer <Sanctum api_token>
+     -> auth:sanctum + EnsureApiTokenIsValid
+     -> Domain routes:
+        - Cart
+        - Ordering
+        - Users
+
+3) Public/guest access
+   Client
+     -> No auth
+     -> Catalog, Stores, root /api
+
+Endpoints by token type (summary)
+
+Firebase ID token:
+- POST /api/v1/identity/auth/firebase-login
+- POST /api/v1/identity/auth/firebase-register
+
+Sanctum api_token:
+- GET /api/v1/identity/auth/me
+- POST /api/v1/identity/auth/logout
+- Cart: /api/v1/carts/*
+- Ordering: /api/v1/checkout, /api/v1/orders/*
+- Users: /api/v1/users/* (seller-profile, addresses)

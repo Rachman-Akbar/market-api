@@ -1,0 +1,151 @@
+Optimizing tool selection...
+
+Searched for regex `Sanctum|sanctum|auth:sanctum` (`**/market-api/**`), 20 results
+
+Searched for regex `Firebase|firebase|kreait|firestore|auth\("firebase"|fcm` (`**/market-api/**`), 20 results
+
+Searched for text `sanctum` (`**/market-api/config/**`), 15 results
+
+Searched for text `firebase` (`**/market-api/config/**`), 20 results
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Domains/Identity/Presentation/routes.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Domains/Cart/Presentation/routes.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Domains/Ordering/Presentation/routes.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Domains/Users%20llll/Presentation/routes.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Domains/Identity/Presentation/Http/Controllers/AuthController.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Http/Middleware/ValidateFirebaseToken.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Domains/Identity/Infrastructure/Firebase/FirebaseTokenVerifier.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Support/Providers/Firebase/FirebaseAuthService.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Http/Middleware/EnsureApiTokenIsValid.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Models/User.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/config/services.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/config/firebase.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/routes/api.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Providers/AppServiceProvider.php)
+
+Searched for regex `ValidateFirebaseToken|FirebaseTokenVerifier|firebase_auth|firebase_uid|firebase_user` (`**/market-api/**`), 20 results
+
+Searched for regex `api.token|EnsureApiTokenIsValid` (`**/market-api/**`), 20 results
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/bootstrap/app.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/config/auth.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Domains/Identity/Application/Actions/LoginWithFirebaseAction.php)
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Domains/Identity/Application/Actions/SwitchRoleAction.php)
+
+Searched for text `VerifyFirebaseToken` (`**/market-api/**`), 20 results
+
+Read [](file:///d%3A/laragon/www/marketplace/market-api/app/Domains/Identity/Infrastructure/Firebase/VerifyFirebaseToken.php)
+
+Searched for text `firebase.auth` (`**/market-api/**`), 3 results
+
+Aku sudah telusuri struktur auth di backend ini dan alurnya memang dua tahap: Firebase untuk identitas awal, lalu Sanctum untuk akses API domain (cart, ordering, users). Di bawah ini penjelasan rinci berbasis kode yang ada.
+
+**Analisis Mendalam**
+- **Daftar route v1 yang aktif**: API hanya memuat domain yang didaftarkan di api.php (Identity, Catalog, Stores, Ordering, Cart). Jadi semua auth berada di domain Identity, sementara Cart/Ordering hanya menerima token Sanctum.
+- **Firebase dipakai di tahap login/register**:  
+  - Route `POST /identity/auth/firebase-login` dan `POST /identity/auth/firebase-register` memakai middleware `ValidateFirebaseToken` di routes.php.  
+  - Middleware ini memverifikasi Firebase ID token melalui `FirebaseTokenVerifier` (Kreait SDK) dan melakukan upsert user lokal (`firebase_uid`, `email`, `name`, dll). Lihat ValidateFirebaseToken.php dan FirebaseTokenVerifier.php.
+  - Setelah user valid, route tersebut membuat token Sanctum (`createToken`) dan mengembalikannya sebagai `api_token`. Masih di routes.php.
+- **Sanctum dipakai untuk semua route “protected”**:  
+  - Cart, Ordering, dan Users memakai `auth:sanctum` + `EnsureApiTokenIsValid`. Lihat:  
+    - routes.php  
+    - routes.php  
+    - routes.php  
+  - Middleware `EnsureApiTokenIsValid` memastikan token Sanctum benar-benar ada pada user (bukan hanya `auth:sanctum`). Ini di EnsureApiTokenIsValid.php.
+  - Jadi untuk cart/ordering/users, *tidak ada* verifikasi Firebase langsung—mereka hanya menerima token Sanctum yang dibuat setelah login Firebase.
+- **Model user memang Sanctum-ready**: User memakai `HasApiTokens`, dan punya field `firebase_uid` sebagai penghubung identitas Firebase. Lihat User.php.
+- **Binding Firebase Auth di container**: `FirebaseTokenVerifier` di-bind lewat `AppServiceProvider`, sehingga middleware bisa memverifikasi token via Kreait Admin SDK. Lihat AppServiceProvider.php.
+- **Konfigurasi Firebase**:  
+  - `config/firebase.php` memuat konfigurasi proyek dan kredensial (service account) yang dipakai Kreait. Lihat firebase.php.  
+  - `config/services.php` punya flag `FIREBASE_AUTH_ENABLED`. Lihat services.php.  
+  - .env menyimpan path kredensial dan flag enable. Lihat .env.  
+- **Ada dua middleware Firebase berbeda**:  
+  - `ValidateFirebaseToken` (dipakai langsung di route Identity).  
+  - `VerifyFirebaseToken` (terdaftar sebagai alias `firebase.auth` di bootstrap) tetapi **tidak dipakai di route** manapun saat ini. Lihat app.php dan VerifyFirebaseToken.php.  
+  - Ini penting: sistem berjalan lewat `ValidateFirebaseToken`, bukan `firebase.auth`.
+
+**Flow Auth Singkat (berdasarkan kode)**
+1) Frontend kirim Firebase ID token ke `POST /api/v1/identity/auth/firebase-login` atau `firebase-register`.  
+2) `ValidateFirebaseToken` verifikasi token, sinkron user lokal, set `Auth::user`.  
+3) Backend membuat token Sanctum (`api_token`) dan mengirim ke frontend.  
+4) Semua akses domain seperti cart/ordering/users **menggunakan token Sanctum** (`auth:sanctum` + `EnsureApiTokenIsValid`).  
+5) Jika butuh ganti role, ada token baru via `SwitchRoleAction` (token lama dihapus). Lihat SwitchRoleAction.php.
+
+**Summary**
+- Firebase hanya dipakai untuk **verifikasi identitas awal** (login/register) lewat `ValidateFirebaseToken`, lalu backend menerbitkan token Sanctum.  
+- Cart, Ordering, Users **tidak memvalidasi Firebase langsung**; mereka hanya menerima `api_token` Sanctum.  
+- Ada **dua middleware Firebase**, tetapi yang aktif dipakai hanya `ValidateFirebaseToken`; alias `firebase.auth` belum terlihat dipakai.  
+- Seluruh alur token dan user sync sudah terpusat di Identity routes + middleware + user model.
+
+Aku lanjutkan saran ke-3: review apakah VerifyFirebaseToken masih diperlukan atau bisa dihapus/di-unify. Ini temuan yang relevan dari kode saat ini.
+
+Temuan Utama (berdasarkan kode)
+
+Alias middleware ada, tapi tidak dipakai di route aktif. firebase.auth di-alias ke VerifyFirebaseToken di app.php:31-36, tapi route Identity yang aktif memakai ValidateFirebaseToken langsung, bukan firebase.auth (routes.php:61-113).
+Implikasi: VerifyFirebaseToken sekarang tidak berada di jalur request untuk login/register.
+Perilaku VerifyFirebaseToken berbeda dengan ValidateFirebaseToken.
+VerifyFirebaseToken membuat/menyimpan user lokal dan mengisi email_verified_at jika kolom ada (VerifyFirebaseToken.php:73-110).
+ValidateFirebaseToken juga upsert user, tapi menulis is_email_verified dan melakukan assignment role default (buyer) lewat assignDefaultRoleIfMissing (kamu lihat di middleware itu).
+Implikasi: kalau suatu saat VerifyFirebaseToken dipakai, datanya bisa berbeda (kolom dan role) dari alur yang sekarang.
+Potensi duplikasi dan drift logic. Dua middleware memverifikasi Firebase dan membuat user lokal dengan cara yang tidak sama (VerifyFirebaseToken.php:54-110 vs routes.php:61-113 yang memakai ValidateFirebaseToken).
+Implikasi: maintenance risk, karena perubahan di satu tempat bisa tidak tercermin di tempat lain.
+Kesimpulan
+Saat ini VerifyFirebaseToken tidak terlihat dipakai oleh route aktif dan fungsinya tumpang tindih dengan ValidateFirebaseToken. Ini kandidat kuat untuk dihapus atau di-unify agar tidak ada dua jalur verifikasi Firebase yang beda perilaku.
+
+
+
+Alur request dan checklist di bawah ini mengacu langsung ke route yang aktif.
+
+**Checklist Token per Endpoint**
+
+- **Firebase ID token (Authorization: Bearer <Firebase ID token>)**
+  - `POST /api/v1/identity/auth/firebase-login`  
+    Sumber: routes.php
+  - `POST /api/v1/identity/auth/firebase-register`  
+    Sumber: routes.php
+
+- **Sanctum api_token (Authorization: Bearer <Sanctum api_token>)**
+  - `GET /api/v1/identity/auth/me`  
+  - `POST /api/v1/identity/auth/logout`  
+    Sumber: routes.php
+  - **Cart domain** (semua):  
+    `GET /api/v1/carts`  
+    `POST /api/v1/carts/items`  
+    `PATCH /api/v1/carts/items/{productId}`  
+    `DELETE /api/v1/carts/items/{productId}`  
+    `DELETE /api/v1/carts`  
+    Sumber: routes.php
+  - **Ordering domain** (semua di bawah group Sanctum):  
+    `POST /api/v1/checkout`  
+    `GET /api/v1/orders`  
+    `GET /api/v1/orders/{order}`  
+    `POST /api/v1/orders/{order}/pay/midtrans`  
+    `POST /api/v1/orders/{order}/cancel`  
+    `PATCH /api/v1/orders/{order}/status`  
+    Sumber: routes.php
+  - **Users domain** (Semua pada group):  
+    `POST /api/v1/users/seller-profile` (butuh role:seller)  
+    `GET /api/v1/users/addresses`  
+    `POST /api/v1/users/addresses`  
+    Sumber: routes.php
+
+- **No auth / public**
+  - `GET /api/` (health/landing)  
+    Sumber: api.php
+  - Catalog, Stores (endpoint detailnya ada di file domain masing-masing yang tidak aku baca pada langkah ini)
