@@ -9,8 +9,11 @@ use App\Domains\Catalog\Domain\Repositories\ProductRepositoryInterface;
 
 final class ListProductsUseCase
 {
-    private const DEFAULT_PER_PAGE = 24;
-    private const MAX_PER_PAGE = 50;
+    /**
+     * Untuk infinite scroll buyer.
+     * Frontend tidak perlu mengirim per_page.
+     */
+    private const BUYER_PER_PAGE = 4;
 
     public function __construct(
         private readonly ProductRepositoryInterface $products
@@ -18,22 +21,21 @@ final class ListProductsUseCase
 
     public function execute(array $filters = []): LengthAwarePaginator
     {
-        $requestedPerPage = isset($filters['per_page'])
-            ? (int) $filters['per_page']
-            : self::DEFAULT_PER_PAGE;
+        $perPage = self::BUYER_PER_PAGE;
 
-        $perPage = min(
-            max($requestedPerPage, 1),
-            self::MAX_PER_PAGE
-        );
+        /**
+         * Buyer product listing default hanya tampilkan published.
+         * Kalau nanti admin/seller butuh semua status, buat use case terpisah.
+         */
+        $filters['status'] = $filters['status'] ?? 'published';
 
         $categorySlug = $filters['category_slug']
             ?? $filters['category']
             ?? null;
 
-        if (is_string($categorySlug) && $categorySlug !== '') {
+        if (is_string($categorySlug) && trim($categorySlug) !== '') {
             return $this->products->findPublishedByCategorySlug(
-                categorySlug: $categorySlug,
+                categorySlug: trim($categorySlug),
                 filters: $filters,
                 perPage: $perPage
             );

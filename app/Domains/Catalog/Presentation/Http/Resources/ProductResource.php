@@ -11,10 +11,6 @@ use App\Domains\Catalog\Domain\Entities\Product;
 
 final class ProductResource extends JsonResource
 {
-    /**
-     * @param Request $request
-     * @return array<string, mixed>
-     */
     public function toArray(Request $request): array
     {
         /** @var Product $product */
@@ -24,17 +20,8 @@ final class ProductResource extends JsonResource
             'id' => $product->id(),
             'store_id' => $product->storeId(),
 
-            /**
-             * Field baru.
-             */
             'primary_category_id' => $product->primaryCategoryId(),
             'category_ids' => $product->categoryIds(),
-
-            /**
-             * Field lama untuk sementara.
-             * Boleh kamu hapus nanti setelah frontend selesai migrasi.
-             */
-            'category_id' => $product->primaryCategoryId(),
 
             'seller_id' => $product->sellerId(),
 
@@ -47,16 +34,13 @@ final class ProductResource extends JsonResource
             'thumbnail' => $product->thumbnail(),
             'status' => $product->status(),
 
-            /**
-             * Field baru.
-             */
             'primary_category' => $this->mapCategory($product->primaryCategory()),
             'categories' => $this->mapCategories($product->categories()),
 
             /**
-             * Field lama untuk sementara.
-             * Isinya sama dengan primary_category.
+             * Legacy response supaya frontend lama tidak langsung rusak.
              */
+            'category_id' => $product->primaryCategoryId(),
             'category' => $this->mapCategory($product->primaryCategory()),
 
             'images' => $this->mapImages($product->images()),
@@ -73,26 +57,18 @@ final class ProductResource extends JsonResource
             'id' => $category->id(),
             'catalog_group_id' => $category->catalogGroupId(),
             'parent_id' => $category->parentId(),
-
             'name' => $category->name(),
             'slug' => $category->slug(),
             'full_slug' => $category->fullSlug(),
-
             'image_url' => $category->imageUrl(),
             'icon_url' => $category->iconUrl(),
-
             'level' => $category->level(),
             'sort_order' => $category->sortOrder(),
-
             'is_active' => $category->isActive(),
             'is_visible_in_menu' => $category->isVisibleInMenu(),
         ];
     }
 
-    /**
-     * @param array<int, Category> $categories
-     * @return array<int, array<string, mixed>>
-     */
     private function mapCategories(array $categories): array
     {
         return array_values(array_filter(array_map(
@@ -101,10 +77,6 @@ final class ProductResource extends JsonResource
         )));
     }
 
-    /**
-     * @param array<int, mixed> $images
-     * @return array<int, array<string, mixed>>
-     */
     private function mapImages(array $images): array
     {
         return array_map(function (mixed $image): array {

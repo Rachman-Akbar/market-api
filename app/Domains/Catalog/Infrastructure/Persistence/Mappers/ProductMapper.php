@@ -38,18 +38,18 @@ final class ProductMapper
         }
 
         return new Product(
-            id: $model->id,
-            storeId: $model->store_id,
-            primaryCategoryId: $model->primary_category_id,
+            id: $model->id ? (int) $model->id : null,
+            storeId: $model->store_id ? (int) $model->store_id : null,
+            primaryCategoryId: $model->primary_category_id ? (int) $model->primary_category_id : null,
             categoryIds: $categoryIds,
             sellerId: (string) $model->seller_id,
-            name: $model->name,
-            slug: $model->slug,
+            name: (string) $model->name,
+            slug: (string) $model->slug,
             description: $model->description,
             price: (float) $model->price,
             stock: (int) $model->stock,
             thumbnail: $model->thumbnail,
-            status: $model->status,
+            status: (string) $model->status,
             primaryCategory: $primaryCategory,
             categories: $categories,
             images: $model->relationLoaded('images')

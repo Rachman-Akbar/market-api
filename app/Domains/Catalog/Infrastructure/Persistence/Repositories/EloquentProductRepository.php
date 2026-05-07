@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\Infrastructure\Persistence\Repositories;
 
 use Illuminate\Support\Collection;
@@ -26,35 +28,28 @@ final class EloquentProductRepository implements ProductRepositoryInterface
                 (int) $filters['category_id']
             );
 
-            if (! empty($categoryIds)) {
-                $query->where(function ($query) use ($categoryIds) {
-                    $query
-                        ->whereIn('primary_category_id', $categoryIds)
-                        ->orWhereHas('categories', function ($query) use ($categoryIds) {
-                            $query->whereIn('categories.id', $categoryIds);
-                        });
-                });
-            }
+            $this->applyCategoryIdsFilter($query, $categoryIds);
         }
 
         if (! empty($filters['store_id'])) {
-            $query->where('store_id', $filters['store_id']);
+            $query->where('store_id', (int) $filters['store_id']);
         }
 
         if (! empty($filters['search'])) {
-            $query->where('name', 'like', '%' . $filters['search'] . '%');
+            $search = trim((string) $filters['search']);
+
+            $query->where(function ($query) use ($search) {
+                $query
+                    ->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%')
+                    ->orWhere('brand', 'like', '%' . $search . '%');
+            });
         }
 
-        $paginator = $query
-            ->latest()
+        $paginator = $this->applyDefaultOrdering($query)
             ->paginate($perPage);
 
-        $paginator->setCollection(
-            $paginator->getCollection()
-                ->map(fn ($model) => ProductMapper::toEntity($model))
-        );
-
-        return $paginator;
+        return $this->mapPaginatorToEntities($paginator);
     }
 
     public function findById(int $id): ?Product
@@ -82,9 +77,10 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             ->with(['primaryCategory', 'categories', 'store', 'images'])
             ->where('store_id', $storeId)
             ->where('status', 'published')
-            ->latest()
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->get()
-            ->map(fn ($model) => ProductMapper::toEntity($model));
+            ->map(fn (ProductModel $model) => ProductMapper::toEntity($model));
     }
 
     public function findPublishedByCategorySlug(
@@ -109,13 +105,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             ->where('status', 'published');
 
         if (! empty($categoryIds)) {
-            $query->where(function ($query) use ($categoryIds) {
-                $query
-                    ->whereIn('primary_category_id', $categoryIds)
-                    ->orWhereHas('categories', function ($query) use ($categoryIds) {
-                        $query->whereIn('categories.id', $categoryIds);
-                    });
-            });
+            $this->applyCategoryIdsFilter($query, $categoryIds);
         } else {
             /**
              * Kalau kategori tidak ditemukan, jangan tampilkan semua produk.
@@ -124,16 +114,24 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         }
 
         if (! empty($filters['search'])) {
-            $query->where('name', 'like', '%' . $filters['search'] . '%');
+            $search = trim((string) $filters['search']);
+
+            $query->where(function ($query) use ($search) {
+                $query
+                    ->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%')
+                    ->orWhere('brand', 'like', '%' . $search . '%');
+            });
         }
 
         if (! empty($filters['store_id'])) {
-            $query->where('store_id', $filters['store_id']);
+            $query->where('store_id', (int) $filters['store_id']);
         }
 
-        return $query
-            ->latest()
+        $paginator = $this->applyDefaultOrdering($query)
             ->paginate($perPage);
+
+        return $this->mapPaginatorToEntities($paginator);
     }
 
     public function save(Product $product): Product
@@ -168,7 +166,15 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             $categoryIds[] = $product->primaryCategoryId();
         }
 
-        $model->categories()->sync(array_values(array_unique($categoryIds)));
+        $syncPayload = [];
+
+        foreach (array_values(array_unique($categoryIds)) as $categoryId) {
+            $syncPayload[$categoryId] = [
+                'is_primary' => (int) ($categoryId === $product->primaryCategoryId()),
+            ];
+        }
+
+        $model->categories()->sync($syncPayload);
 
         $model->load(['primaryCategory', 'categories', 'store', 'images']);
 
@@ -180,49 +186,76 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         return ProductModel::where('id', $id)->delete() > 0;
     }
 
+    private function applyCategoryIdsFilter($query, array $categoryIds): void
+    {
+        $categoryIds = array_values(array_unique(array_map('intval', $categoryIds)));
+
+        if (empty($categoryIds)) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->where(function ($query) use ($categoryIds) {
+            $query
+                ->whereIn('primary_category_id', $categoryIds)
+                ->orWhereHas('categories', function ($query) use ($categoryIds) {
+                    $query->whereIn('categories.id', $categoryIds);
+                });
+        });
+    }
+
+    private function applyDefaultOrdering($query)
+    {
+        return $query
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+    }
+
     /**
-     * Ambil ID kategori itu sendiri + semua child di bawahnya.
-     *
-     * Level 1:
-     * - ambil level 1
-     * - ambil semua level 2
-     * - ambil semua level 3
-     *
-     * Level 2:
-     * - ambil level 2
-     * - ambil semua level 3
-     *
-     * Level 3:
-     * - ambil level 3 saja
+     * Ambil kategori itu sendiri + semua descendant.
+     * Aman untuk level 1, 2, 3, bahkan kalau nanti level kategori bertambah.
      */
     private function getCategoryAndDescendantIdsById(int $categoryId): array
     {
-        $category = CategoryModel::query()->find($categoryId);
+        $categoryExists = CategoryModel::query()
+            ->where('id', $categoryId)
+            ->exists();
 
-        if (! $category) {
+        if (! $categoryExists) {
             return [];
         }
 
-        $ids = [$category->id];
+        $ids = [$categoryId];
+        $parentIds = [$categoryId];
 
-        $childIds = CategoryModel::query()
-            ->where('parent_id', $category->id)
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
-        $ids = array_merge($ids, $childIds);
-
-        if (! empty($childIds)) {
-            $grandChildIds = CategoryModel::query()
-                ->whereIn('parent_id', $childIds)
+        while (! empty($parentIds)) {
+            $childIds = CategoryModel::query()
+                ->whereIn('parent_id', $parentIds)
                 ->pluck('id')
                 ->map(fn ($id) => (int) $id)
                 ->all();
 
-            $ids = array_merge($ids, $grandChildIds);
+            $childIds = array_values(array_diff($childIds, $ids));
+
+            if (empty($childIds)) {
+                break;
+            }
+
+            $ids = array_merge($ids, $childIds);
+            $parentIds = $childIds;
         }
 
         return array_values(array_unique(array_map('intval', $ids)));
+    }
+
+    private function mapPaginatorToEntities(LengthAwarePaginator $paginator): LengthAwarePaginator
+    {
+        $paginator->setCollection(
+            $paginator->getCollection()
+                ->map(fn (ProductModel $model) => ProductMapper::toEntity($model))
+        );
+
+        return $paginator;
     }
 }

@@ -60,7 +60,9 @@ final class ProductModel extends Model
             'product_categories',
             'product_id',
             'category_id'
-        );
+        )
+            ->withPivot('is_primary')
+            ->withTimestamps();
     }
 
     public function images(): HasMany
