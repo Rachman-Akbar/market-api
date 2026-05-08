@@ -7,14 +7,14 @@ namespace App\Domains\Ordering\Application\DTOs;
 final readonly class CreateOrderData
 {
     public function __construct(
-        public int $userId,
+        public ?string $userId,
         public ShippingAddressData $shippingAddress,
         public ?string $notes = null,
         public ?string $paymentMethod = null,
     ) {
     }
 
-    public static function fromArray(array $data, int $userId): self
+    public static function fromArray(array $data, ?string $userId): self
     {
         return new self(
             userId: $userId,

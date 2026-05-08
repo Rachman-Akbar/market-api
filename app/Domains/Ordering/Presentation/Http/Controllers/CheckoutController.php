@@ -18,16 +18,24 @@ final class CheckoutController extends Controller
         CheckoutRequest $request,
         CreateOrderFromCartUseCase $useCase,
     ): JsonResponse {
+        $payload = $request->validated();
+
+        if (($payload['payment_method'] ?? null) !== 'cod') {
+            return response()->json([
+                'message' => 'Gunakan checkout session untuk Midtrans atau Manual Transfer.',
+            ], 422);
+        }
+
         try {
             $order = $useCase->execute(
                 CreateOrderData::fromArray(
-                    $request->validated(),
-                    (int) $request->user()->getAuthIdentifier(),
+                    $payload,
+                    (string) $request->user()->getAuthIdentifier(),
                 ),
             );
 
             return response()->json([
-                'message' => 'Checkout berhasil.',
+                'message' => 'Checkout COD berhasil.',
                 'data' => new OrderResource($order),
             ], 201);
         } catch (DomainException $exception) {

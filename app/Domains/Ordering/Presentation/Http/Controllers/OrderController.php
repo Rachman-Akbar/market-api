@@ -96,9 +96,9 @@ final class OrderController extends Controller
         }
     }
 
-    private function currentUserId(Request $request): int
+    private function currentUserId(Request $request): string
     {
-        return (int) $request->user()->getAuthIdentifier();
+        return (string) $request->user()->getAuthIdentifier();
     }
 
     private function canManageOrders(Request $request): bool

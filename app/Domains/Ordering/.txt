@@ -1,0 +1,8 @@
+Midtrans:
+jangan buat order final sebelum paid jika kamu ingin cart tetap aman
+
+COD:
+boleh langsung buat order final
+
+Manual transfer:
+boleh langsung buat order pending verification, atau pakai checkout session jika ingin order baru muncul setelah admin approve
