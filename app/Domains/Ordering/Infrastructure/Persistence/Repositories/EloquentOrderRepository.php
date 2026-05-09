@@ -2,121 +2,72 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Ordering\Infrastructure\Persistence\Repositories;
+namespace App\Domains\Ordering\Infrastructure\Persistence\Readers;
 
-use App\Domains\Ordering\Domain\Entities\Order;
-use App\Domains\Ordering\Domain\Repositories\OrderRepositoryInterface;
-use App\Domains\Ordering\Infrastructure\Persistence\Mappers\OrderItemMapper;
-use App\Domains\Ordering\Infrastructure\Persistence\Mappers\OrderMapper;
-use App\Domains\Ordering\Infrastructure\Persistence\Mappers\OrderStatusHistoryMapper;
-use App\Domains\Ordering\Infrastructure\Persistence\Models\OrderItemModel;
-use App\Domains\Ordering\Infrastructure\Persistence\Models\OrderModel;
-use App\Domains\Ordering\Infrastructure\Persistence\Models\OrderStatusHistoryModel;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Domains\Ordering\Domain\Repositories\CartForOrderReaderInterface;
+use App\Models\Cart;
 
-final readonly class EloquentOrderRepository implements OrderRepositoryInterface
+final class EloquentCartForOrderReader implements CartForOrderReaderInterface
 {
-    public function __construct(
-        private OrderMapper $mapper,
-        private OrderItemMapper $itemMapper,
-        private OrderStatusHistoryMapper $historyMapper,
-    ) {
-    }
-
-    public function create(Order $order): Order
+    public function getActiveCartForUser(string $userId): ?array
     {
-        $model = $this->mapper->fillModel($order);
-        $model->save();
-
-        foreach ($order->items() as $item) {
-            $itemModel = $this->itemMapper->toModel($item);
-            $model->items()->save($itemModel);
-        }
-
-        foreach ($order->histories() as $history) {
-            $historyModel = $this->historyMapper->toModel($history);
-            $model->histories()->save($historyModel);
-        }
-
-        return $this->findById((int) $model->id);
-    }
-
-    public function save(Order $order): Order
-    {
-        $model = OrderModel::query()->whereKey($order->id())->firstOrFail();
-        $this->mapper->fillModel($order, $model)->save();
-
-        foreach ($order->items() as $item) {
-            $itemModel = $item->id()
-                ? OrderItemModel::query()->whereKey($item->id())->firstOrNew()
-                : new OrderItemModel();
-
-            $itemModel = $this->itemMapper->toModel($item, $itemModel);
-            $model->items()->save($itemModel);
-        }
-
-        foreach ($order->histories() as $history) {
-            if ($history->id()) {
-                continue;
-            }
-
-            $historyModel = $this->historyMapper->toModel($history, new OrderStatusHistoryModel());
-            $model->histories()->save($historyModel);
-        }
-
-        return $this->findById((int) $model->id);
-    }
-
-    public function findById(int $id): ?Order
-    {
-        $model = OrderModel::query()
-            ->with(['items', 'histories'])
-            ->whereKey($id)
+        $cart = Cart::query()
+            ->where('user_id', $userId)
+            ->where('status', 'active')
+            ->with(['items.product'])
             ->first();
 
-        return $model ? $this->mapper->toEntity($model) : null;
+        if (! $cart) {
+            return null;
+        }
+
+        $items = $cart->items
+            ->map(static function ($item): array {
+                $product = $item->product;
+
+                $quantity = max(0, (int) ($item->quantity ?? 0));
+
+                $unitPrice = (float) (
+                    $item->price
+                    ?? $item->unit_price
+                    ?? $product?->price
+                    ?? 0
+                );
+
+                return [
+                    'id' => (int) $item->id,
+                    'product_id' => (int) ($item->product_id ?? $product?->id ?? 0),
+                    'product_name' => (string) (
+                        $product?->name
+                        ?? $item->product_name
+                        ?? 'Product'
+                    ),
+                    'sku' => $product?->sku
+                        ?? $item->sku
+                        ?? null,
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'subtotal' => $quantity * $unitPrice,
+                    'currency' => 'IDR',
+                ];
+            })
+            ->filter(static fn (array $item): bool => $item['quantity'] > 0 && $item['product_id'] > 0)
+            ->values()
+            ->all();
+
+        return [
+            'id' => (int) $cart->id,
+            'items' => $items,
+        ];
     }
 
-    public function findByOrderNumber(string $orderNumber): ?Order
+    public function markAsOrdered(int $cartId, int $orderId): void
     {
-        $model = OrderModel::query()
-            ->with(['items', 'histories'])
-            ->where('order_number', $orderNumber)
-            ->first();
-
-        return $model ? $this->mapper->toEntity($model) : null;
-    }
-
-    public function findByIdentifier(int|string $identifier): ?Order
-    {
-        if (is_numeric($identifier)) {
-            return $this->findById((int) $identifier);
-        }
-
-        return $this->findByOrderNumber((string) $identifier);
-    }
-
-    public function paginateForUser(?int $userId, array $filters = [], int $perPage = 15): LengthAwarePaginator
-    {
-        $query = OrderModel::query()->with(['items', 'histories'])->latest('id');
-
-        if ($userId !== null) {
-            $query->where('user_id', $userId);
-        }
-
-        if (! empty($filters['status'])) {
-            $query->where('status', $filters['status']);
-        }
-
-        if (! empty($filters['payment_status'])) {
-            $query->where('payment_status', $filters['payment_status']);
-        }
-
-        $paginator = $query->paginate(max(1, min($perPage, 100)));
-        $paginator->setCollection(
-            $paginator->getCollection()->map(fn (OrderModel $model): Order => $this->mapper->toEntity($model))
-        );
-
-        return $paginator;
+        Cart::query()
+            ->whereKey($cartId)
+            ->update([
+                'status' => 'ordered',
+                'updated_at' => now(),
+            ]);
     }
 }

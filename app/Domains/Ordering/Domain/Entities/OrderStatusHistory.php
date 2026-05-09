@@ -16,7 +16,7 @@ final class OrderStatusHistory
         private ?OrderStatus $fromStatus,
         private OrderStatus $toStatus,
         private ?string $note = null,
-        private ?int $changedBy = null,
+        private ?string $changedBy = null,
         private ?DateTimeInterface $createdAt = null,
     ) {
         $this->createdAt ??= new DateTimeImmutable();
@@ -26,7 +26,7 @@ final class OrderStatusHistory
         ?OrderStatus $fromStatus,
         OrderStatus $toStatus,
         ?string $note = null,
-        ?int $changedBy = null,
+        ?string $changedBy = null,
     ): self {
         return new self(
             id: null,
@@ -69,7 +69,7 @@ final class OrderStatusHistory
         return $this->note;
     }
 
-    public function changedBy(): ?int
+    public function changedBy(): ?string
     {
         return $this->changedBy;
     }

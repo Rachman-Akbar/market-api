@@ -6,52 +6,50 @@ namespace App\Domains\Ordering\Infrastructure\Persistence\Readers;
 
 use App\Domains\Ordering\Domain\Repositories\CartForOrderReaderInterface;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 final class EloquentCartForOrderReader implements CartForOrderReaderInterface
 {
-    public function getActiveCartForUser(int $userId): ?array
+    public function getActiveCartForUser(string $userId): ?array
     {
-        $cartQuery = DB::table('carts')->where('user_id', $userId);
-
-        if (Schema::hasColumn('carts', 'status')) {
-            $cartQuery->whereIn('status', ['active', 'open']);
-        }
-
-        $cart = $cartQuery->latest('id')->first();
+        $cart = DB::table('carts')
+            ->where('user_id', $userId)
+            ->where('status', 'active')
+            ->first();
 
         if (! $cart) {
             return null;
         }
 
-        $selects = [
-            'cart_items.product_id',
-            'cart_items.quantity',
-            'products.name as product_name',
-            'products.price as unit_price',
-        ];
-
-        $selects[] = Schema::hasColumn('products', 'sku')
-            ? 'products.sku'
-            : DB::raw('NULL as sku');
-
-        $selects[] = Schema::hasColumn('products', 'currency')
-            ? 'products.currency'
-            : DB::raw("'IDR' as currency");
-
         $items = DB::table('cart_items')
-            ->join('products', 'products.id', '=', 'cart_items.product_id')
-            ->where('cart_items.cart_id', $cart->id)
-            ->select($selects)
+            ->where('cart_id', $cart->id)
             ->get()
-            ->map(static fn ($item): array => [
-                'product_id' => (int) $item->product_id,
-                'product_name' => (string) $item->product_name,
-                'sku' => $item->sku ? (string) $item->sku : null,
-                'quantity' => (int) $item->quantity,
-                'unit_price' => (float) $item->unit_price,
-                'currency' => (string) $item->currency,
-            ])
+            ->map(static function (object $item): array {
+                $quantity = max(0, (int) ($item->quantity ?? 0));
+
+                $unitPrice = (float) (
+                    $item->price_snapshot
+                    ?? $item->price
+                    ?? $item->unit_price
+                    ?? 0
+                );
+
+                return [
+                    'id' => (int) $item->id,
+                    'product_id' => (int) $item->product_id,
+                    'product_name' => (string) (
+                        $item->product_name_snapshot
+                        ?? $item->product_name
+                        ?? 'Product'
+                    ),
+                    'sku' => $item->sku ?? null,
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'subtotal' => $quantity * $unitPrice,
+                    'currency' => 'IDR',
+                ];
+            })
+            ->filter(static fn (array $item): bool => $item['quantity'] > 0 && $item['product_id'] > 0)
+            ->values()
             ->all();
 
         return [
@@ -62,22 +60,11 @@ final class EloquentCartForOrderReader implements CartForOrderReaderInterface
 
     public function markAsOrdered(int $cartId, int $orderId): void
     {
-        $payload = [];
-
-        if (Schema::hasColumn('carts', 'status')) {
-            $payload['status'] = 'ordered';
-        }
-
-        if (Schema::hasColumn('carts', 'order_id')) {
-            $payload['order_id'] = $orderId;
-        }
-
-        if (Schema::hasColumn('carts', 'checked_out_at')) {
-            $payload['checked_out_at'] = now();
-        }
-
-        if ($payload !== []) {
-            DB::table('carts')->where('id', $cartId)->update($payload);
-        }
+        DB::table('carts')
+            ->where('id', $cartId)
+            ->update([
+                'status' => 'ordered',
+                'updated_at' => now(),
+            ]);
     }
 }

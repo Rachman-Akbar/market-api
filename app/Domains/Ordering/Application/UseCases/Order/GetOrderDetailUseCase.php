@@ -15,7 +15,7 @@ final readonly class GetOrderDetailUseCase
     {
     }
 
-    public function execute(int|string $identifier, int $authenticatedUserId, bool $canViewAllOrders = false): Order
+    public function execute(int|string $identifier, string $authenticatedUserId, bool $canViewAllOrders = false): Order
     {
         $order = $this->orders->findByIdentifier($identifier);
 

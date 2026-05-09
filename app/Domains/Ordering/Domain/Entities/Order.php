@@ -21,7 +21,7 @@ final class Order
     public function __construct(
         private ?int $id,
         private OrderNumber $orderNumber,
-        private int $userId,
+        private string $userId,
         private OrderStatus $status,
         private PaymentStatus $paymentStatus,
         private ShippingAddress $shippingAddress,
@@ -37,7 +37,7 @@ final class Order
         private ?DateTimeInterface $createdAt = null,
         private ?DateTimeInterface $updatedAt = null,
     ) {
-        if ($userId <= 0) {
+        if (trim($userId) === '') {
             throw new DomainException('Order user id is required.');
         }
 
@@ -49,7 +49,7 @@ final class Order
     /** @param array<int, OrderItem> $items */
     public static function create(
         OrderNumber $orderNumber,
-        int $userId,
+        string $userId,
         ShippingAddress $shippingAddress,
         array $items,
         Money $subtotal,
@@ -74,7 +74,14 @@ final class Order
             grandTotal: $subtotal,
             notes: $notes,
             paymentMethod: $paymentMethod,
-            histories: [OrderStatusHistory::create(null, $status, 'Order created', $userId)],
+            histories: [
+                OrderStatusHistory::create(
+                    fromStatus: null,
+                    toStatus: $status,
+                    note: 'Order created',
+                    changedBy: $userId,
+                ),
+            ],
         );
     }
 
@@ -93,7 +100,7 @@ final class Order
         return $this->orderNumber;
     }
 
-    public function userId(): int
+    public function userId(): string
     {
         return $this->userId;
     }
@@ -170,8 +177,11 @@ final class Order
         return $this->updatedAt;
     }
 
-    public function changeStatus(OrderStatus $newStatus, ?string $note = null, ?int $changedBy = null): void
-    {
+    public function changeStatus(
+        OrderStatus $newStatus,
+        ?string $note = null,
+        ?string $changedBy = null,
+    ): void {
         if ($this->status->equals($newStatus)) {
             return;
         }
@@ -182,10 +192,16 @@ final class Order
 
         $oldStatus = $this->status;
         $this->status = $newStatus;
-        $this->histories[] = OrderStatusHistory::create($oldStatus, $newStatus, $note, $changedBy);
+
+        $this->histories[] = OrderStatusHistory::create(
+            fromStatus: $oldStatus,
+            toStatus: $newStatus,
+            note: $note,
+            changedBy: $changedBy,
+        );
     }
 
-    public function belongsTo(int $userId): bool
+    public function belongsTo(string $userId): bool
     {
         return $this->userId === $userId;
     }

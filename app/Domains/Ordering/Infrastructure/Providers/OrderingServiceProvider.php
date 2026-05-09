@@ -17,9 +17,20 @@ final class OrderingServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(OrderRepositoryInterface::class, EloquentOrderRepository::class);
-        $this->app->bind(CartForOrderReaderInterface::class, EloquentCartForOrderReader::class);
-        $this->app->bind(ProductStockRepositoryInterface::class, EloquentProductStockRepository::class);
+        $this->app->bind(
+            OrderRepositoryInterface::class,
+            EloquentOrderRepository::class
+        );
+
+        $this->app->bind(
+            CartForOrderReaderInterface::class,
+            EloquentCartForOrderReader::class
+        );
+
+        $this->app->bind(
+            ProductStockRepositoryInterface::class,
+            EloquentProductStockRepository::class
+        );
     }
 
     public function boot(): void

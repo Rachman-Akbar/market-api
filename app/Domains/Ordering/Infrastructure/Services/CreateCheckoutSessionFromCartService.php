@@ -4,36 +4,57 @@ declare(strict_types=1);
 
 namespace App\Domains\Ordering\Infrastructure\Services;
 
+use App\Domains\Ordering\Domain\Repositories\CartForOrderReaderInterface;
 use App\Models\CheckoutSession;
 use App\Models\CheckoutSessionItem;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 
 final class CreateCheckoutSessionFromCartService
 {
+    public function __construct(
+        private readonly CartForOrderReaderInterface $cartReader,
+    ) {
+    }
+
     public function create(array $payload, User $user, ?UploadedFile $transferProof = null): CheckoutSession
     {
         return DB::transaction(function () use ($payload, $user, $transferProof): CheckoutSession {
-            /*
-             * TODO:
-             * Ganti bagian ini dengan cart reader kamu.
-             *
-             * Target hasil:
-             * $cartItems = [
-             *   [
-             *     'product_id' => 1,
-             *     'product_name' => 'Nama Produk',
-             *     'sku' => 'SKU-1',
-             *     'quantity' => 2,
-             *     'unit_price' => 10000,
-             *     'subtotal' => 20000,
-             *   ],
-             * ];
-             */
-            $cartItems = [];
+            $userId = (string) $user->getAuthIdentifier();
+            $paymentMethod = (string) ($payload['payment_method'] ?? '');
+
+            $cart = $this->cartReader->getActiveCartForUser($userId);
+
+            if ($cart === null || empty($cart['items'])) {
+                throw new RuntimeException('Keranjang masih kosong.');
+            }
+
+            $cartItems = array_values(array_map(
+                static function (array $item): array {
+                    $quantity = max(0, (int) ($item['quantity'] ?? 0));
+                    $unitPrice = (float) ($item['unit_price'] ?? 0);
+
+                    return [
+                        'cart_item_id' => (int) ($item['id'] ?? 0),
+                        'product_id' => (int) ($item['product_id'] ?? 0),
+                        'product_name' => (string) ($item['product_name'] ?? 'Product'),
+                        'sku' => $item['sku'] ?? null,
+                        'quantity' => $quantity,
+                        'unit_price' => $unitPrice,
+                        'subtotal' => $quantity * $unitPrice,
+                    ];
+                },
+                $cart['items'],
+            ));
+
+            $cartItems = array_values(array_filter(
+                $cartItems,
+                static fn (array $item): bool => $item['quantity'] > 0 && $item['product_id'] > 0,
+            ));
 
             if ($cartItems === []) {
                 throw new RuntimeException('Keranjang masih kosong.');
@@ -51,24 +72,36 @@ final class CreateCheckoutSessionFromCartService
             $grandTotal = $subtotal + $shippingCost + $taxTotal - $discountTotal;
 
             $proofPath = null;
+            $manualTransferPayload = null;
 
-            if (($payload['payment_method'] ?? null) === 'manual_transfer' && $transferProof) {
-                $proofPath = $transferProof->store('manual-transfer-proofs', 'public');
+            if ($paymentMethod === 'manual_transfer') {
+                $manualTransferPayload = Arr::except(
+                    $payload['manual_transfer'] ?? [],
+                    ['transfer_proof'],
+                );
+
+                if ($manualTransferPayload === []) {
+                    $manualTransferPayload = null;
+                }
+
+                if ($transferProof instanceof UploadedFile) {
+                    $proofPath = $transferProof->store('manual-transfer-proofs', 'public');
+                }
             }
 
             $session = CheckoutSession::query()->create([
                 'session_number' => $this->makeSessionNumber(),
-                'user_id' => (string) $user->getAuthIdentifier(),
+                'user_id' => $userId,
 
-                'status' => $payload['payment_method'] === 'manual_transfer'
+                'status' => $paymentMethod === 'manual_transfer'
                     ? 'waiting_manual_verification'
-                    : 'draft',
+                    : 'pending_payment',
 
-                'payment_gateway' => $payload['payment_method'] === 'midtrans'
+                'payment_gateway' => $paymentMethod === 'midtrans'
                     ? 'midtrans'
                     : null,
 
-                'payment_method' => (string) $payload['payment_method'],
+                'payment_method' => $paymentMethod,
 
                 'currency' => 'IDR',
                 'subtotal' => $subtotal,
@@ -81,7 +114,7 @@ final class CreateCheckoutSessionFromCartService
                 'shipping_address' => $payload['shipping_address'],
                 'notes' => $payload['notes'] ?? null,
 
-                'manual_transfer_payload' => $payload['manual_transfer'] ?? null,
+                'manual_transfer_payload' => $manualTransferPayload,
                 'manual_transfer_proof_path' => $proofPath,
                 'expires_at' => now()->addDay(),
             ]);

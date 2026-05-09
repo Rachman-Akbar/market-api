@@ -13,12 +13,18 @@ final readonly class GetOrdersUseCase
     {
     }
 
-    public function execute(int $authenticatedUserId, bool $canViewAllOrders = false, array $filters = [], int $perPage = 15): LengthAwarePaginator
-    {
-        $userId = $canViewAllOrders ? ($filters['user_id'] ?? null) : $authenticatedUserId;
+    public function execute(
+        string $authenticatedUserId,
+        bool $canViewAllOrders = false,
+        array $filters = [],
+        int $perPage = 15,
+    ): LengthAwarePaginator {
+        $userId = $canViewAllOrders
+            ? (($filters['user_id'] ?? null) ?: null)
+            : $authenticatedUserId;
 
         return $this->orders->paginateForUser(
-            userId: $userId !== null ? (int) $userId : null,
+            userId: $userId !== null ? (string) $userId : null,
             filters: $filters,
             perPage: $perPage,
         );

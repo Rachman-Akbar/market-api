@@ -19,5 +19,5 @@ interface OrderRepositoryInterface
 
     public function findByIdentifier(int|string $identifier): ?Order;
 
-    public function paginateForUser(?int $userId, array $filters = [], int $perPage = 15): LengthAwarePaginator;
+    public function paginateForUser(?string $userId, array $filters = [], int $perPage = 15): LengthAwarePaginator;
 }
