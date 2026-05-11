@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
@@ -20,15 +21,14 @@ class User extends Authenticatable
 
     protected $keyType = 'string';
 
-    protected $fillable = [
-        'firebase_uid',
-        'email',
-        'password',
-        'role',
-        'name',
-        'avatar',
-        'is_email_verified',
-    ];
+protected $fillable = [
+    'firebase_uid',
+    'email',
+    'password',
+    'name',
+    'avatar',
+    'is_email_verified',
+];
 
     protected $hidden = [
         'password',
@@ -48,4 +48,11 @@ class User extends Authenticatable
             'role_id',
         )->withTimestamps();
     }
+
+
+
+public function store(): HasOne
+{
+    return $this->hasOne(\App\Domains\Stores\Domain\Entities\Store::class, 'owner_user_id');
+}
 }

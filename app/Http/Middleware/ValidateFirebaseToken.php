@@ -3,19 +3,23 @@
 namespace App\Http\Middleware;
 
 use App\Domains\Identity\Infrastructure\Firebase\FirebaseTokenVerifier;
-use App\Models\Role;
-use App\Models\User;
+use App\Domains\Identity\Infrastructure\Persistence\Eloquent\UserRepository;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 use LogicException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 final class ValidateFirebaseToken
 {
+    public function __construct(
+        private readonly FirebaseTokenVerifier $verifier,
+        private readonly UserRepository $users,
+    ) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         $bearerToken = $request->bearerToken();
@@ -27,100 +31,37 @@ final class ValidateFirebaseToken
         }
 
         try {
-            /** @var FirebaseTokenVerifier $verifier */
-            $verifier = app(FirebaseTokenVerifier::class);
+            $firebaseUser = $this->verifier->verify($bearerToken);
 
-            $firebaseUser = $verifier->verify($bearerToken);
+            $user = $this->users->syncFromFirebase($firebaseUser);
 
-            $firebaseUid = $firebaseUser['uid'] ?? null;
-            $email = $firebaseUser['email'] ?? null;
-            $name = $firebaseUser['name'] ?? null;
-            $avatar = $firebaseUser['picture'] ?? null;
-            $isEmailVerified = (bool) ($firebaseUser['email_verified'] ?? false);
+            Auth::guard()->setUser($user);
 
-            if (! is_string($firebaseUid) || trim($firebaseUid) === '') {
-                return response()->json([
-                    'message' => 'Firebase UID is missing from token.',
-                ], 401);
-            }
-
-            if (! is_string($email) || trim($email) === '') {
-                return response()->json([
-                    'message' => 'Firebase email is missing from token.',
-                ], 401);
-            }
-
-            $user = DB::transaction(function () use (
-                $firebaseUid,
-                $email,
-                $name,
-                $avatar,
-                $isEmailVerified
-            ): User {
-                $userByUid = User::query()
-                    ->where('firebase_uid', $firebaseUid)
-                    ->first();
-
-                $userByEmail = User::query()
-                    ->where('email', $email)
-                    ->first();
-
-                if (
-                    $userByUid &&
-                    $userByEmail &&
-                    $userByUid->id !== $userByEmail->id
-                ) {
-                    throw new LogicException(
-                        'Firebase UID and email are linked to different local users.'
-                    );
-                }
-
-                if (
-                    ! $userByUid &&
-                    $userByEmail &&
-                    $userByEmail->firebase_uid &&
-                    $userByEmail->firebase_uid !== $firebaseUid
-                ) {
-                    throw new LogicException(
-                        'This email is already linked to a different Firebase UID.'
-                    );
-                }
-
-                $user = $userByUid ?: $userByEmail;
-
-                if (! $user) {
-                    $user = User::query()->create([
-                        'firebase_uid' => $firebaseUid,
-                        'email' => $email,
-                        'name' => $name ?: $email,
-                        'avatar' => $avatar,
-                        'is_email_verified' => $isEmailVerified,
-                    ]);
-                } else {
-                    $user->forceFill([
-                        'firebase_uid' => $user->firebase_uid ?: $firebaseUid,
-                        'email' => $email,
-                        'name' => $name ?: $user->name,
-                        'avatar' => $avatar ?: $user->avatar,
-                        'is_email_verified' => $isEmailVerified,
-                    ])->save();
-                }
-
-                $this->assignDefaultRoleIfMissing($user);
-
-                return $user;
-            });
-
-            Auth::setUser($user);
-
-            $request->setUserResolver(function () use ($user) {
+            $request->setUserResolver(static function () use ($user) {
                 return $user;
             });
 
             $request->attributes->set('firebase_user', $firebaseUser);
-            $request->attributes->set('firebase_uid', $firebaseUid);
+            $request->attributes->set('firebase_uid', $firebaseUser['uid'] ?? null);
 
             return $next($request);
+        } catch (InvalidArgumentException $e) {
+            Log::warning('Firebase token payload is incomplete', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 401);
+        } catch (LogicException $e) {
+            Log::warning('Firebase account conflict', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Firebase account could not be linked to local user.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 409);
         } catch (Throwable $e) {
             Log::error('Firebase authentication failed', [
                 'message' => $e->getMessage(),
@@ -133,26 +74,5 @@ final class ValidateFirebaseToken
                 'error' => config('app.debug') ? $e->getMessage() : null,
             ], 401);
         }
-    }
-
-    private function assignDefaultRoleIfMissing(User $user): void
-    {
-        if (! method_exists($user, 'roles')) {
-            return;
-        }
-
-        if ($user->roles()->exists()) {
-            return;
-        }
-
-        $role = Role::query()->firstOrCreate(
-            ['name' => 'buyer'],
-            [
-                'label' => 'buyer',
-                'description' => 'Default buyer role.',
-            ]
-        );
-
-        $user->roles()->syncWithoutDetaching([$role->id]);
     }
 }

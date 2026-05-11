@@ -10,6 +10,22 @@ final class FirebaseAuthService
         private readonly FirebaseAuth $auth,
     ) {}
 
+    public function createUser(string $email, string $password, string $name): string
+    {
+        $record = $this->auth->createUser([
+            'email' => $email,
+            'password' => $password,
+            'displayName' => $name,
+        ]);
+
+        return $record->uid;
+    }
+
+    public function deleteUser(string $firebaseUid): void
+    {
+        $this->auth->deleteUser($firebaseUid);
+    }
+
     public function createPasswordResetLink(string $email): string
     {
         return $this->auth->getPasswordResetLink($email);

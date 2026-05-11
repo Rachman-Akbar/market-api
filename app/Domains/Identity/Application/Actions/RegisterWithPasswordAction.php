@@ -2,58 +2,69 @@
 
 namespace App\Domains\Identity\Application\Actions;
 
-use App\Domains\Identity\Infrastructure\Persistence\Eloquent\UserRepository;
 use App\Domains\Identity\Infrastructure\Firebase\FirebaseAuthService;
+use App\Domains\Identity\Infrastructure\Persistence\Eloquent\UserRepository;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 final class RegisterWithPasswordAction
 {
     public function __construct(
         private readonly UserRepository $users,
-        private readonly FirebaseAuthService $firebase
+        private readonly FirebaseAuthService $firebase,
+        private readonly IssueApiTokenAction $tokens,
+        private readonly BuildAuthPayloadAction $payload,
     ) {}
 
-    public function execute(string $name, string $email, string $password): array
-    {
-        /**
-         * 1️⃣ CREATE USER DI FIREBASE
-         */
-        $firebaseUid = $this->firebase->createUser(
-            $email,
-            $password,
-            $name
-        );
+    public function execute(
+        string $name,
+        string $email,
+        string $password
+    ): array {
+        $firebaseUid = null;
 
-        /**
-         * 2️⃣ CREATE USER DI LARAVEL
-         */
-        $user = $this->users->createWithPassword(
-            $name,
-            $email,
-            $password,
-            $firebaseUid
-        );
+        try {
+            $firebaseUid = $this->firebase->createUser(
+                email: $email,
+                password: $password,
+                name: $name,
+            );
 
-        $this->users->assignRoleByName($user, 'buyer');
+            return DB::transaction(function () use (
+                $name,
+                $email,
+                $password,
+                $firebaseUid
+            ): array {
+                $user = $this->users->createWithPassword(
+                    name: $name,
+                    email: $email,
+                    password: $password,
+                    firebaseUid: $firebaseUid,
+                );
 
-        $roles = $this->users->getRoleNames($user->refresh());
-        $activeRole = $roles[0];
+                $this->users->assignRoleByName($user, 'buyer');
 
-        $token = $user
-            ->createToken('api-token', ['role:' . $activeRole])
-            ->plainTextToken;
+                $activeRole = 'buyer';
 
-        return [
-            'user' => [
-                'id' => $user->id,
-                'firebase_uid' => $user->firebase_uid,
-                'email' => $user->email,
-                'name' => $user->name,
-                'avatar' => $user->avatar,
-                'is_email_verified' => (bool) $user->is_email_verified,
-            ],
-            'roles' => $roles,
-            'active_role' => $activeRole,
-            'api_token' => $token,
-        ];
+                $apiToken = $this->tokens->execute(
+                    user: $user,
+                    activeRole: $activeRole,
+                    revokeExistingTokens: false,
+                );
+
+                return $this->payload->execute(
+                    user: $user,
+                    activeRole: $activeRole,
+                    apiToken: $apiToken,
+                );
+            });
+        } catch (Throwable $e) {
+            if ($firebaseUid !== null) {
+                $this->firebase->deleteUser($firebaseUid);
+            }
+
+            throw $e;
+        }
     }
 }

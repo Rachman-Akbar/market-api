@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use App\Domains\Stores\Presentation\Http\Controllers\StoreController;
+use App\Domains\Stores\Presentation\Http\Controllers\SellerOnboardingController;
+use App\Http\Middleware\EnsureApiTokenIsValid;
 
 $storeRoutes = function (): void {
     Route::get('/', [StoreController::class, 'index'])
@@ -29,3 +31,7 @@ Route::prefix('stores')
 Route::prefix('catalog/stores')
     ->name('catalog.stores.')
     ->group($storeRoutes);
+
+Route::middleware(['auth:sanctum', EnsureApiTokenIsValid::class])->group(function () {
+    Route::post('/seller/onboarding', [SellerOnboardingController::class, 'store']);
+});
