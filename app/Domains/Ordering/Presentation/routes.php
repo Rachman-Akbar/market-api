@@ -8,6 +8,7 @@ use App\Domains\Ordering\Presentation\Http\Controllers\ManualTransferApprovalCon
 use App\Domains\Ordering\Presentation\Http\Controllers\MidtransCheckoutSessionPaymentController;
 use App\Domains\Ordering\Presentation\Http\Controllers\MidtransNotificationController;
 use App\Domains\Ordering\Presentation\Http\Controllers\OrderController;
+use App\Domains\Ordering\Presentation\Http\Controllers\OrderPaymentStatusController;
 use App\Http\Middleware\EnsureApiTokenIsValid;
 use Illuminate\Support\Facades\Route;
 
@@ -63,5 +64,8 @@ Route::middleware(['auth:sanctum', EnsureApiTokenIsValid::class])->group(functio
 
             Route::patch('/{order}/status', [OrderController::class, 'updateStatus'])
                 ->name('update-status');
+
+                Route::get('/payment', [OrderPaymentStatusController::class, 'show'])
+    ->name('payment.show');
         });
 });

@@ -141,3 +141,4 @@ final class CreateCheckoutSessionFromCartService
         return 'CHK-' . now()->format('Ymd') . '-' . Str::upper(Str::random(8));
     }
 }
+
