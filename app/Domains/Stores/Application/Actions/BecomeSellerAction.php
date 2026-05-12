@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Stores\Application\Actions;
 
 use App\Domains\Identity\Application\Actions\IssueApiTokenAction;
 use App\Domains\Identity\Infrastructure\Persistence\Eloquent\UserRepository;
-use app\Domains\Stores\Infrastructure\Persistence\Repositories\EloquentStoreRepository;
+use App\Domains\Stores\Infrastructure\Persistence\Repositories\SellerStoreRepository;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -15,14 +17,13 @@ final class BecomeSellerAction
     public function __construct(
         private readonly UserRepository $users,
         private readonly IssueApiTokenAction $tokens,
+        private readonly SellerStoreRepository $stores,
     ) {}
 
     public function execute(User $user, array $data): array
     {
-        return DB::transaction(function () use ($user, $data) {
-            $existingStore = Store::query()
-                ->where('owner_user_id', $user->id)
-                ->first();
+        return DB::transaction(function () use ($user, $data): array {
+            $existingStore = $this->stores->findByUserId($user->id);
 
             if ($existingStore !== null) {
                 throw ValidationException::withMessages([
@@ -30,14 +31,15 @@ final class BecomeSellerAction
                 ]);
             }
 
-            $store = Store::query()->create([
-                'owner_user_id' => $user->id,
+            $store = $this->stores->createFromSellerOnboarding([
+                'user_id' => $user->id,
                 'name' => $data['store_name'],
                 'slug' => $this->generateUniqueSlug($data['store_name']),
                 'description' => $data['description'] ?? null,
                 'phone' => $data['phone'],
+                'email' => $user->email,
                 'address' => $data['address'],
-                'status' => 'active',
+                'is_active' => true,
             ]);
 
             $this->users->assignRoleByName($user, 'seller');
@@ -63,7 +65,8 @@ final class BecomeSellerAction
                     'id' => $store->id,
                     'name' => $store->name,
                     'slug' => $store->slug,
-                    'status' => $store->status,
+                    'status' => $store->is_active ? 'active' : 'inactive',
+                    'is_active' => (bool) $store->is_active,
                 ],
                 'roles' => $roles,
                 'active_role' => 'seller',
@@ -83,7 +86,7 @@ final class BecomeSellerAction
         $slug = $baseSlug;
         $counter = 2;
 
-        while (Store::query()->where('slug', $slug)->exists()) {
+        while ($this->stores->existsBySlug($slug)) {
             $slug = $baseSlug . '-' . $counter;
             $counter++;
         }
