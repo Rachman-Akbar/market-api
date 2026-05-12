@@ -4,7 +4,7 @@ namespace App\Domains\Stores\Application\Actions;
 
 use App\Domains\Identity\Application\Actions\IssueApiTokenAction;
 use App\Domains\Identity\Infrastructure\Persistence\Eloquent\UserRepository;
-use App\Domains\Stores\Domain\Entities\Store;
+use app\Domains\Stores\Infrastructure\Persistence\Repositories\EloquentStoreRepository;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
