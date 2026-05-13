@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domains\Stores\Application\UseCases;
 
-use App\Domains\Stores\Domain\Repositories\StoreRepositoryInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Domains\Stores\Application\ReadModels\Store\StoreCatalogReaderInterface;
 
 final class ListStoreUseCase
 {
     public function __construct(
-        private StoreRepositoryInterface $repository
+        private StoreCatalogReaderInterface $reader
     ) {}
 
-    public function execute(array $filters = [])
+    public function execute(array $filters = []): LengthAwarePaginator
     {
-        return $this->repository->paginate($filters);
+        return $this->reader->paginatedStores($filters);
     }
 }

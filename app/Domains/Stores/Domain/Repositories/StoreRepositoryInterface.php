@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Stores\Domain\Repositories;
 
 use App\Domains\Stores\Domain\Entities\Store;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 interface StoreRepositoryInterface
 {
@@ -15,9 +18,9 @@ interface StoreRepositoryInterface
 
     public function create(Store $store): Store;
 
-    public function listStores(array $filters = []);
+    public function listStores(array $filters = []): Collection;
 
-    public function findBySlug(string $slug);
+    public function findBySlug(string $slug): ?Store;
 
-    public function listProductsByStoreSlug(string $slug);
+    public function listProductsByStoreSlug(string $slug): Collection;
 }

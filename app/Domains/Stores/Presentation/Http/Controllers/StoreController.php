@@ -11,6 +11,7 @@ use App\Domains\Stores\Application\UseCases\ListStoreUseCase;
 use App\Domains\Stores\Application\UseCases\GetStoreBySlugUseCase;
 use App\Domains\Stores\Application\UseCases\ListProductByStoreSlugUseCase;
 use App\Domains\Stores\Presentation\Http\Resources\StoreResource;
+use App\Domains\Stores\Presentation\Http\Resources\StoreListResource;
 use App\Domains\Stores\Presentation\Http\Resources\ProductResource;
 
 final class StoreController extends Controller
@@ -19,9 +20,9 @@ final class StoreController extends Controller
         Request $request,
         ListStoreUseCase $useCase
     ): AnonymousResourceCollection {
-        $stores = $useCase->execute($request->all());
+        $stores = $useCase->execute($request->query());
 
-        return StoreResource::collection($stores);
+        return StoreListResource::collection($stores);
     }
 
     public function showBySlug(
@@ -40,7 +41,7 @@ final class StoreController extends Controller
         Request $request,
         ListProductByStoreSlugUseCase $useCase
     ): AnonymousResourceCollection {
-        $products = $useCase->execute($slug, $request->all());
+        $products = $useCase->execute($slug, $request->query());
 
         return ProductResource::collection($products);
     }

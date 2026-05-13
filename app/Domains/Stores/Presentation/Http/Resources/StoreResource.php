@@ -1,24 +1,33 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Stores\Presentation\Http\Resources;
 
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class StoreResource extends JsonResource
+final class StoreResource extends JsonResource
 {
-    public function toArray($request): array
+    public function toArray(Request $request): array
     {
+        $detail = $this->detail();
+
         return [
             'id' => $this->id(),
+            'user_id' => $this->userId(),
             'name' => $this->name(),
             'slug' => $this->slug(),
-            'logo_url' => method_exists($this->resource, 'logoUrl') ? $this->logoUrl() : null,
-            'banner_url' => method_exists($this->resource, 'bannerUrl') ? $this->bannerUrl() : null,
-            'short_description' => method_exists($this->resource, 'shortDescription') ? $this->shortDescription() : null,
-            'city' => method_exists($this->resource, 'city') ? $this->city() : null,
-            'province' => method_exists($this->resource, 'province') ? $this->province() : null,
+            'description' => $this->description(),
+            'logo_url' => $this->logo(),
             'is_active' => $this->isActive(),
-            'details' => method_exists($this->resource, 'details') ? $this->details() : null,
+            'detail' => $detail ? [
+                'id' => $detail->id(),
+                'store_id' => $detail->storeId(),
+                'description' => $detail->description(),
+                'address' => $detail->address(),
+                'phone' => $detail->phone(),
+            ] : null,
         ];
     }
 }

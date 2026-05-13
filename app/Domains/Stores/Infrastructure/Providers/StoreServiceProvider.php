@@ -9,6 +9,8 @@ use App\Domains\Stores\Domain\Repositories\StoreRepositoryInterface;
 use App\Domains\Stores\Infrastructure\Persistence\Repositories\EloquentStoreRepository;
 use App\Domains\Stores\Application\ReadModels\Product\ProductCatalogReaderInterface;
 use App\Domains\Stores\Infrastructure\ReadModels\Product\EloquentProductCatalogReader;
+use App\Domains\Stores\Application\ReadModels\Store\StoreCatalogReaderInterface;
+use App\Domains\Stores\Infrastructure\ReadModels\Store\EloquentStoreCatalogReader;
 
 final class StoreServiceProvider extends ServiceProvider
 {
@@ -22,6 +24,11 @@ final class StoreServiceProvider extends ServiceProvider
         $this->app->bind(
             ProductCatalogReaderInterface::class,
             EloquentProductCatalogReader::class,
+        );
+
+        $this->app->bind(
+            StoreCatalogReaderInterface::class,
+            EloquentStoreCatalogReader::class,
         );
     }
 }
