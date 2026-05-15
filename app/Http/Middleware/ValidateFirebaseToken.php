@@ -32,7 +32,22 @@ final class ValidateFirebaseToken
 
         try {
             $firebaseUser = $this->verifier->verify($bearerToken);
+        } catch (Throwable $e) {
+            Log::error('Firebase token verification failed', [
+                'message' => $e->getMessage(),
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
 
+            return response()->json([
+                'message' => 'Firebase ID token is invalid or could not be verified.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+                'exception' => config('app.debug') ? $e::class : null,
+            ], 401);
+        }
+
+        try {
             $user = $this->users->syncFromFirebase($firebaseUser);
 
             Auth::guard()->setUser($user);
@@ -42,7 +57,7 @@ final class ValidateFirebaseToken
             });
 
             $request->attributes->set('firebase_user', $firebaseUser);
-            $request->attributes->set('firebase_uid', $firebaseUser['uid'] ?? null);
+            $request->attributes->set('firebase_uid', $firebaseUser['uid'] ?? $firebaseUser['sub'] ?? null);
 
             return $next($request);
         } catch (InvalidArgumentException $e) {
@@ -63,16 +78,18 @@ final class ValidateFirebaseToken
                 'error' => config('app.debug') ? $e->getMessage() : null,
             ], 409);
         } catch (Throwable $e) {
-            Log::error('Firebase authentication failed', [
+            Log::error('Firebase user sync failed', [
                 'message' => $e->getMessage(),
+                'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
 
             return response()->json([
-                'message' => 'Firebase ID token is invalid or user could not be authenticated.',
+                'message' => 'Firebase user could not be synced to backend.',
                 'error' => config('app.debug') ? $e->getMessage() : null,
-            ], 401);
+                'exception' => config('app.debug') ? $e::class : null,
+            ], 500);
         }
     }
 }

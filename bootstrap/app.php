@@ -25,7 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Domains\Cart\Infrastructure\Providers\CartServiceProvider::class,
         App\Domains\Ordering\Infrastructure\Providers\OrderingServiceProvider::class,
 
-        // Aktifkan ini kalau file provider-nya memang ada:
+        // Aktifkan hanya kalau file provider-nya memang ada.
         // App\Domains\Identity\Infrastructure\Providers\IdentityServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
@@ -34,11 +34,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'api.token' => EnsureApiTokenIsValid::class,
             'firebase.token' => ValidateFirebaseToken::class,
-            'firebase.auth' => App\Domains\Identity\Infrastructure\Firebase\VerifyFirebaseToken::class,
             'verified.email' => EnsureEmailIsVerified::class,
             'role' => EnsureUserHasRole::class,
-
-            // Tambahkan ini
             'active.role' => EnsureActiveRole::class,
         ]);
     })
@@ -47,13 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
             AuthenticationException $exception,
             Request $request
         ) {
-            if (
-                $request->is('api/*') ||
-                $request->is('identity/*') ||
-                $request->is('catalog/*') ||
-                $request->is('seller/*') ||
-                $request->expectsJson()
-            ) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
                     'message' => 'Unauthenticated.',
                 ], 401);
