@@ -1,13 +1,16 @@
 <?php
 
+use App\Http\Middleware\EnsureActiveRole;
 use App\Http\Middleware\EnsureApiTokenIsValid;
 use App\Http\Middleware\EnsureEmailIsVerified;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\ValidateFirebaseToken;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -34,9 +37,29 @@ return Application::configure(basePath: dirname(__DIR__))
             'firebase.auth' => App\Domains\Identity\Infrastructure\Firebase\VerifyFirebaseToken::class,
             'verified.email' => EnsureEmailIsVerified::class,
             'role' => EnsureUserHasRole::class,
+
+            // Tambahkan ini
+            'active.role' => EnsureActiveRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (
+            AuthenticationException $exception,
+            Request $request
+        ) {
+            if (
+                $request->is('api/*') ||
+                $request->is('identity/*') ||
+                $request->is('catalog/*') ||
+                $request->is('seller/*') ||
+                $request->expectsJson()
+            ) {
+                return response()->json([
+                    'message' => 'Unauthenticated.',
+                ], 401);
+            }
+
+            return null;
+        });
     })
     ->create();

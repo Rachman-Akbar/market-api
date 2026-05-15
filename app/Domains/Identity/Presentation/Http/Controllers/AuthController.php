@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Laravel\Sanctum\PersonalAccessToken;
 
 final class AuthController extends Controller
 {
@@ -91,33 +92,36 @@ final class AuthController extends Controller
     }
 
     public function switchRole(
-        Request $request,
-        SwitchRoleAction $action
-    ): JsonResponse {
-        $validated = $request->validate([
-            'role' => ['required', 'string', 'in:buyer,seller,admin'],
-        ]);
+    Request $request,
+    SwitchRoleAction $action
+): JsonResponse {
+    $validated = $request->validate([
+        'role' => ['bail', 'required', 'string', 'in:buyer,seller,admin'],
+    ]);
 
-        /** @var User $user */
-        $user = $request->user();
+    /** @var User $user */
+    $user = $request->user();
 
-        return response()->json(
-            $action->execute($user, $validated['role'])
-        );
-    }
+    return response()->json(
+        $action->execute($user, $validated['role'])
+    );
+}
 
     public function logout(Request $request): JsonResponse
-    {
-        /** @var User|null $user */
-        $user = $request->user();
+{
+    /** @var User|null $user */
+    $user = $request->user();
 
-        $user?->currentAccessToken()?->delete();
+    $token = $user?->currentAccessToken();
 
-        return response()->json([
-            'message' => 'Logged out successfully.',
-        ]);
+    if ($token instanceof PersonalAccessToken) {
+        $token->delete();
     }
 
+    return response()->json([
+        'message' => 'Logged out successfully.',
+    ]);
+}
     public function firebaseLoginInfo(): JsonResponse
     {
         return response()->json([

@@ -44,29 +44,25 @@ final class BuildAuthPayloadAction
         return $payload;
     }
 
-    private function resolveActiveRole(User $user, array $roles): string
-    {
-        $token = $user->currentAccessToken();
+private function resolveActiveRole(User $user, array $roles): string
+{
+    $token = $user->currentAccessToken();
 
-        foreach ($roles as $role) {
-            if ($token !== null && $token->can('role:' . $role)) {
-                return $role;
-            }
+    foreach ($roles as $role) {
+        if ($token !== null && $token->can('active-role:' . $role)) {
+            return $role;
         }
-
-        if (in_array('buyer', $roles, true)) {
-            return 'buyer';
-        }
-
-        return $roles[0] ?? 'buyer';
     }
+
+    if (in_array('buyer', $roles, true)) {
+        return 'buyer';
+    }
+
+    return $roles[0] ?? 'buyer';
+}
 
     private function resolveStorePayload(User $user): ?array
     {
-        /**
-         * Store domain kamu sekarang berisi Domain Entity, bukan Eloquent Model.
-         * Jadi untuk /me lebih aman pakai read query langsung ke table stores.
-         */
         $store = DB::table('stores')
             ->where('user_id', $user->id)
             ->first();

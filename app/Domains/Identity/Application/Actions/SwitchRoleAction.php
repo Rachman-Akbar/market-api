@@ -16,22 +16,31 @@ final class SwitchRoleAction
 
     public function execute(User $user, string $role): array
     {
+        $role = strtolower(trim($role));
+
         if (! $this->users->hasRole($user, $role)) {
             throw ValidationException::withMessages([
-                'role' => ['Requested role does not belong to the current user.'],
+                'role' => ['Role tersebut tidak dimiliki oleh user ini.'],
+            ]);
+        }   
+
+        if ($role === 'seller' && ! $this->users->hasSellerAccess($user)) {
+            throw ValidationException::withMessages([
+                'role' => ['User belum memiliki toko aktif.'],
             ]);
         }
 
         $apiToken = $this->tokens->execute(
             user: $user,
             activeRole: $role,
-            revokeExistingTokens: true,
+            revokeExistingTokens: false,
+            revokeCurrentToken: true,
         );
 
         return $this->payload->execute(
-            user: $user,
+            user: $user->fresh(['roles']),
             activeRole: $role,
             apiToken: $apiToken,
         );
     }
-}
+}   

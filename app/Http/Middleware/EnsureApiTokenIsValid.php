@@ -12,10 +12,24 @@ final class EnsureApiTokenIsValid
     {
         $user = $request->user();
 
-        if (! $user || $user->currentAccessToken() === null) {
+        if ($user === null) {
             return response()->json([
-                'message' => 'Valid API token required.',
+                'message' => 'Unauthenticated.',
             ], 401);
+        }
+
+        $token = $user->currentAccessToken();
+
+        if ($token === null) {
+            return response()->json([
+                'message' => 'Missing access token.',
+            ], 401);
+        }
+
+        if (! $token->can('web')) {
+            return response()->json([
+                'message' => 'Invalid token scope.',
+            ], 403);
         }
 
         return $next($request);
