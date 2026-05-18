@@ -1,0 +1,32 @@
+<?php
+
+namespace App\Domains\Identity\Application\Actions;
+
+use App\Domains\Identity\Infrastructure\Persistence\Eloquent\UserRepository;
+use App\Models\User;
+
+final class RegisterWithFirebaseAction
+{
+    public function __construct(
+        private readonly UserRepository $users,
+        private readonly LoginWithFirebaseAction $login,
+    ) {}
+
+    public function execute(
+        User $user,
+        ?string $name = null,
+        ?string $deviceName = null,
+    ): array {
+        $this->users->assignBuyerRoleIfMissing($user);
+
+        if (is_string($name) && trim($name) !== '') {
+            $this->users->updateDisplayName($user, $name);
+        }
+
+        return $this->login->execute(
+            user: $user->refresh(),
+            preferredRole: 'buyer',
+            deviceName: $deviceName,
+        );
+    }
+}

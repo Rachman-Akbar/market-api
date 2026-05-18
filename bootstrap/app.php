@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Middleware\EnsureActiveRole;
-use App\Http\Middleware\EnsureApiTokenIsValid;
 use App\Http\Middleware\EnsureEmailIsVerified;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\ValidateFirebaseToken;
@@ -24,15 +23,11 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Domains\Stores\Infrastructure\Providers\StoreServiceProvider::class,
         App\Domains\Cart\Infrastructure\Providers\CartServiceProvider::class,
         App\Domains\Ordering\Infrastructure\Providers\OrderingServiceProvider::class,
-
-        // Aktifkan hanya kalau file provider-nya memang ada.
-        // App\Domains\Identity\Infrastructure\Providers\IdentityServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(HandleCors::class);
 
         $middleware->alias([
-            'api.token' => EnsureApiTokenIsValid::class,
             'firebase.token' => ValidateFirebaseToken::class,
             'verified.email' => EnsureEmailIsVerified::class,
             'role' => EnsureUserHasRole::class,

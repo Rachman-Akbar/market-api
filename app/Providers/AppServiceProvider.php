@@ -10,13 +10,15 @@ use App\Domains\Identity\Infrastructure\Firebase\FirebaseTokenVerifier;
 use App\Domains\Catalog\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Catalog\Domain\Repositories\CatalogGroupRepositoryInterface;
 use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
-use App\Domains\Catalog\Domain\Repositories\StoreRepositoryInterface;
+use App\Domains\Stores\Domain\Repositories\StoreRepositoryInterface;
 
 // ✅ IMPORT IMPLEMENTATION
 use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentProductRepository;
 use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentCatalogGroupRepository;
 use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentCategoryRepository;
-use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentStoreRepository;
+use App\Domains\Stores\Infrastructure\Persistence\Repositories\EloquentStoreRepository;
+use App\Models\User;
+use App\Observers\UserObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -52,5 +54,8 @@ class AppServiceProvider extends ServiceProvider
         );
     }
 
-    public function boot(): void {}
+    public function boot(): void {
+        User::observe(UserObserver::class);
+    }
+    
 }

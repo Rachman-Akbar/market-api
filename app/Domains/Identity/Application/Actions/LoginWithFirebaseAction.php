@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Identity\Application\Actions;
 
 use App\Domains\Identity\Infrastructure\Persistence\Eloquent\UserRepository;
-use App\Models\User;
 
 final class LoginWithFirebaseAction
 {
@@ -13,25 +14,22 @@ final class LoginWithFirebaseAction
         private readonly BuildAuthPayloadAction $payload,
     ) {}
 
-    public function execute(User $user): array
-    {
-        $this->users->assignBuyerRoleIfMissing($user);
-
-        $roles = $this->users->getRoleNames($user->fresh(['roles']));
-
-        $activeRole = in_array('buyer', $roles, true)
-            ? 'buyer'
-            : ($roles[0] ?? 'buyer');
+    public function execute(
+        array $firebaseUser,
+        ?string $deviceName = null,
+    ): array {
+        $user = $this->users->syncFromFirebase($firebaseUser);
 
         $apiToken = $this->tokens->execute(
             user: $user,
-            activeRole: $activeRole,
+            deviceName: $deviceName,
+            activeRole: 'buyer',
             revokeExistingTokens: false,
         );
 
         return $this->payload->execute(
             user: $user,
-            activeRole: $activeRole,
+            activeRole: 'buyer',
             apiToken: $apiToken,
         );
     }

@@ -1,232 +1,262 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Identity\Infrastructure\Persistence\Eloquent;
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
+use Laravel\Sanctum\PersonalAccessToken;
 use LogicException;
 use RuntimeException;
 
 final class UserRepository
 {
+    public function findByEmail(string $email): ?User
+    {
+        return User::query()
+            ->where('email', strtolower(trim($email)))
+            ->first();
+    }
+
+    public function findByFirebaseUid(string $firebaseUid): ?User
+    {
+        return User::query()
+            ->where('firebase_uid', trim($firebaseUid))
+            ->first();
+    }
+
     public function syncFromFirebase(array $firebaseUser): User
     {
-        $firebaseUid = $firebaseUser['uid'] ?? $firebaseUser['sub'] ?? null;
-        $email = $firebaseUser['email'] ?? null;
+        return DB::transaction(function () use ($firebaseUser): User {
+            $firebaseUid = $firebaseUser['uid'] ?? $firebaseUser['sub'] ?? null;
+            $email = $firebaseUser['email'] ?? null;
 
-        if (! is_string($firebaseUid) || trim($firebaseUid) === '') {
-            throw new InvalidArgumentException('Firebase UID is missing.');
-        }
-
-        if (! is_string($email) || trim($email) === '') {
-            throw new InvalidArgumentException('Firebase email is missing.');
-        }
-
-        $firebaseUid = trim($firebaseUid);
-        $email = strtolower(trim($email));
-
-        $name = $firebaseUser['name'] ?? null;
-        $avatarUrl = $firebaseUser['picture'] ?? null;
-        $emailVerified = (bool) ($firebaseUser['email_verified'] ?? false);
-
-        return DB::transaction(function () use (
-            $firebaseUid,
-            $email,
-            $name,
-            $avatarUrl,
-            $emailVerified
-        ): User {
-            $user = null;
-
-            if (Schema::hasColumn('users', 'firebase_uid')) {
-                $user = User::query()
-                    ->where('firebase_uid', $firebaseUid)
-                    ->first();
+            if (! is_string($firebaseUid) || trim($firebaseUid) === '') {
+                throw new InvalidArgumentException('Firebase UID is missing.');
             }
 
-            if (! $user) {
-                $user = User::query()
-                    ->where('email', $email)
-                    ->first();
+            if (! is_string($email) || trim($email) === '') {
+                throw new InvalidArgumentException('Firebase email is missing.');
             }
 
-            if ($user) {
+            $firebaseUid = trim($firebaseUid);
+            $email = strtolower(trim($email));
+
+            $name = $firebaseUser['name'] ?? null;
+            $avatar = $firebaseUser['picture'] ?? null;
+            $isEmailVerified = (bool) ($firebaseUser['email_verified'] ?? true);
+
+            $userByFirebaseUid = $this->findByFirebaseUid($firebaseUid);
+
+            if ($userByFirebaseUid !== null) {
+                $userByEmail = $this->findByEmail($email);
+
                 if (
-                    Schema::hasColumn('users', 'firebase_uid') &&
-                    $user->firebase_uid !== null &&
-                    $user->firebase_uid !== $firebaseUid
+                    $userByEmail !== null
+                    && (string) $userByEmail->id !== (string) $userByFirebaseUid->id
                 ) {
-                    throw new LogicException(
-                        'Email is already linked to another Firebase account.'
-                    );
+                    throw new LogicException('Firebase email is already used by another user.');
                 }
 
-                $payload = [
+                $userByFirebaseUid->forceFill([
                     'email' => $email,
-                ];
+                    'name' => $name ?: $userByFirebaseUid->name,
+                    'avatar' => $avatar ?: $userByFirebaseUid->avatar,
+                    'is_email_verified' => $isEmailVerified,
+                ])->save();
 
-                if (Schema::hasColumn('users', 'firebase_uid')) {
-                    $payload['firebase_uid'] = $firebaseUid;
-                }
+                $this->assignRoleByName($userByFirebaseUid, 'buyer');
 
-                if (
-                    Schema::hasColumn('users', 'name') &&
-                    is_string($name) &&
-                    trim($name) !== ''
-                ) {
-                    $payload['name'] = trim($name);
-                }
-
-                if (
-                    Schema::hasColumn('users', 'avatar_url') &&
-                    is_string($avatarUrl) &&
-                    trim($avatarUrl) !== ''
-                ) {
-                    $payload['avatar_url'] = trim($avatarUrl);
-                }
-
-                if (Schema::hasColumn('users', 'photo_url')) {
-                    $payload['photo_url'] = is_string($avatarUrl)
-                        ? trim($avatarUrl)
-                        : null;
-                }
-
-                if (Schema::hasColumn('users', 'is_email_verified')) {
-                    $payload['is_email_verified'] = $emailVerified;
-                }
-
-                if (Schema::hasColumn('users', 'email_verified_at')) {
-                    $payload['email_verified_at'] = $emailVerified
-                        ? now()
-                        : null;
-                }
-
-                $user->forceFill($payload)->save();
-
-                $this->assignRole($user, 'buyer');
-
-                return $user->refresh();
+                return $userByFirebaseUid->refresh();
             }
 
-            $user = new User();
+            $userByEmail = $this->findByEmail($email);
 
-            $payload = [
+            if ($userByEmail !== null) {
+                if (
+                    $userByEmail->firebase_uid !== null
+                    && $userByEmail->firebase_uid !== $firebaseUid
+                ) {
+                    throw new LogicException('Email is already linked to another Firebase account.');
+                }
+
+                $userByEmail->forceFill([
+                    'firebase_uid' => $firebaseUid,
+                    'name' => $name ?: $userByEmail->name,
+                    'avatar' => $avatar ?: $userByEmail->avatar,
+                    'is_email_verified' => $isEmailVerified,
+                ])->save();
+
+                $this->assignRoleByName($userByEmail, 'buyer');
+
+                return $userByEmail->refresh();
+            }
+
+            $user = User::query()->create([
+                'firebase_uid' => $firebaseUid,
                 'email' => $email,
-            ];
+                'password' => null,
+                'name' => $name,
+                'avatar' => $avatar,
+                'is_email_verified' => $isEmailVerified,
+            ]);
 
-            if (Schema::hasColumn('users', 'firebase_uid')) {
-                $payload['firebase_uid'] = $firebaseUid;
-            }
-
-            if (Schema::hasColumn('users', 'name')) {
-                $payload['name'] = is_string($name) && trim($name) !== ''
-                    ? trim($name)
-                    : $email;
-            }
-
-            if (
-                Schema::hasColumn('users', 'avatar_url') &&
-                is_string($avatarUrl) &&
-                trim($avatarUrl) !== ''
-            ) {
-                $payload['avatar_url'] = trim($avatarUrl);
-            }
-
-            if (
-                Schema::hasColumn('users', 'photo_url') &&
-                is_string($avatarUrl) &&
-                trim($avatarUrl) !== ''
-            ) {
-                $payload['photo_url'] = trim($avatarUrl);
-            }
-
-            if (Schema::hasColumn('users', 'is_email_verified')) {
-                $payload['is_email_verified'] = $emailVerified;
-            }
-
-            if (Schema::hasColumn('users', 'email_verified_at')) {
-                $payload['email_verified_at'] = $emailVerified
-                    ? now()
-                    : null;
-            }
-
-            if (Schema::hasColumn('users', 'password')) {
-                $payload['password'] = bcrypt(str()->random(40));
-            }
-
-            $user->forceFill($payload)->save();
-
-            $this->assignRole($user, 'buyer');
+            $this->assignRoleByName($user, 'buyer');
 
             return $user->refresh();
         });
     }
 
-    public function getRoleNames(User $user): array
+    public function assignRoleByName(User $user, string $role): void
     {
-        return $user
-            ->roles()
-            ->pluck('name')
-            ->values()
-            ->all();
-    }
-
-    public function hasRole(User $user, string $role): bool
-    {
-        $role = strtolower(trim($role));
-
-        return $user
-            ->roles()
-            ->where('name', $role)
-            ->exists();
-    }
-
-    public function hasActiveStore(User $user): bool
-    {
-        return DB::table('stores')
-            ->where('user_id', $user->id)
-            ->where('is_active', true)
-            ->exists();
-    }
-
-    public function hasSellerAccess(User $user): bool
-    {
-        return $this->hasRole($user, 'seller')
-            && $this->hasActiveStore($user);
-    }
-
-    public function assignBuyerRoleIfMissing(User $user): void
-{
-    $this->assignRole($user, 'buyer');
-}
-
-    public function assignRole(User $user, string $role): void
-    {
-        $role = strtolower(trim($role));
+        $role = $this->normalizeRole($role);
 
         $roleId = DB::table('roles')
             ->where('name', $role)
             ->value('id');
 
         if ($roleId === null) {
-            throw new RuntimeException("Role {$role} not found.");
+            throw new RuntimeException("Role [{$role}] does not exist.");
         }
 
-        $exists = DB::table('user_roles')
-            ->where('user_id', $user->id)
-            ->where('role_id', $roleId)
-            ->exists();
-
-        if (! $exists) {
-            DB::table('user_roles')->insert([
+        DB::table('user_roles')->updateOrInsert(
+            [
                 'user_id' => $user->id,
                 'role_id' => $roleId,
+            ],
+            [
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
-        }
+            ],
+        );
     }
 
+    public function getRoleNames(User $user): array
+    {
+        $user->loadMissing('roles');
+
+        return $user->roles
+            ->pluck('name')
+            ->map(fn (string $role): string => $this->normalizeRole($role))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function hasRole(User $user, string $role): bool
+    {
+        $role = $this->normalizeRole($role);
+
+        return $user->roles()
+            ->where('roles.name', $role)
+            ->exists();
+    }
+
+    public function getActiveRoleFromCurrentToken(User $user): ?string
+    {
+        $token = $user->currentAccessToken();
+
+        if (! $token instanceof PersonalAccessToken) {
+            return null;
+        }
+
+        $abilities = $token->abilities ?? [];
+
+        foreach ($abilities as $ability) {
+            if (
+                is_string($ability)
+                && str_starts_with($ability, 'active-role:')
+            ) {
+                return str_replace('active-role:', '', $ability);
+            }
+        }
+
+        return null;
+    }
+
+    public function resolveDefaultActiveRole(User $user): ?string
+    {
+        $roles = $this->getRoleNames($user);
+
+        if (in_array('buyer', $roles, true)) {
+            return 'buyer';
+        }
+
+        return $roles[0] ?? null;
+    }
+
+    public function activateSellerProfile(User $user, int|string $storeId): void
+    {
+        DB::table('seller_profiles')->updateOrInsert(
+            [
+                'user_id' => $user->id,
+            ],
+            [
+                'store_id' => $storeId,
+                'status' => 'active',
+                'verified_at' => now(),
+                'suspended_at' => null,
+                'rejected_reason' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
+    }
+
+    public function hasSellerAccess(User $user): bool
+    {
+        if (! $this->hasRole($user, 'seller')) {
+            return false;
+        }
+
+        $sellerProfile = DB::table('seller_profiles')
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($sellerProfile !== null) {
+            return $sellerProfile->status === 'active';
+        }
+
+        return DB::table('stores')
+            ->where('user_id', $user->id)
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    public function getStorePayload(User $user): ?array
+    {
+        $sellerProfile = DB::table('seller_profiles')
+            ->where('user_id', $user->id)
+            ->first();
+
+        $storeQuery = DB::table('stores');
+
+        if ($sellerProfile !== null && $sellerProfile->store_id !== null) {
+            $storeQuery->where('id', $sellerProfile->store_id);
+        } else {
+            $storeQuery->where('user_id', $user->id);
+        }
+
+        $store = $storeQuery->first();
+
+        if ($store === null) {
+            return null;
+        }
+
+        return [
+            'id' => (string) $store->id,
+            'name' => $store->name,
+            'slug' => $store->slug,
+            'status' => (bool) $store->is_active ? 'active' : 'inactive',
+            'is_active' => (bool) $store->is_active,
+            'seller_status' => $sellerProfile->status ?? null,
+        ];
+    }
+
+    private function normalizeRole(string $role): string
+    {
+        return strtolower(trim($role));
+    }
 }

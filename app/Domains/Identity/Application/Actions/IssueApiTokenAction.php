@@ -1,50 +1,39 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Identity\Application\Actions;
 
 use App\Models\User;
+use Illuminate\Support\Str;
 
 final class IssueApiTokenAction
 {
     public function execute(
         User $user,
-        string $activeRole,
+        ?string $deviceName = null,
+        string $activeRole = 'buyer',
         bool $revokeExistingTokens = false,
-        bool $revokeCurrentToken = false,
     ): string {
         $activeRole = strtolower(trim($activeRole));
 
-        $currentToken = $user->currentAccessToken();
+        if ($activeRole === '') {
+            $activeRole = 'buyer';
+        }
 
-        /**
-         * Untuk login ulang dari device yang sama atau reset semua session,
-         * boleh revoke semua token.
-         *
-         * Tapi untuk switch role, JANGAN pakai ini.
-         */
         if ($revokeExistingTokens) {
             $user->tokens()->delete();
         }
 
-        $plainTextToken = $user
-            ->createToken("web-session:{$activeRole}", [
-                'web',
-                "active-role:{$activeRole}",
-            ])
-            ->plainTextToken;
+        $tokenName = $deviceName;
 
-        /**
-         * Untuk switch role:
-         * hapus hanya token request saat ini.
-         *
-         * Device lain tetap aman:
-         * - laptop bisa seller
-         * - HP tetap buyer
-         */
-        if (! $revokeExistingTokens && $revokeCurrentToken && $currentToken !== null) {
-            $currentToken->delete();
+        if (! is_string($tokenName) || trim($tokenName) === '') {
+            $tokenName = 'marketplace-api-' . Str::lower(Str::random(8));
         }
 
-        return $plainTextToken;
+        return $user->createToken($tokenName, [
+            'access-api',
+            "active-role:{$activeRole}",
+        ])->plainTextToken;
     }
 }

@@ -1,46 +1,55 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Identity\Application\Actions;
 
 use App\Domains\Identity\Infrastructure\Persistence\Eloquent\UserRepository;
 use App\Models\User;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 final class SwitchRoleAction
 {
     public function __construct(
         private readonly UserRepository $users,
-        private readonly IssueApiTokenAction $tokens,
-        private readonly BuildAuthPayloadAction $payload,
     ) {}
 
-    public function execute(User $user, string $role): array
+    public function execute(User $user, string $role): string
     {
         $role = strtolower(trim($role));
 
-        if (! $this->users->hasRole($user, $role)) {
-            throw ValidationException::withMessages([
-                'role' => ['Role tersebut tidak dimiliki oleh user ini.'],
-            ]);
-        }   
-
-        if ($role === 'seller' && ! $this->users->hasSellerAccess($user)) {
-            throw ValidationException::withMessages([
-                'role' => ['User belum memiliki toko aktif.'],
-            ]);
+        if ($role === '') {
+            throw new AuthorizationException('Invalid role.');
         }
 
-        $apiToken = $this->tokens->execute(
-            user: $user,
-            activeRole: $role,
-            revokeExistingTokens: false,
-            revokeCurrentToken: true,
-        );
+        $token = $user->currentAccessToken();
 
-        return $this->payload->execute(
-            user: $user->fresh(['roles']),
-            activeRole: $role,
-            apiToken: $apiToken,
-        );
+        if (! $token instanceof PersonalAccessToken) {
+            throw new AuthenticationException('Missing or invalid access token.');
+        }
+
+        if (! $this->users->hasRole($user, $role)) {
+            throw new AuthorizationException('Role does not belong to current user.');
+        }
+
+        if ($role === 'seller' && ! $this->users->hasSellerAccess($user)) {
+            throw new AuthorizationException('Seller access is not active.');
+        }
+
+        $abilities = collect($token->abilities ?? [])
+            ->filter(fn (mixed $ability): bool => is_string($ability))
+            ->reject(fn (string $ability): bool => str_starts_with($ability, 'active-role:'))
+            ->push("active-role:{$role}")
+            ->unique()
+            ->values()
+            ->all();
+
+        $token->forceFill([
+            'abilities' => $abilities,
+        ])->save();
+
+        return $role;
     }
-}   
+}

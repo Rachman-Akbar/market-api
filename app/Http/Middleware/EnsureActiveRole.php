@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Middleware;
 
 use App\Domains\Identity\Infrastructure\Persistence\Eloquent\UserRepository;
@@ -39,7 +41,9 @@ final class EnsureActiveRole
             ], 403);
         }
 
-        if (! $token->can("active-role:{$role}")) {
+        $abilities = $token->abilities ?? [];
+
+        if (! in_array("active-role:{$role}", $abilities, true)) {
             return response()->json([
                 'message' => "Active role must be {$role}.",
             ], 403);

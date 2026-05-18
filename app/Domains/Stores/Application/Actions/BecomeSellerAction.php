@@ -23,7 +23,7 @@ final class BecomeSellerAction
     public function execute(User $user, array $data): array
     {
         return DB::transaction(function () use ($user, $data): array {
-            $existingStore = $this->stores->findByUserId($user->id);
+            $existingStore = $this->stores->findByUserId((string) $user->id);
 
             if ($existingStore !== null) {
                 throw ValidationException::withMessages([
@@ -32,7 +32,7 @@ final class BecomeSellerAction
             }
 
             $store = $this->stores->createFromSellerOnboarding([
-                'user_id' => $user->id,
+                'user_id' => (string) $user->id,
                 'name' => $data['store_name'],
                 'slug' => $this->generateUniqueSlug($data['store_name']),
                 'description' => $data['description'] ?? null,
@@ -44,32 +44,43 @@ final class BecomeSellerAction
 
             $this->users->assignRoleByName($user, 'seller');
 
-            $roles = $this->users->getRoleNames($user->refresh());
+            $this->users->activateSellerProfile(
+                user: $user,
+                storeId: $store->id,
+            );
+
+            $user = $user->fresh(['roles']);
+
+            $roles = $this->users->getRoleNames($user);
 
             $apiToken = $this->tokens->execute(
                 user: $user,
                 activeRole: 'seller',
-                revokeExistingTokens: true
+                revokeExistingTokens: false,
             );
 
             return [
                 'user' => [
-                    'id' => $user->id,
+                    'id' => (string) $user->id,
                     'firebase_uid' => $user->firebase_uid,
                     'email' => $user->email,
                     'name' => $user->name,
                     'avatar' => $user->avatar,
                     'is_email_verified' => (bool) $user->is_email_verified,
                 ],
-                'store' => [
-                    'id' => $store->id,
-                    'name' => $store->name,
-                    'slug' => $store->slug,
-                    'status' => $store->is_active ? 'active' : 'inactive',
-                    'is_active' => (bool) $store->is_active,
-                ],
                 'roles' => $roles,
                 'active_role' => 'seller',
+                'store' => [
+                    'id' => (string) $store->id,
+                    'name' => $store->name,
+                    'slug' => $store->slug,
+                    'status' => (bool) $store->is_active ? 'active' : 'inactive',
+                    'is_active' => (bool) $store->is_active,
+                ],
+                'token_type' => 'Bearer',
+                'access_token' => $apiToken,
+
+                // Temporary compatibility kalau frontend kamu masih membaca api_token.
                 'api_token' => $apiToken,
             ];
         });

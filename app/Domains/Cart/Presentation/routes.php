@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 use App\Domains\Cart\Presentation\Http\Controllers\CartController;
-use App\Http\Middleware\EnsureApiTokenIsValid;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:sanctum', EnsureApiTokenIsValid::class])
+Route::middleware(['auth:sanctum'])
     ->prefix('carts')
     ->name('carts.')
     ->group(function (): void {

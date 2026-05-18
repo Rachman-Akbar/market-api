@@ -10,7 +10,6 @@ final class EnsureUserHasRole
 {
     public function handle(Request $request, Closure $next, string $role): Response
     {
-        /** @var \App\Models\User|null $user */
         $user = $request->user();
 
         if ($user === null || ! $user->roles()->where('name', $role)->exists()) {

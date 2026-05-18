@@ -72,7 +72,6 @@ Route::prefix('catalog')
  */
 Route::middleware([
     'auth:sanctum',
-    'api.token',
     'active.role:seller',
 ])
     ->prefix('seller/catalog')
