@@ -131,3 +131,4 @@ final class VerifyFirebaseToken
         return null;
     }
 }
+

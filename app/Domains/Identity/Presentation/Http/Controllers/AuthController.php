@@ -6,7 +6,7 @@ namespace App\Domains\Identity\Presentation\Http\Controllers;
 
 use App\Domains\Identity\Application\Actions\BuildAuthPayloadAction;
 use App\Domains\Identity\Application\Actions\LoginWithFirebaseAction;
-use App\Domains\Identity\Application\Actions\SwitchRoleAction;
+// use App\Domains\Identity\Application\Actions\SwitchRoleAction;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -16,6 +16,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 final class AuthController extends Controller
 {
@@ -154,48 +155,75 @@ public function passwordLogin(
         );
     }
 
-    public function switchRole(
-        Request $request,
-        SwitchRoleAction $switchRole,
-        BuildAuthPayloadAction $payload,
-    ): JsonResponse {
-        $validated = $request->validate([
-            'role' => ['required', 'string', Rule::in(['buyer', 'seller', 'admin'])],
-        ]);
+    public function logoutCurrentDevice(Request $request): JsonResponse
+{
+    /** @var User|null $user */
+    $user = $request->user();
 
-        /** @var User|null $user */
-        $user = $request->user();
-
-        if (! $user instanceof User) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], 401);
-        }
-
-        $activeRole = $switchRole->execute(
-            user: $user,
-            role: $validated['role'],
-        );
-
-        return response()->json(
-            $payload->execute(
-                user: $user,
-                activeRole: $activeRole,
-            ),
-        );
-    }
-
-    public function logout(Request $request): JsonResponse
-    {
-        /** @var User|null $user */
-        $user = $request->user();
-
-        $user?->currentAccessToken()?->delete();
-
+    if (! $user instanceof User) {
         return response()->json([
-            'message' => 'Logged out.',
-        ]);
+            'message' => 'Unauthenticated.',
+        ], 401);
     }
+
+    $token = $user->currentAccessToken();
+
+    if ($token instanceof PersonalAccessToken) {
+        $token->delete();
+    }
+
+    return response()->json([
+        'message' => 'Logged out from current device.',
+    ]);
+}
+
+public function logoutOtherDevices(Request $request): JsonResponse
+{
+    /** @var User|null $user */
+    $user = $request->user();
+
+    if (! $user instanceof User) {
+        return response()->json([
+            'message' => 'Unauthenticated.',
+        ], 401);
+    }
+
+    $token = $user->currentAccessToken();
+
+    if (! $token instanceof PersonalAccessToken) {
+        return response()->json([
+            'message' => 'Missing or invalid access token.',
+        ], 401);
+    }
+
+    $deletedCount = $user->tokens()
+        ->where('id', '!=', $token->id)
+        ->delete();
+
+    return response()->json([
+        'message' => 'Other devices logged out.',
+        'deleted_tokens' => $deletedCount,
+    ]);
+}
+
+public function logoutAllDevices(Request $request): JsonResponse
+{
+    /** @var User|null $user */
+    $user = $request->user();
+
+    if (! $user instanceof User) {
+        return response()->json([
+            'message' => 'Unauthenticated.',
+        ], 401);
+    }
+
+    $deletedCount = $user->tokens()->delete();
+
+    return response()->json([
+        'message' => 'Logged out from all devices.',
+        'deleted_tokens' => $deletedCount,
+    ]);
+}
 
     public function deleteCurrentAccount(Request $request): JsonResponse
     {

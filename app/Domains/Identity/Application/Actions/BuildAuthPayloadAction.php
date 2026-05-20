@@ -15,16 +15,13 @@ final class BuildAuthPayloadAction
 
     public function execute(
         User $user,
-        ?string $activeRole = null,
         ?string $apiToken = null,
     ): array {
         $user = $user->fresh(['roles']);
 
-        $roles = $this->users->getRoleNames($user);
-
-        $activeRole = $activeRole
-            ?: $this->users->getActiveRoleFromCurrentToken($user)
-            ?: null;
+        $token = is_string($apiToken) && trim($apiToken) !== ''
+            ? trim($apiToken)
+            : null;
 
         $payload = [
             'user' => [
@@ -35,14 +32,21 @@ final class BuildAuthPayloadAction
                 'avatar' => $user->avatar,
                 'is_email_verified' => (bool) $user->is_email_verified,
             ],
-            'roles' => $roles,
-            'active_role' => $activeRole,
+            'roles' => $this->users->getRoleNames($user),
+
+            /**
+             * Sengaja null.
+             * Buyer dan seller bisa aktif bersamaan berdasarkan route/context.
+             */
+            'active_role' => null,
+
             'store' => $this->users->getStorePayload($user),
         ];
 
-        if (is_string($apiToken) && trim($apiToken) !== '') {
+        if ($token !== null) {
             $payload['token_type'] = 'Bearer';
-            $payload['access_token'] = $apiToken;
+            $payload['access_token'] = $token;
+            $payload['api_token'] = $token;
         }
 
         return $payload;
