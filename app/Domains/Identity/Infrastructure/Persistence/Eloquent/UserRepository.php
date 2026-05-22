@@ -134,25 +134,14 @@ final class UserRepository
     }
 
     public function getRoleNames(User $user): array
-    {
-        $user->loadMissing('roles');
+{
+    return $user->roleNames();
+}
 
-        return $user->roles
-            ->pluck('name')
-            ->map(fn (string $role): string => $this->normalizeRole($role))
-            ->unique()
-            ->values()
-            ->all();
-    }
-
-    public function hasRole(User $user, string $role): bool
-    {
-        $role = $this->normalizeRole($role);
-
-        return $user->roles()
-            ->where('roles.name', $role)
-            ->exists();
-    }
+   public function hasRole(User $user, string $role): bool
+{
+    return $user->hasRole($role);
+}
 
     public function getActiveRoleFromCurrentToken(User $user): ?string
     {
@@ -205,58 +194,28 @@ final class UserRepository
         );
     }
 
-    public function hasSellerAccess(User $user): bool
-    {
-        if (! $this->hasRole($user, 'seller')) {
-            return false;
-        }
+ public function hasSellerAccess(User $user): bool
+{
+    $user->loadMissing([
+        'sellerProfile.store',
+    ]);
 
-        $sellerProfile = DB::table('seller_profiles')
-            ->where('user_id', $user->id)
-            ->first();
-
-        if ($sellerProfile !== null) {
-            return $sellerProfile->status === 'active';
-        }
-
-        return DB::table('stores')
-            ->where('user_id', $user->id)
-            ->where('is_active', true)
-            ->exists();
+    if (! $user->hasRole('seller')) {
+        return false;
     }
 
-    public function getStorePayload(User $user): ?array
-    {
-        $sellerProfile = DB::table('seller_profiles')
-            ->where('user_id', $user->id)
-            ->first();
+    $sellerProfile = $user->sellerProfile;
 
-        $storeQuery = DB::table('stores');
-
-        if ($sellerProfile !== null && $sellerProfile->store_id !== null) {
-            $storeQuery->where('id', $sellerProfile->store_id);
-        } else {
-            $storeQuery->where('user_id', $user->id);
-        }
-
-        $store = $storeQuery->first();
-
-        if ($store === null) {
-            return null;
-        }
-
-        return [
-            'id' => (string) $store->id,
-            'name' => $store->name,
-            'slug' => $store->slug,
-            'status' => (bool) $store->is_active ? 'active' : 'inactive',
-            'is_active' => (bool) $store->is_active,
-            'seller_status' => $sellerProfile->status ?? null,
-        ];
+    if ($sellerProfile !== null) {
+        return $sellerProfile->status === 'active';
     }
+
+    return $sellerProfile?->store?->is_active === true;
+}
 
     private function normalizeRole(string $role): string
     {
         return strtolower(trim($role));
     }
 }
+

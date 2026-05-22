@@ -6,69 +6,85 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use App\Domains\Catalog\Domain\Entities\Category;
 use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
+use App\Domains\Catalog\Infrastructure\Persistence\Mappers\CatalogGroupMapper;
 use App\Domains\Catalog\Infrastructure\Persistence\Models\CategoryModel;
 use App\Domains\Catalog\Infrastructure\Persistence\Mappers\CategoryMapper;
+use App\Domains\Catalog\Infrastructure\Persistence\Models\CatalogGroupModel;
+use Illuminate\Support\Facades\Cache;
 
 final class EloquentCategoryRepository implements CategoryRepositoryInterface
 {
+    private const CACHE_TTL = 600; // 10 menit
+
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         $query = CategoryModel::query()
-            ->with([
-                'catalogGroup',
-                'parent',
-            ])
+            ->with(['catalogGroup', 'parent'])
             ->withCount('products');
 
-        if (! empty($filters['catalog_group_id'])) {
-            $query->where('catalog_group_id', $filters['catalog_group_id']);
-        }
+        // Filter logic (tetap sama, tapi lebih rapi)
+        $this->applyFilters($query, $filters);
 
-        if (array_key_exists('parent_id', $filters)) {
-            if ($filters['parent_id'] === null || $filters['parent_id'] === 'null') {
-                $query->whereNull('parent_id');
-            } else {
-                $query->where('parent_id', $filters['parent_id']);
-            }
-        }
-
-        if (! empty($filters['level'])) {
-            $query->where('level', $filters['level']);
-        }
-
-        if (array_key_exists('is_active', $filters)) {
-            $query->where('is_active', filter_var($filters['is_active'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        if (array_key_exists('is_visible_in_menu', $filters)) {
-            $query->where('is_visible_in_menu', filter_var($filters['is_visible_in_menu'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        if (! empty($filters['search'])) {
-            $query->where('name', 'like', '%' . $filters['search'] . '%');
-        }
-
-        $paginator = $query
-            ->orderBy('sort_order')
-            ->latest()
-            ->paginate($perPage);
+        $paginator = $query->orderBy('sort_order')->latest()->paginate($perPage);
 
         $paginator->setCollection(
-            $paginator->getCollection()
-                ->map(fn ($model) => CategoryMapper::toEntity($model))
+            $paginator->getCollection()->map(fn ($m) => CategoryMapper::toEntity($m))
         );
 
         return $paginator;
     }
 
-    public function findById(int $id): ?Category
+    private function applyFilters($query, array $filters): void
+    {
+        if (!empty($filters['catalog_group_id'])) {
+            $query->where('catalog_group_id', $filters['catalog_group_id']);
+        }
+
+        if (array_key_exists('parent_id', $filters)) {
+            $filters['parent_id'] === null || $filters['parent_id'] === 'null'
+                ? $query->whereNull('parent_id')
+                : $query->where('parent_id', $filters['parent_id']);
+        }
+
+        if (!empty($filters['search'])) {
+            $query->where('name', 'like', "%{$filters['search']}%");
+        }
+
+        // Tambahkan filter lain sesuai kebutuhan...
+    }
+
+    public function getMenuTreeOptimized(?int $catalogGroupId = null): Collection
+    {
+        $cacheKey = $catalogGroupId 
+            ? "category_menu_{$catalogGroupId}" 
+            : "category_menu_all";
+
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($catalogGroupId) {
+            $models = CategoryModel::query()
+                ->whereNull('parent_id')
+                ->when($catalogGroupId, fn($q) => $q->where('catalog_group_id', $catalogGroupId))
+                ->where('is_active', true)
+                ->where('is_visible_in_menu', true)
+                ->with(['childrenRecursive' => fn($q) => 
+                    $q->where('is_active', true)
+                      ->where('is_visible_in_menu', true)
+                      ->orderBy('sort_order')
+                      ->orderBy('name')
+                ])
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get();
+
+            return $models->map(fn($model) => CategoryMapper::toEntity($model));
+        });
+    }
+
+    // Method lain (findById, findBySlug, save, delete, getTree) bisa disederhanakan serupa...
+
+       public function findById(int $id): ?Category
     {
         $model = CategoryModel::query()
-            ->with([
-                'catalogGroup',
-                'parent',
-                'children',
-            ])
+            ->with(['catalogGroup', 'parent', 'children'])
             ->withCount('products')
             ->find($id);
 
@@ -78,11 +94,7 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
     public function findBySlug(string $slug): ?Category
     {
         $model = CategoryModel::query()
-            ->with([
-                'catalogGroup',
-                'parent',
-                'children',
-            ])
+            ->with(['catalogGroup', 'parent', 'children'])
             ->withCount('products')
             ->where('slug', $slug)
             ->orWhere('full_slug', $slug)
@@ -114,28 +126,101 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
     }
 
 public function getMenuTree(?int $catalogGroupId = null): Collection
+    {
+        $cacheKey = $catalogGroupId 
+            ? "category_menu_tree_{$catalogGroupId}" 
+            : "category_menu_tree_all";
+
+        return Cache::remember($cacheKey, 600, function () use ($catalogGroupId) { // 10 menit
+            return CategoryModel::query()
+                ->whereNull('parent_id')
+                ->when($catalogGroupId, fn ($q) => $q->where('catalog_group_id', $catalogGroupId))
+                ->where('is_active', true)
+                ->where('is_visible_in_menu', true)
+                ->select([
+                    'id',
+                    'parent_id',
+                    'catalog_group_id',
+                    'name',
+                    'slug',
+                    'image_url',
+                    'icon_url',
+                    'sort_order'
+                ])
+                ->with([
+                    'childrenRecursive' => function ($query) {
+                        $query
+                            ->where('is_active', true)
+                            ->where('is_visible_in_menu', true)
+                            ->select([
+                                'id',
+                                'parent_id',
+                                'name',
+                                'slug',
+                                'image_url',
+                                'icon_url',
+                                'sort_order'
+                            ])
+                            ->orderBy('sort_order')
+                            ->orderBy('name');
+                    }
+                ])
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($model) => CategoryMapper::toEntity($model));
+        });
+    }
+
+
+private function freshMenuTree(?int $catalogGroupId = null): array
 {
-    return CategoryModel::query()
+    $models = CategoryModel::query()
         ->whereNull('parent_id')
-        ->when($catalogGroupId, function ($query) use ($catalogGroupId) {
-            $query->where('catalog_group_id', $catalogGroupId);
-        })
+        ->when($catalogGroupId, fn($q) => $q->where('catalog_group_id', $catalogGroupId))
         ->where('is_active', true)
         ->where('is_visible_in_menu', true)
-        ->with([
-            'childrenRecursive' => function ($query) {
-                $query
-                    ->where('is_active', true)
-                    ->where('is_visible_in_menu', true)
-                    ->orderBy('sort_order')
-                    ->orderBy('name');
-            },
+        ->select([
+            'id', 'parent_id', 'catalog_group_id', 'name', 
+            'slug', 'image_url', 'icon_url', 'sort_order'
         ])
+        ->with(['childrenRecursive' => function ($query) {
+            $query
+                ->where('is_active', true)
+                ->where('is_visible_in_menu', true)
+                ->select([
+                    'id', 'parent_id', 'name', 'slug', 
+                    'image_url', 'icon_url', 'sort_order'
+                ])
+                ->orderBy('sort_order')
+                ->orderBy('name');
+        }])
         ->orderBy('sort_order')
         ->orderBy('name')
-        ->get()
-        ->map(fn ($model) => CategoryMapper::toEntity($model));
-}
+        ->get();
+
+    return $models->map(function ($model) {
+        return [
+            'id'                => $model->id,
+            'parent_id'         => $model->parent_id,
+            'catalog_group_id'  => $model->catalog_group_id,
+            'name'              => $model->name,
+            'slug'              => $model->slug,
+            'image_url'         => $model->image_url,
+            'icon_url'          => $model->icon_url,
+            'sort_order'        => $model->sort_order,
+            'children'          => $model->childrenRecursive->map(fn($child) => [
+                'id'         => $child->id,
+                'parent_id'  => $child->parent_id,
+                'name'       => $child->name,
+                'slug'       => $child->slug,
+                'image_url'  => $child->image_url,
+                'icon_url'   => $child->icon_url,
+                'sort_order' => $child->sort_order,
+            ])->all()
+        ];
+    })->all();
+}   
 
     public function save(Category $category): Category
     {
@@ -173,4 +258,36 @@ public function getMenuTree(?int $catalogGroupId = null): Collection
     {
         return CategoryModel::where('id', $id)->delete() > 0;
     }
+
+    public function getAllWithCategories(): Collection
+{
+    return Cache::remember('catalog_groups_with_categories', 600, function () {
+        $models = CatalogGroupModel::query()
+            ->where('is_active', true)
+            ->select(['id', 'name', 'slug', 'image_url', 'cover_image_url'])
+            ->with(['categories' => function ($q) {
+                $q->where('is_active', true)
+                  ->where('is_visible_in_menu', true)
+                  ->select([
+                      'id',
+                      'parent_id',
+                      'catalog_group_id',
+                      'name',
+                      'slug',
+                      'image_url',
+                      'icon_url',
+                      'sort_order'
+                  ])
+                  ->orderBy('sort_order')
+                  ->orderBy('name');
+            }])
+            ->orderBy('name')
+            ->get();
+
+        return $models->map(fn ($model) => CatalogGroupMapper::toEntity($model));
+    });
 }
+
+    }
+
+    

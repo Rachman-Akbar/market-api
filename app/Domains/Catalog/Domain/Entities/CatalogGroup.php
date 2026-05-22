@@ -31,3 +31,5 @@ final class CatalogGroup
     public function changeCoverImageUrl(?string $coverImageUrl): void { $this->coverImageUrl = $coverImageUrl; }
     public function changeIsActive(bool $isActive): void { $this->isActive = $isActive; }
 }
+
+

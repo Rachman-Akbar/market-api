@@ -6,64 +6,51 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Staudenmeir\LaravelAdjacencyList\Eloquent\HasRecursiveRelationships;
 
 class CategoryModel extends Model
 {
+    use HasRecursiveRelationships;   // ← Penting!
+
     protected $table = 'categories';
 
     protected $fillable = [
-        'catalog_group_id',
-        'parent_id',
-        'name',
-        'slug',
-        'full_slug',
-        'description',
-        'image_url',
-        'icon_url',
-        'cover_image_url',
-        'level',
-        'sort_order',
-        'is_active',
-        'is_visible_in_menu',
+        'catalog_group_id', 'parent_id', 'name', 'slug', 'full_slug',
+        'description', 'image_url', 'icon_url', 'cover_image_url',
+        'level', 'sort_order', 'is_active', 'is_visible_in_menu',
     ];
 
     protected $casts = [
         'catalog_group_id' => 'integer',
-        'parent_id' => 'integer',
-        'level' => 'integer',
-        'sort_order' => 'integer',
-        'is_active' => 'boolean',
+        'parent_id'        => 'integer',
+        'level'            => 'integer',
+        'sort_order'       => 'integer',
+        'is_active'        => 'boolean',
         'is_visible_in_menu' => 'boolean',
     ];
 
     public function catalogGroup(): BelongsTo
     {
-        return $this->belongsTo(CatalogGroupModel::class, 'catalog_group_id');
+        return $this->belongsTo(CatalogGroupModel::class);
     }
 
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(CategoryModel::class, 'parent_id');
+        return $this->belongsTo(self::class, 'parent_id');
     }
 
     public function children(): HasMany
     {
-        return $this->hasMany(CategoryModel::class, 'parent_id')
-            ->orderBy('sort_order')
-            ->orderBy('name');
+        return $this->hasMany(self::class, 'parent_id')
+                    ->orderBy('sort_order')
+                    ->orderBy('name');
     }
 
     public function childrenRecursive(): HasMany
     {
-        return $this->children()->with([
-            'childrenRecursive' => function ($query) {
-                $query
+        return $this->children()
                     ->where('is_active', true)
-                    ->where('is_visible_in_menu', true)
-                    ->orderBy('sort_order')
-                    ->orderBy('name');
-            },
-        ]);
+                    ->where('is_visible_in_menu', true);
     }
 
     public function products(): BelongsToMany
@@ -74,10 +61,5 @@ class CategoryModel extends Model
             'category_id',
             'product_id'
         );
-    }
-
-    public function primaryProducts(): HasMany
-    {
-        return $this->hasMany(ProductModel::class, 'primary_category_id');
     }
 }

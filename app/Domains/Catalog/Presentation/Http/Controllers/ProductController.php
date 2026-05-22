@@ -82,3 +82,5 @@ public function showBySlug(
     
 
 }
+
+

@@ -37,3 +37,4 @@ class CatalogGroupModel extends Model
         return $this->hasMany(CategoryModel::class, 'catalog_group_id');
     }
 }
+

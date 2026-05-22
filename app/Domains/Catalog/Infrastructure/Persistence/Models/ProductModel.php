@@ -70,3 +70,4 @@ final class ProductModel extends Model
         return $this->hasMany(ProductImageModel::class, 'product_id');
     }
 }
+

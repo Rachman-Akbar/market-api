@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Identity\Presentation\Http\Controllers;
 
+use Illuminate\Support\Facades\Cache;
 use App\Domains\Identity\Application\Actions\BuildAuthPayloadAction;
 use App\Domains\Identity\Application\Actions\LoginWithFirebaseAction;
-// use App\Domains\Identity\Application\Actions\SwitchRoleAction;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -128,32 +128,29 @@ public function passwordLogin(
         return response()->json($payload);
     }
 
-    public function me(
-        Request $request,
-        BuildAuthPayloadAction $payload,
-    ): JsonResponse {
-        /** @var User|null $user */
-        $user = $request->user();
 
-        if (! $user instanceof User) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], 401);
-        }
+public function me(
+    Request $request,
+    BuildAuthPayloadAction $payload,
+): JsonResponse {
+    $user = $request->user();
 
-        if (method_exists($user, 'trashed') && $user->trashed()) {
-            $user->currentAccessToken()?->delete();
-
-            return response()->json([
-                'message' => 'Account not found.',
-                'code' => 'ACCOUNT_NOT_FOUND',
-            ], 404);
-        }
-
-        return response()->json(
-            $payload->execute(user: $user),
-        );
+    if (! $user instanceof User) {
+        return response()->json([
+            'message' => 'Unauthenticated.',
+        ], 401);
     }
+
+    $cacheKey = "auth_payload_{$user->id}";
+
+    return response()->json(
+        Cache::remember(
+            $cacheKey,
+            now()->addMinutes(5),
+            fn () => $payload->execute($user),
+        )
+    );
+}
 
     public function logoutCurrentDevice(Request $request): JsonResponse
 {

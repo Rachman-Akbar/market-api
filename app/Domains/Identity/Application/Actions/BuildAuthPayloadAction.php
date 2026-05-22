@@ -4,51 +4,47 @@ declare(strict_types=1);
 
 namespace App\Domains\Identity\Application\Actions;
 
-use App\Domains\Identity\Infrastructure\Persistence\Eloquent\UserRepository;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 final class BuildAuthPayloadAction
 {
-    public function __construct(
-        private readonly UserRepository $users,
-    ) {}
+    public function execute(User $user): array
+    {
+        return Cache::remember(
+            "auth_payload_{$user->id}",
+            now()->addMinutes(5),
+            function () use ($user): array {
 
-    public function execute(
-        User $user,
-        ?string $apiToken = null,
-    ): array {
-        $user = $user->fresh(['roles']);
+                $user->loadMissing([
+                    'roles:id,name',
+                    'sellerProfile.store:id,user_id,name,slug,is_active',
+                ]);
 
-        $token = is_string($apiToken) && trim($apiToken) !== ''
-            ? trim($apiToken)
-            : null;
+                $roles = $user->roleNames();
 
-        $payload = [
-            'user' => [
-                'id' => (string) $user->id,
-                'firebase_uid' => $user->firebase_uid,
-                'email' => (string) $user->email,
-                'name' => $user->name,
-                'avatar' => $user->avatar,
-                'is_email_verified' => (bool) $user->is_email_verified,
-            ],
-            'roles' => $this->users->getRoleNames($user),
+                $store = $user->sellerProfile?->store;
 
-            /**
-             * Sengaja null.
-             * Buyer dan seller bisa aktif bersamaan berdasarkan route/context.
-             */
-            'active_role' => null,
+                return [
+                    'user' => [
+                        'id' => (string) $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'avatar' => $user->avatar,
+                    ],
 
-            'store' => $this->users->getStorePayload($user),
-        ];
+                    'roles' => $roles,
 
-        if ($token !== null) {
-            $payload['token_type'] = 'Bearer';
-            $payload['access_token'] = $token;
-            $payload['api_token'] = $token;
-        }
+                    'active_role' => $roles[0] ?? 'buyer',
 
-        return $payload;
+                    'store' => $store ? [
+                        'id' => (string) $store->id,
+                        'name' => $store->name,
+                        'slug' => $store->slug,
+                        'is_active' => (bool) $store->is_active,
+                    ] : null,
+                ];
+            }
+        );
     }
 }

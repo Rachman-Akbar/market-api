@@ -7,6 +7,9 @@ use Illuminate\Support\Collection;
 
 interface CatalogGroupRepositoryInterface
 {
+    /**
+     * Get all active catalog groups with categories
+     */
     public function getAll(array $filters = []): Collection;
 
     public function findById(int $id): ?CatalogGroup;
@@ -16,4 +19,9 @@ interface CatalogGroupRepositoryInterface
     public function update(int $id, array $data): CatalogGroup;
 
     public function delete(int $id): bool;
+
+    /**
+     * NEW: Ambil kategori berdasarkan Catalog Group ID
+     */
+    public function getCategoriesByGroupId(int $groupId): Collection;
 }

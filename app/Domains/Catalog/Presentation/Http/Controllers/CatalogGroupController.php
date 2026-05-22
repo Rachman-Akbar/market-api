@@ -2,44 +2,73 @@
 
 namespace App\Domains\Catalog\Presentation\Http\Controllers;
 
-use App\Domains\Catalog\Application\UseCases\CatalogGroup\CreateCatalogGroupUseCase;
-use App\Domains\Catalog\Application\UseCases\CatalogGroup\UpdateCatalogGroupUseCase;
-use App\Domains\Catalog\Application\UseCases\CatalogGroup\GetCatalogGroupUseCase;
+use Illuminate\Routing\Controller;
+use App\Domains\Catalog\Application\UseCases\CatalogGroup\{
+    CreateCatalogGroupUseCase,
+    GetCatalogGroupsUseCase,
+    GetCatalogGroupUseCase,
+    UpdateCatalogGroupUseCase,
+    GetCategoriesByCatalogGroupUseCase
+};
 use App\Domains\Catalog\Presentation\Http\Requests\CatalogGroupRequest;
 use App\Domains\Catalog\Presentation\Http\Resources\CatalogGroupResource;
-use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
+use App\Domains\Catalog\Presentation\Http\Resources\CategoryResource;
+use Illuminate\Http\JsonResponse;
 
 class CatalogGroupController extends Controller
 {
-
-public function index(GetCatalogGroupUseCase $useCase)
-{
-    $entities = $useCase->execute();
-
-    return response()->json([
-        'success' => true,
-        'data' => CatalogGroupResource::collection($entities),
-    ]);
-}
-
-    public function store(CreateCatalogGroupUseCase $useCase, CatalogGroupRequest $request)
+    public function index(GetCatalogGroupsUseCase $useCase): JsonResponse
     {
-        $CatalogGroup = $useCase->execute($request->validated());
+        $groups = $useCase->execute();
+
         return response()->json([
             'success' => true,
-            'data' => new CatalogGroupResource($CatalogGroup),
-            'message' => null
+            'data' => CatalogGroupResource::collection($groups),
+        ]);
+    }
+
+    public function show(GetCatalogGroupsUseCase $useCase, int $id): JsonResponse
+    {
+        $group = $useCase->execute($id);
+
+        return response()->json([
+            'success' => true,
+            'data' => new CatalogGroupResource($group),
+        ]);
+    }
+
+    public function store(CreateCatalogGroupUseCase $useCase, CatalogGroupRequest $request): JsonResponse
+    {
+        $group = $useCase->execute($request->validated());
+
+        return response()->json([
+            'success' => true,
+            'data' => new CatalogGroupResource($group),
+            'message' => 'Catalog group created successfully'
         ], 201);
     }
 
-    public function update(UpdateCatalogGroupUseCase $useCase, CatalogGroupRequest $request, $id)
+    public function update(UpdateCatalogGroupUseCase $useCase, CatalogGroupRequest $request, int $id): JsonResponse
     {
-        $CatalogGroup = $useCase->execute($id, $request->validated());
+        $group = $useCase->execute($id, $request->validated());
+
         return response()->json([
             'success' => true,
-            'data' => new CatalogGroupResource($CatalogGroup),
-            'message' => null
+            'data' => new CatalogGroupResource($group),
+            'message' => 'Catalog group updated successfully'
+        ]);
+    }
+
+    /**
+     * NEW: Ambil semua kategori dari satu Catalog Group
+     */
+    public function categories(GetCategoriesByCatalogGroupUseCase $useCase, int $id): JsonResponse
+    {
+        $categories = $useCase->execute($id);
+
+        return response()->json([
+            'success' => true,
+            'data' => CategoryResource::collection($categories),
         ]);
     }
 }

@@ -34,12 +34,16 @@ Route::prefix('catalog')
                     ->name('show-by-slug');
             });
 
-        Route::prefix('catalog-groups')
-            ->name('catalog-groups.')
-            ->group(function () {
-                Route::get('/', [CatalogGroupController::class, 'index'])
-                    ->name('index');
-            });
+        Route::prefix('catalog-groups')->group(function () {
+    Route::get('/', [CatalogGroupController::class, 'index']);
+    Route::post('/', [CatalogGroupController::class, 'store']);
+    
+    Route::get('{id}', [CatalogGroupController::class, 'show']);
+    Route::put('{id}', [CatalogGroupController::class, 'update']);
+    
+    // Endpoint penting untuk marketplace
+    Route::get('{id}/categories', [CatalogGroupController::class, 'categories']);
+});
 
         Route::prefix('categories')
             ->name('categories.')
@@ -67,29 +71,29 @@ Route::prefix('catalog')
             });
     });
 
-/**
- * Seller catalog routes.
- */
-Route::middleware([
-    'auth:sanctum',
-    'active.role:seller',
-])
-    ->prefix('seller/catalog')
-    ->name('seller.catalog.')
-    ->group(function () {
-        Route::apiResource('products', SellerProductController::class);
+// /**
+//  * Seller catalog routes.
+//  */
+// Route::middleware([
+//     'auth:sanctum',
+//     'active.role:seller',
+// ])
+    // ->prefix('seller/catalog')
+    // ->name('seller.catalog.')
+    // ->group(function () {
+    //     Route::apiResource('products', SellerProductController::class);
 
-        Route::apiResource(
-            'store-categories',
-            SellerStoreCategoryController::class
-        )->parameters([
-            'store-categories' => 'storeCategory',
-        ]);
+    //     Route::apiResource(
+    //         'store-categories',
+    //         SellerStoreCategoryController::class
+    //     )->parameters([
+    //         'store-categories' => 'storeCategory',
+    //     ]);
 
-        Route::apiResource(
-            'store-catalog-groups',
-            SellerStoreCatalogGroupController::class
-        )->parameters([
-            'store-catalog-groups' => 'storeCatalogGroup',
-        ]);
-    });
+    //     Route::apiResource(
+    //         'store-catalog-groups',
+    //         SellerStoreCatalogGroupController::class
+    //     )->parameters([
+    //         'store-catalog-groups' => 'storeCatalogGroup',
+    //     ]);
+    // });
