@@ -28,7 +28,7 @@ final class CategoryController extends Controller
         Request $request,
         ListCategoryMenuUseCase $useCase
     ) {
-        $categories = $useCase->execute($request->all());
+        $categories = $useCase->execute();
 
         return CategoryResource::collection($categories);
     }

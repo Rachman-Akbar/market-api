@@ -128,3 +128,4 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
         Cache::forget(self::CACHE_KEY);
     }
 }
+

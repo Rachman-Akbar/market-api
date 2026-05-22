@@ -62,3 +62,5 @@ public static function toEntityFromArray(array $data): CatalogGroup
 
 }
 
+
+

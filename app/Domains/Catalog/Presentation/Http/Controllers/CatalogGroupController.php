@@ -27,15 +27,15 @@ class CatalogGroupController extends Controller
         ]);
     }
 
-    public function show(GetCatalogGroupsUseCase $useCase, int $id): JsonResponse
-    {
-        $group = $useCase->execute($id);
+    public function show(GetCatalogGroupUseCase $useCase, int $id): JsonResponse
+{
+    $group = $useCase->execute($id);
 
-        return response()->json([
-            'success' => true,
-            'data' => new CatalogGroupResource($group),
-        ]);
-    }
+    return response()->json([
+        'success' => true,
+        'data' => new CatalogGroupResource($group),
+    ]);
+}
 
     public function store(CreateCatalogGroupUseCase $useCase, CatalogGroupRequest $request): JsonResponse
     {
