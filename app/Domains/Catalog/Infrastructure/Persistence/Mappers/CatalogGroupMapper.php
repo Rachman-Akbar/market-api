@@ -42,10 +42,18 @@ public static function toEntity(CatalogGroupModel $model): CatalogGroup
         ]);
     }
 
-public static function toEntityFromArray(array $data): CatalogGroup
+public static function toEntityFromArray(array|object $data): CatalogGroup
 {
+    if ($data instanceof \__PHP_Incomplete_Class) {
+        throw new \RuntimeException(
+            'Corrupted cache detected. Please clear cache.'
+        );
+    }
+
+    $data = (array) $data;
+
     $categories = collect($data['categories'] ?? [])
-        ->map(fn (array $cat) => CategoryMapper::toEntityFromArray($cat))
+        ->map(fn ($cat) => CategoryMapper::toEntityFromArray((array) $cat))
         ->all();
 
     return new CatalogGroup(
@@ -55,7 +63,7 @@ public static function toEntityFromArray(array $data): CatalogGroup
         description: $data['description'] ?? null,
         imageUrl: $data['image_url'] ?? null,
         coverImageUrl: $data['cover_image_url'] ?? null,
-        isActive: true,
+        isActive: (bool) ($data['is_active'] ?? true),
         categories: $categories
     );
 }

@@ -83,27 +83,27 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         return $model ? CategoryMapper::toEntity($model) : null;
     }
 
-    public function getTree(?int $catalogGroupId = null): Collection
-    {
-        return CategoryModel::query()
-            ->whereNull('parent_id')
-            ->when($catalogGroupId, function ($query) use ($catalogGroupId) {
-                $query->where('catalog_group_id', $catalogGroupId);
-            })
-            ->where('is_active', true)
-            ->with([
-                'childrenRecursive' => function ($query) {
-                    $query
-                        ->where('is_active', true)
-                        ->orderBy('sort_order')
-                        ->orderBy('name');
-                },
-            ])
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get()
-            ->map(fn ($model) => CategoryMapper::toEntity($model));
-    }
+    // public function getTree(?int $catalogGroupId = null): Collection
+    // {
+    //     return CategoryModel::query()
+    //         ->whereNull('parent_id')
+    //         ->when($catalogGroupId, function ($query) use ($catalogGroupId) {
+    //             $query->where('catalog_group_id', $catalogGroupId);
+    //         })
+    //         ->where('is_active', true)
+    //         ->with([
+    //             'childrenRecursive' => function ($query) {
+    //                 $query
+    //                     ->where('is_active', true)
+    //                     ->orderBy('sort_order')
+    //                     ->orderBy('name');
+    //             },
+    //         ])
+    //         ->orderBy('sort_order')
+    //         ->orderBy('name')
+    //         ->get()
+    //         ->map(fn ($model) => CategoryMapper::toEntity($model));
+    // }
 
 public function getMenuTree(?int $catalogGroupId = null): Collection
 {
