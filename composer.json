@@ -17,6 +17,7 @@
         "staudenmeir/laravel-adjacency-list": "^1.26"
     },
     "require-dev": {
+        "barryvdh/laravel-debugbar": "*",
         "fakerphp/faker": "^1.23",
         "laravel/pail": "^1.2.5",
         "laravel/pint": "^1.27",
