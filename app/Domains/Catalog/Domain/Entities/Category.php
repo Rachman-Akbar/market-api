@@ -172,6 +172,11 @@ final class Category
     {
         $this->children = $children;
     }
+
+    public function hasChildren(): bool
+{
+    return ! empty($this->children);
+}
 }
 
 

@@ -15,6 +15,9 @@ use App\Domains\Catalog\Presentation\Http\Resources\ProductResource;
 use App\Domains\Catalog\Application\UseCases\Category\CreateCategoryUseCase;
 use App\Domains\Catalog\Application\UseCases\Category\UpdateCategoryUseCase;
 use App\Domains\Catalog\Application\UseCases\Category\DeleteCategoryUseCase;
+use App\Domains\Catalog\Application\UseCases\Category\GetCategoryByPathUseCase;
+use App\Domains\Catalog\Application\UseCases\Category\GetHeaderMenuUseCase;
+use App\Domains\Catalog\Application\UseCases\Category\ListProductsByCategoryPathUseCase;
 use App\Domains\Catalog\Presentation\Http\Requests\CategoryRequest;
 
 final class CategoryController extends Controller
@@ -104,6 +107,43 @@ public function destroy(
         'success' => true,
         'message' => 'Category deleted successfully',
     ]);
+}
+
+public function headerMenu(
+    GetHeaderMenuUseCase $useCase
+) {
+    return response()->json([
+        'catalogGroups' => $useCase->execute(),
+    ]);
+}
+
+public function showByPath(
+    string $path,
+    GetCategoryByPathUseCase $useCase
+) {
+    $category = $useCase->execute($path);
+
+    abort_if(! $category, 404);
+
+    return response()->json([
+        'success' => true,
+        'data' => new CategoryResource($category),
+    ]);
+}
+
+public function productsByPath(
+    string $path,
+    Request $request,
+    ListProductsByCategoryPathUseCase $useCase
+) {
+    $products = $useCase->execute(
+        $path,
+        $request->all(),
+    );
+
+    return ProductResource::collection(
+        $products
+    );
 }
 
 }

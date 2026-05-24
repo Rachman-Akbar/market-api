@@ -10,23 +10,33 @@ use Staudenmeir\LaravelAdjacencyList\Eloquent\HasRecursiveRelationships;
 
 class CategoryModel extends Model
 {
-    use HasRecursiveRelationships;   // ← Penting!
+    use HasRecursiveRelationships;
 
     protected $table = 'categories';
 
     protected $fillable = [
-        'catalog_group_id', 'parent_id', 'name', 'slug', 'full_slug',
-        'description', 'image_url', 'icon_url', 'cover_image_url',
-        'level', 'sort_order', 'is_active', 'is_visible_in_menu',
+        'catalog_group_id',
+        'parent_id',
+        'name',
+        'slug',
+        'full_slug',
+        'description',
+        'image_url',
+        'icon_url',
+        'cover_image_url',
+        'level',
+        'sort_order',
+        'is_active',
+        'is_visible_in_menu',
     ];
 
     protected $casts = [
-        'catalog_group_id' => 'integer',
-        'parent_id'        => 'integer',
-        'level'            => 'integer',
-        'sort_order'       => 'integer',
-        'is_active'        => 'boolean',
-        'is_visible_in_menu' => 'boolean',
+        'catalog_group_id'    => 'integer',
+        'parent_id'           => 'integer',
+        'level'               => 'integer',
+        'sort_order'          => 'integer',
+        'is_active'           => 'boolean',
+        'is_visible_in_menu'  => 'boolean',
     ];
 
     public function catalogGroup(): BelongsTo
@@ -36,21 +46,36 @@ class CategoryModel extends Model
 
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(self::class, 'parent_id');
+        return $this->belongsTo(
+            self::class,
+            'parent_id'
+        );
     }
 
     public function children(): HasMany
     {
-        return $this->hasMany(self::class, 'parent_id')
-                    ->orderBy('sort_order')
-                    ->orderBy('name');
+        return $this->hasMany(
+            self::class,
+            'parent_id'
+        )
+        ->where('is_active', true)
+        ->orderBy('sort_order')
+        ->orderBy('name');
     }
 
     public function childrenRecursive(): HasMany
     {
         return $this->children()
-                    ->where('is_active', true)
-                    ->where('is_visible_in_menu', true);
+            ->with('childrenRecursive');
+    }
+
+    /**
+     * IMPORTANT
+     * Untuk include descendants products
+     */
+    public function descendants()
+    {
+        return $this->descendantsAndSelf();
     }
 
     public function products(): BelongsToMany

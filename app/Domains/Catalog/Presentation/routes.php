@@ -19,6 +19,14 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('catalog')
     ->name('catalog.')
     ->group(function () {
+
+
+     Route::get(
+            '/header-menu',
+            [CategoryController::class, 'headerMenu']
+        );
+
+        
         Route::prefix('products')
             ->name('products.')
             ->group(function () {
@@ -58,34 +66,78 @@ Route::prefix('catalog')
     Route::get('{id}/categories', [CatalogGroupController::class, 'categories']);
 });
 
-        Route::prefix('/categories')
-    ->controller(CategoryController::class)
-    ->group(function () {
+    Route::prefix('categories')
+        ->controller(CategoryController::class)
+        ->group(function () {
 
-        // ALL CATEGORIES
+        /**
+         * ALL CATEGORIES
+         */
         Route::get('/', 'index');
 
-        // MENU
+        /**
+         * MENU
+         */
         Route::get('/menu', 'menu');
 
-        // PRODUCTS BY CATEGORY SLUG
-        Route::get('/{slug}/products', 'productsBySlug');
+        /**
+         * PRODUCTS BY FULL PATH
+         *
+         * IMPORTANT:
+         * MUST BE ABOVE /path/{path}
+         */
+        Route::get(
+            '/path/{path}/products',
+            'productsByPath'
+        )->where('path', '.*');
 
-        // CATEGORY BY SLUG
-        Route::get('/slug/{slug}', 'showBySlug');
+        /**
+         * CATEGORY BY FULL PATH
+         */
+        Route::get(
+            '/path/{path}',
+            'showByPath'
+        )->where('path', '.*');
 
-        // CREATE
+        /**
+         * CATEGORY BY SLUG
+         */
+        Route::get(
+            '/slug/{slug}',
+            'showBySlug'
+        );
+
+        /**
+         * PRODUCTS BY SLUG
+         */
+        Route::get(
+            '/{slug}/products',
+            'productsBySlug'
+        );
+
+        /**
+         * CREATE
+         */
         Route::post('/', 'store');
 
-        // UPDATE
-        Route::put('/{id}', 'update')
-            ->whereNumber('id');
+        /**
+         * UPDATE
+         */
+        Route::put(
+            '/{id}',
+            'update'
+        )->whereNumber('id');
 
-        // DELETE
-        Route::delete('/{id}', 'destroy')
-            ->whereNumber('id');
+        /**
+         * DELETE
+         */
+        Route::delete(
+            '/{id}',
+            'destroy'
+        )->whereNumber('id');
     });
 
+    
         Route::prefix('banners')
             ->name('banners.')
             ->group(function () {

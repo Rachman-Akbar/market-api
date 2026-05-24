@@ -46,4 +46,11 @@ interface CategoryRepositoryInterface
      * Catalog groups with categories
      */
     public function getAllWithCategories(): Collection;
+
+    public function getHeaderMenu(): Collection;
+
+    public function findByPath(string $path): ?Category;
+
+    
 }
+

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Infrastructure\Persistence\Repositories;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use App\Domains\Catalog\Domain\Repositories\ProductRepositoryInterface;
@@ -27,7 +28,6 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             $categoryIds = $this->getCategoryAndDescendantIdsById(
                 (int) $filters['category_id']
             );
-
             $this->applyCategoryIdsFilter($query, $categoryIds);
         }
 
@@ -37,7 +37,6 @@ final class EloquentProductRepository implements ProductRepositoryInterface
 
         if (! empty($filters['search'])) {
             $search = trim((string) $filters['search']);
-
             $query->where(function ($query) use ($search) {
                 $query
                     ->where('name', 'like', '%' . $search . '%')
@@ -46,8 +45,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             });
         }
 
-        $paginator = $this->applyDefaultOrdering($query)
-            ->paginate($perPage);
+        $paginator = $this->applyDefaultOrdering($query)->paginate($perPage);
 
         return $this->mapPaginatorToEntities($paginator);
     }
@@ -107,15 +105,11 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         if (! empty($categoryIds)) {
             $this->applyCategoryIdsFilter($query, $categoryIds);
         } else {
-            /**
-             * Kalau kategori tidak ditemukan, jangan tampilkan semua produk.
-             */
             $query->whereRaw('1 = 0');
         }
 
         if (! empty($filters['search'])) {
             $search = trim((string) $filters['search']);
-
             $query->where(function ($query) use ($search) {
                 $query
                     ->where('name', 'like', '%' . $search . '%')
@@ -128,8 +122,67 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             $query->where('store_id', (int) $filters['store_id']);
         }
 
-        $paginator = $this->applyDefaultOrdering($query)
-            ->paginate($perPage);
+        $paginator = $this->applyDefaultOrdering($query)->paginate($perPage);
+
+        return $this->mapPaginatorToEntities($paginator);
+    }
+
+    /**
+     * Digunakan oleh ListProductsByCategoryPathUseCase.
+     * Mencari produk berdasarkan full_slug category (path).
+     */
+    public function findPublishedByCategoryPath(
+        string $path,
+        array $filters = [],
+        bool $includeDescendants = false,
+        int $perPage = 15
+    ): LengthAwarePaginator {
+        $category = CategoryModel::query()
+            ->where('full_slug', $path)
+            ->first();
+
+        if (! $category) {
+            abort(404, 'Category not found.');
+        }
+
+        $categoryIds = $includeDescendants
+            ? $this->getCategoryAndDescendantIdsById((int) $category->id)
+            : [(int) $category->id];
+
+        $query = ProductModel::query()
+            ->with(['primaryCategory', 'categories', 'store', 'images'])
+            ->where('status', 'published');
+
+        $this->applyCategoryIdsFilter($query, $categoryIds);
+
+        $perPage = (int) ($filters['per_page'] ?? $perPage);
+
+        $paginator = $this->applyDefaultOrdering($query)->paginate($perPage);
+
+        return $this->mapPaginatorToEntities($paginator);
+    }
+
+    /**
+     * Digunakan oleh ListProductsByCategoryPathUseCase via paginateByCategory.
+     */
+    public function paginateByCategory(
+        int $categoryId,
+        array $filters = [],
+        bool $includeDescendants = false
+    ): LengthAwarePaginator {
+        $categoryIds = $includeDescendants
+            ? $this->getCategoryAndDescendantIdsById($categoryId)
+            : [$categoryId];
+
+        $query = ProductModel::query()
+            ->with(['primaryCategory', 'categories', 'store', 'images'])
+            ->where('status', 'published');
+
+        $this->applyCategoryIdsFilter($query, $categoryIds);
+
+        $perPage = (int) ($filters['per_page'] ?? 12);
+
+        $paginator = $this->applyDefaultOrdering($query)->paginate($perPage);
 
         return $this->mapPaginatorToEntities($paginator);
     }
@@ -143,16 +196,16 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         if (! $model) {
             $model = ProductMapper::toModel($product);
         } else {
-            $model->store_id = $product->storeId();
+            $model->store_id            = $product->storeId();
             $model->primary_category_id = $product->primaryCategoryId();
-            $model->seller_id = $product->sellerId();
-            $model->name = $product->name();
-            $model->slug = $product->slug();
-            $model->description = $product->description();
-            $model->price = $product->price();
-            $model->stock = $product->stock();
-            $model->thumbnail = $product->thumbnail();
-            $model->status = $product->status();
+            $model->seller_id           = $product->sellerId();
+            $model->name                = $product->name();
+            $model->slug                = $product->slug();
+            $model->description         = $product->description();
+            $model->price               = $product->price();
+            $model->stock               = $product->stock();
+            $model->thumbnail           = $product->thumbnail();
+            $model->status              = $product->status();
         }
 
         $model->save();
@@ -167,7 +220,6 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         }
 
         $syncPayload = [];
-
         foreach (array_values(array_unique($categoryIds)) as $categoryId) {
             $syncPayload[$categoryId] = [
                 'is_primary' => (int) ($categoryId === $product->primaryCategoryId()),
@@ -175,7 +227,6 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         }
 
         $model->categories()->sync($syncPayload);
-
         $model->load(['primaryCategory', 'categories', 'store', 'images']);
 
         return ProductMapper::toEntity($model);
@@ -186,13 +237,16 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         return ProductModel::where('id', $id)->delete() > 0;
     }
 
+    // =========================================================================
+    // Private helpers
+    // =========================================================================
+
     private function applyCategoryIdsFilter($query, array $categoryIds): void
     {
         $categoryIds = array_values(array_unique(array_map('intval', $categoryIds)));
 
         if (empty($categoryIds)) {
             $query->whereRaw('1 = 0');
-
             return;
         }
 
@@ -212,10 +266,6 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             ->orderByDesc('id');
     }
 
-    /**
-     * Ambil kategori itu sendiri + semua descendant.
-     * Aman untuk level 1, 2, 3, bahkan kalau nanti level kategori bertambah.
-     */
     private function getCategoryAndDescendantIdsById(int $categoryId): array
     {
         $categoryExists = CategoryModel::query()
@@ -226,7 +276,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             return [];
         }
 
-        $ids = [$categoryId];
+        $ids       = [$categoryId];
         $parentIds = [$categoryId];
 
         while (! empty($parentIds)) {
@@ -242,7 +292,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
                 break;
             }
 
-            $ids = array_merge($ids, $childIds);
+            $ids       = array_merge($ids, $childIds);
             $parentIds = $childIds;
         }
 

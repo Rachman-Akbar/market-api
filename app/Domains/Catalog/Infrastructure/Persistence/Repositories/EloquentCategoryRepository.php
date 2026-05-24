@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Cache;
 
 final class EloquentCategoryRepository implements CategoryRepositoryInterface
 {
+    private const CACHE_TTL = 600;
  
     public function getAll(array $filters = []): Collection
 {
@@ -338,6 +339,158 @@ public function update(int $id, array $data): Category
     Cache::flush();
 
     return CategoryMapper::toEntity($model);
+}
+
+public function getHeaderMenu(): Collection
+{
+    $cacheKey = 'header_menu_v1';
+
+    $cached = Cache::get($cacheKey);
+
+    if ($cached === null) {
+
+        $models = CatalogGroupModel::query()
+            ->where('is_active', true)
+
+            ->select([
+                'id',
+                'name',
+                'slug',
+                'image_url',
+                'cover_image_url'
+            ])
+
+            ->with([
+                'categories' => function ($query) {
+
+                    $query
+                        ->whereNull('parent_id')
+                        ->where('is_active', true)
+                        ->where('is_visible_in_menu', true)
+
+                        ->select([
+                            'id',
+                            'catalog_group_id',
+                            'parent_id',
+                            'name',
+                            'slug',
+                            'full_slug',
+                            'image_url',
+                            'icon_url',
+                            'sort_order',
+                            'level'
+                        ])
+
+                        ->with([
+                            'childrenRecursive' => function ($childQuery) {
+
+                                $childQuery
+                                    ->where('is_active', true)
+                                    ->where('is_visible_in_menu', true)
+
+                                    ->select([
+                                        'id',
+                                        'catalog_group_id',
+                                        'parent_id',
+                                        'name',
+                                        'slug',
+                                        'full_slug',
+                                        'image_url',
+                                        'icon_url',
+                                        'sort_order',
+                                        'level'
+                                    ])
+
+                                    ->orderBy('sort_order')
+                                    ->orderBy('name');
+                            }
+                        ])
+
+                        ->orderBy('sort_order')
+                        ->orderBy('name');
+                }
+            ])
+
+            ->orderBy('name')
+            ->get();
+
+        $fresh = $models->map(function ($group) {
+
+            return [
+
+                'id' => $group->id,
+                'name' => $group->name,
+                'slug' => $group->slug,
+                'image_url' => $group->image_url,
+                'cover_image_url' => $group->cover_image_url,
+
+                'categories' => $group->categories
+                    ->map(fn($category) => $this->mapHeaderCategory($category))
+                    ->values()
+                    ->all()
+
+            ];
+
+        })->values()->all();
+
+        Cache::put(
+            $cacheKey,
+            $fresh,
+            self::CACHE_TTL
+        );
+
+        $cached = $fresh;
+    }
+
+    return collect($cached);
+}
+
+private function mapHeaderCategory($category): array
+{
+    return [
+
+        'id' => $category->id,
+        'catalog_group_id' => $category->catalog_group_id,
+        'parent_id' => $category->parent_id,
+
+        'name' => $category->name,
+
+        'slug' => $category->slug,
+        'full_slug' => $category->full_slug,
+
+        'image_url' => $category->image_url,
+        'icon_url' => $category->icon_url,
+
+        'sort_order' => $category->sort_order,
+        'level' => $category->level,
+
+        'children' => collect(
+            $category->childrenRecursive ?? []
+        )
+            ->map(fn($child) => $this->mapHeaderCategory($child))
+            ->values()
+            ->all(),
+    ];
+}
+
+public function findByPath(
+    string $path
+): ?Category {
+
+    $category = CategoryModel::query()
+        ->where('full_slug', $path)
+        ->where('is_active', true)
+        ->withCount('products')  
+        ->with(['children'])   
+        ->first();
+
+    if (! $category) {
+        return null;
+    }
+
+    return CategoryMapper::toEntity(
+        $category
+    );
 }
 
 }
