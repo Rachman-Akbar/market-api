@@ -8,7 +8,8 @@ use App\Domains\Catalog\Application\UseCases\CatalogGroup\{
     GetCatalogGroupsUseCase,
     GetCatalogGroupUseCase,
     UpdateCatalogGroupUseCase,
-    GetCategoriesByCatalogGroupUseCase
+    GetCategoriesByCatalogGroupUseCase,
+    GetCatalogGroupBySlugUseCase,
 };
 use App\Domains\Catalog\Presentation\Http\Requests\CatalogGroupRequest;
 use App\Domains\Catalog\Presentation\Http\Resources\CatalogGroupResource;
@@ -71,4 +72,25 @@ class CatalogGroupController extends Controller
             'data' => CategoryResource::collection($categories),
         ]);
     }
+
+    public function showBySlug(
+    GetCatalogGroupBySlugUseCase $useCase,
+    string $slug
+): JsonResponse {
+
+    $group = $useCase->execute($slug);
+
+    if (!$group) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Catalog group not found'
+        ], 404);
+    }
+
+    return response()->json([
+        'success' => true,
+        'data' => new CatalogGroupResource($group),
+    ]);
+}
+
 }

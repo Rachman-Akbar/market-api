@@ -2,7 +2,7 @@
 
 namespace App\Domains\Catalog\Application\UseCases\Category;
 
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
 
 final class ListCategoryUseCase
@@ -12,12 +12,11 @@ final class ListCategoryUseCase
     ) {}
 
     public function execute(
-        array $filters = [],
-        int $perPage = 15
-    ): LengthAwarePaginator {
-        return $this->repository->paginate(
-            $filters,
-            $perPage
+        array $filters = []
+    ): Collection {
+
+        return $this->repository->getAll(
+            $filters
         );
     }
 }

@@ -14,30 +14,22 @@ use Illuminate\Support\Facades\Cache;
 
 final class EloquentCategoryRepository implements CategoryRepositoryInterface
 {
-    private const CACHE_TTL = 600; // 10 menit
-
-    public function paginate(
-    array $filters = [],
-    int $perPage = 15
-): LengthAwarePaginator {
-
+ 
+    public function getAll(array $filters = []): Collection
+{
     $query = CategoryModel::query()
         ->with(['catalogGroup', 'parent'])
         ->withCount('products');
 
     $this->applyFilters($query, $filters);
 
-    $paginator = $query
+    return $query
         ->orderBy('sort_order')
-        ->latest()
-        ->paginate($perPage);
-
-    $paginator->setCollection(
-        $paginator->getCollection()
-            ->map(fn ($model) => CategoryMapper::toEntity($model))
-    );
-
-    return $paginator;
+        ->orderBy('name')
+        ->get()
+        ->map(
+            fn($model) => CategoryMapper::toEntity($model)
+        );
 }
 
     private function applyFilters($query, array $filters): void
@@ -215,10 +207,16 @@ private function freshMenuTree(?int $catalogGroupId = null): array
         return CategoryMapper::toEntity($model);
     }
 
-    public function delete(int $id): bool
-    {
-        return CategoryModel::where('id', $id)->delete() > 0;
+   public function delete(int $id): bool
+{
+    $deleted = CategoryModel::where('id', $id)->delete() > 0;
+
+    if ($deleted) {
+        Cache::flush();
     }
+
+    return $deleted;
+}
 
 public function getAllWithCategories(): Collection
 {
@@ -302,6 +300,44 @@ public function getAllWithCategories(): Collection
             fn(array $item)
                 => CatalogGroupMapper::toEntityFromArray($item)
         );
+}
+
+    public function create(Category $category): Category
+{
+    $model = CategoryMapper::toModel($category);
+
+    $model->save();
+
+    $model->load([
+        'catalogGroup',
+        'parent',
+        'children'
+    ]);
+
+    $model->loadCount('products');
+
+    Cache::flush();
+
+    return CategoryMapper::toEntity($model);
+}
+
+public function update(int $id, array $data): Category
+{
+    $model = CategoryModel::findOrFail($id);
+
+    $model->update($data);
+
+    $model->load([
+        'catalogGroup',
+        'parent',
+        'children'
+    ]);
+
+    $model->loadCount('products');
+
+    Cache::flush();
+
+    return CategoryMapper::toEntity($model);
 }
 
 }

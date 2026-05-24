@@ -24,4 +24,6 @@ interface CatalogGroupRepositoryInterface
      * NEW: Ambil kategori berdasarkan Catalog Group ID
      */
     public function getCategoriesByGroupId(int $groupId): Collection;
+
+    public function findBySlug(string $slug): ?CatalogGroup;
 }

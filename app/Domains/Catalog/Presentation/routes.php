@@ -38,30 +38,53 @@ Route::prefix('catalog')
     Route::get('/', [CatalogGroupController::class, 'index']);
     Route::post('/', [CatalogGroupController::class, 'store']);
     
-    Route::get('{id}', [CatalogGroupController::class, 'show']);
-    Route::put('{id}', [CatalogGroupController::class, 'update']);
+    // Route::get('{id}', [CatalogGroupController::class, 'show']);
+    // Route::put('{id}', [CatalogGroupController::class, 'update']);
+    
+       // GET CATEGORIES
+    // Route::get('/{id}/categories', [
+    //     CatalogGroupController::class,
+    //     'categories'
+    // ])->whereNumber('id');
+    
+    // GET BY SLUG
+    Route::get('/{slug}', [
+        CatalogGroupController::class,
+        'showBySlug'
+    ]);
+
     
     // Endpoint penting untuk marketplace
     Route::get('{id}/categories', [CatalogGroupController::class, 'categories']);
 });
 
-        Route::prefix('categories')
-            ->name('categories.')
-            ->group(function () {
-                Route::get('/', [CategoryController::class, 'index'])
-                    ->name('index');
+        Route::prefix('/categories')
+    ->controller(CategoryController::class)
+    ->group(function () {
 
-                Route::get('/menu', [CategoryController::class, 'menu'])
-                    ->name('menu');
+        // ALL CATEGORIES
+        Route::get('/', 'index');
 
-                Route::get('/{slug}/products', [CategoryController::class, 'productsBySlug'])
-                    ->where('slug', '[A-Za-z0-9\-]+')
-                    ->name('products');
+        // MENU
+        Route::get('/menu', 'menu');
 
-                Route::get('/{slug}', [CategoryController::class, 'showBySlug'])
-                    ->where('slug', '[A-Za-z0-9\-]+')
-                    ->name('show-by-slug');
-            });
+        // PRODUCTS BY CATEGORY SLUG
+        Route::get('/{slug}/products', 'productsBySlug');
+
+        // CATEGORY BY SLUG
+        Route::get('/slug/{slug}', 'showBySlug');
+
+        // CREATE
+        Route::post('/', 'store');
+
+        // UPDATE
+        Route::put('/{id}', 'update')
+            ->whereNumber('id');
+
+        // DELETE
+        Route::delete('/{id}', 'destroy')
+            ->whereNumber('id');
+    });
 
         Route::prefix('banners')
             ->name('banners.')
