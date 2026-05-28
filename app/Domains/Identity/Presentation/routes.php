@@ -35,3 +35,6 @@ Route::prefix('identity/auth')
                 ->name('account.delete');
         });
     });
+
+
+    

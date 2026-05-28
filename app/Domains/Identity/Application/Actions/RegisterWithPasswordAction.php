@@ -2,8 +2,9 @@
 
 namespace App\Domains\Identity\Application\Actions;
 
-use App\Domains\Identity\Infrastructure\Firebase\FirebaseAuthService;
 use App\Domains\Identity\Infrastructure\Persistence\Eloquent\UserRepository;
+use App\Domains\Identity\Application\Actions\IssueApiTokenAction;
+use App\Domains\Identity\Application\Actions\BuildAuthPayloadAction;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -11,7 +12,6 @@ final class RegisterWithPasswordAction
 {
     public function __construct(
         private readonly UserRepository $users,
-        private readonly FirebaseAuthService $firebase,
         private readonly IssueApiTokenAction $tokens,
         private readonly BuildAuthPayloadAction $payload,
     ) {}
@@ -21,50 +21,26 @@ final class RegisterWithPasswordAction
         string $email,
         string $password
     ): array {
-        $firebaseUid = null;
-
-        try {
-            $firebaseUid = $this->firebase->createUser(
+        return DB::transaction(function () use ($name, $email, $password): array {
+            $user = $this->users->createWithPassword(
+                name: $name,
                 email: $email,
                 password: $password,
-                name: $name,
+                firebaseUid: null,           // Manual register = tidak pakai Firebase
             );
 
-            return DB::transaction(function () use (
-                $name,
-                $email,
-                $password,
-                $firebaseUid
-            ): array {
-                $user = $this->users->createWithPassword(
-                    name: $name,
-                    email: $email,
-                    password: $password,
-                    firebaseUid: $firebaseUid,
-                );
+            // Assign default role
+            $this->users->assignRoleByName($user, 'buyer');
 
-                $this->users->assignRoleByName($user, 'buyer');
+            $activeRole = 'buyer';
 
-                $activeRole = 'buyer';
+            $apiToken = $this->tokens->execute(
+                user: $user,
+                activeRole: $activeRole,
+                revokeExistingTokens: true,   // revoke token lama saat register baru
+            );
 
-                $apiToken = $this->tokens->execute(
-                    user: $user,
-                    activeRole: $activeRole,
-                    revokeExistingTokens: false,
-                );
-
-                return $this->payload->execute(
-                    user: $user,
-                    activeRole: $activeRole,
-                    apiToken: $apiToken,
-                );
-            });
-        } catch (Throwable $e) {
-            if ($firebaseUid !== null) {
-                $this->firebase->deleteUser($firebaseUid);
-            }
-
-            throw $e;
-        }
+            return $this->payload->execute($user);
+        });
     }
 }

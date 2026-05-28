@@ -13,6 +13,21 @@ use RuntimeException;
 
 final class UserRepository
 {
+    public function createWithPassword(
+        string $name,
+        string $email,
+        string $password,
+        ?string $firebaseUid = null
+    ): User {
+        return User::create([
+            'name'              => $name,
+            'email'             => strtolower(trim($email)),
+            'password'          => $password,
+            'firebase_uid'      => $firebaseUid,
+            'is_email_verified' => false,
+        ]);
+    }
+   
     public function findByEmail(string $email): ?User
     {
         return User::query()
@@ -25,6 +40,30 @@ final class UserRepository
         return User::query()
             ->where('firebase_uid', trim($firebaseUid))
             ->first();
+    }
+
+    public function assignRoleByName(User $user, string $role): void
+    {
+        $role = strtolower(trim($role));
+
+        $roleId = DB::table('roles')
+            ->where('name', $role)
+            ->value('id');
+
+        if ($roleId === null) {
+            throw new RuntimeException("Role [{$role}] does not exist.");
+        }
+
+        DB::table('user_roles')->updateOrInsert(
+            [
+                'user_id' => $user->id,
+                'role_id' => $roleId,
+            ],
+            [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
     }
 
     public function syncFromFirebase(array $firebaseUser): User
@@ -107,30 +146,6 @@ final class UserRepository
 
             return $user->refresh();
         });
-    }
-
-    public function assignRoleByName(User $user, string $role): void
-    {
-        $role = $this->normalizeRole($role);
-
-        $roleId = DB::table('roles')
-            ->where('name', $role)
-            ->value('id');
-
-        if ($roleId === null) {
-            throw new RuntimeException("Role [{$role}] does not exist.");
-        }
-
-        DB::table('user_roles')->updateOrInsert(
-            [
-                'user_id' => $user->id,
-                'role_id' => $roleId,
-            ],
-            [
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-        );
     }
 
     public function getRoleNames(User $user): array
@@ -218,4 +233,5 @@ final class UserRepository
         return strtolower(trim($role));
     }
 }
+
 

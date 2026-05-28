@@ -45,3 +45,4 @@ final class ValidateFirebaseToken
         return $next($request);
     }
 }
+
