@@ -2,13 +2,12 @@
 
 namespace App\Domains\Catalog\Infrastructure\Persistence\Repositories;
 
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use App\Domains\Catalog\Domain\Entities\Category;
 use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
-use App\Domains\Catalog\Infrastructure\Persistence\Mappers\CatalogGroupMapper;
 use App\Domains\Catalog\Infrastructure\Persistence\Models\CategoryModel;
 use App\Domains\Catalog\Infrastructure\Persistence\Mappers\CategoryMapper;
+use App\Domains\Catalog\Infrastructure\Persistence\Mappers\CatalogGroupMapper;
 use App\Domains\Catalog\Infrastructure\Persistence\Models\CatalogGroupModel;
 use Illuminate\Support\Facades\Cache;
 
@@ -19,16 +18,57 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
     public function getAll(array $filters = []): Collection
     {
         $query = CategoryModel::query()
-            ->with(['catalogGroup', 'parent'])
             ->withCount('products');
 
         $this->applyFilters($query, $filters);
 
-        return $query
+        // 1. Ambil semua data flat terlebih dahulu dengan sorting yang benar
+        $flatCategories = $query
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
             ->map(fn($model) => CategoryMapper::toEntity($model));
+
+        // 2. Bangun Tree Structure secara dinamis dari data flat untuk menghindari looping DB berulang
+        return $this->buildCategoryTree($flatCategories);
+    }
+
+    private function buildCategoryTree(Collection $categories): Collection
+    {
+        // Kelompokkan kategori berdasarkan parent_id
+        $grouped = $categories->groupBy(fn($cat) => $cat->parentId() ?? 'root');
+
+        // Fungsi rekursif untuk menyisipkan children ke dalam entitas Domain
+        $itemChanger = function($items) use (&$itemChanger, $grouped) {
+            return collect($items)->map(function(Category $category) use (&$itemChanger, $grouped) {
+                $children = $grouped->get($category->id(), collect());
+                
+                if ($children->isNotEmpty()) {
+                    $children = $itemChanger($children);
+                }
+
+                // Buat instance objek baru dengan children yang sudah terisi
+                return new Category(
+                    id: $category->id(),
+                    catalogGroupId: $category->catalogGroupId(),
+                    parentId: $category->parentId(),
+                    name: $category->name(),
+                    slug: $category->slug(),
+                    fullSlug: $category->fullSlug(),
+                    imageUrl: $category->imageUrl(),
+                    iconUrl: $category->iconUrl(),
+                    level: $category->level(),
+                    sortOrder: $category->sortOrder(),
+                    productsCount: $category->productsCount(),
+                    isActive: $category->isActive(),
+                    isVisibleInMenu: $category->isVisibleInMenu(),
+                    children: $children->all() // Set children yang sudah terstruktur
+                );
+            });
+        };
+
+        // Mulai dari level paling atas (parent_id = null / root)
+        return $itemChanger($grouped->get('root', collect()));
     }
 
     private function applyFilters($query, array $filters): void
@@ -94,15 +134,15 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
             ->where('is_visible_in_menu', true)
             ->select([
                 'id', 'parent_id', 'catalog_group_id', 'name',
-                'slug', 'image_url', 'icon_url', 'sort_order'
+                'slug', 'full_slug', 'image_url', 'icon_url', 'sort_order', 'level'
             ])
             ->with(['childrenRecursive' => function ($query) {
                 $query
                     ->where('is_active', true)
                     ->where('is_visible_in_menu', true)
                     ->select([
-                        'id', 'parent_id', 'name', 'slug',
-                        'image_url', 'icon_url', 'sort_order'
+                        'id', 'parent_id', 'catalog_group_id', 'name', 'slug',
+                        'full_slug', 'image_url', 'icon_url', 'sort_order', 'level'
                     ])
                     ->orderBy('sort_order')
                     ->orderBy('name');
@@ -118,17 +158,23 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
                 'catalog_group_id' => $model->catalog_group_id,
                 'name'             => $model->name,
                 'slug'             => $model->slug,
+                'full_slug'        => $model->full_slug,
                 'image_url'        => $model->image_url,
                 'icon_url'         => $model->icon_url,
+                'level'            => (int) $model->level,
                 'sort_order'       => $model->sort_order,
                 'children'         => $model->childrenRecursive->map(fn($child) => [
-                    'id'         => $child->id,
-                    'parent_id'  => $child->parent_id,
-                    'name'       => $child->name,
-                    'slug'       => $child->slug,
-                    'image_url'  => $child->image_url,
-                    'icon_url'   => $child->icon_url,
-                    'sort_order' => $child->sort_order,
+                    'id'               => $child->id,
+                    'parent_id'        => $child->parent_id,
+                    'catalog_group_id' => $child->catalog_group_id,
+                    'name'             => $child->name,
+                    'slug'             => $child->slug,
+                    'full_slug'        => $child->full_slug,
+                    'image_url'        => $child->image_url,
+                    'icon_url'         => $child->icon_url,
+                    'level'            => (int) $child->level,
+                    'sort_order'       => $child->sort_order,
+                    'children'         => []
                 ])->all()
             ];
         })->all();
@@ -146,10 +192,8 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
             $model->name = $category->name();
             $model->slug = $category->slug();
             $model->full_slug = $category->fullSlug();
-            $model->description = $category->description();
             $model->image_url = $category->imageUrl();
             $model->icon_url = $category->iconUrl();
-            $model->cover_image_url = $category->coverImageUrl();
             $model->level = $category->level();
             $model->sort_order = $category->sortOrder();
             $model->is_active = $category->isActive();
@@ -159,19 +203,15 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         $model->save();
         $this->clearCache();
 
-        $model->load(['catalogGroup', 'parent', 'children'])->loadCount('products');
-
         return CategoryMapper::toEntity($model);
     }
 
     public function delete(int $id): bool
     {
         $deleted = CategoryModel::where('id', $id)->delete() > 0;
-
         if ($deleted) {
             $this->clearCache();
         }
-
         return $deleted;
     }
 
@@ -182,15 +222,11 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         $cached = Cache::remember($cacheKey, self::CACHE_TTL, function () {
             return CatalogGroupModel::query()
                 ->where('is_active', true)
-                ->select(['id', 'name', 'slug']) // OPTIMIZATION: Hapus image_url & cover_image_url dari Group
+                ->select(['id', 'name', 'slug', 'is_active'])
                 ->with([
                     'categories' => function ($q) {
                         $q->where('is_active', true)
                             ->where('is_visible_in_menu', true)
-                            ->select([
-                                'id', 'parent_id', 'catalog_group_id', 'name',
-                                'slug', 'image_url', 'icon_url', 'sort_order'
-                            ])
                             ->orderBy('sort_order')
                             ->orderBy('name');
                     }
@@ -199,19 +235,25 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
                 ->get()
                 ->map(function ($model) {
                     return [
-                        'id'         => $model->id,
-                        'name'       => $model->name,
-                        'slug'       => $model->slug,
-                        'categories' => $model->categories->map(function ($category) {
+                        'id'        => $model->id,
+                        'name'      => $model->name,
+                        'slug'      => $model->slug,
+                        'is_active' => (bool) $model->is_active,
+                        'categories'=> $model->categories->map(function ($category) {
                             return [
-                                'id'               => $category->id,
-                                'parent_id'        => $category->parent_id,
-                                'catalog_group_id' => $category->catalog_group_id,
-                                'name'             => $category->name,
-                                'slug'             => $category->slug,
-                                'image_url'        => $category->image_url,
-                                'icon_url'         => $category->icon_url,
-                                'sort_order'       => $category->sort_order,
+                                'id'                 => $category->id,
+                                'parent_id'          => $category->parent_id,
+                                'catalog_group_id'   => $category->catalog_group_id,
+                                'name'               => $category->name,
+                                'slug'               => $category->slug,
+                                'full_slug'          => $category->full_slug,
+                                'image_url'          => $category->image_url,
+                                'icon_url'           => $category->icon_url,
+                                'level'              => (int) $category->level,
+                                'sort_order'         => $category->sort_order,
+                                'is_active'          => (bool) $category->is_active,
+                                'is_visible_in_menu' => (bool) $category->is_visible_in_menu,
+                                'children'           => []
                             ];
                         })->values()->all()
                     ];
@@ -227,11 +269,7 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
     {
         $model = CategoryMapper::toModel($category);
         $model->save();
-
         $this->clearCache();
-
-        $model->load(['catalogGroup', 'parent', 'children'])->loadCount('products');
-
         return CategoryMapper::toEntity($model);
     }
 
@@ -239,11 +277,7 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
     {
         $model = CategoryModel::findOrFail($id);
         $model->update($data);
-
         $this->clearCache();
-
-        $model->load(['catalogGroup', 'parent', 'children'])->loadCount('products');
-
         return CategoryMapper::toEntity($model);
     }
 
@@ -254,28 +288,18 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         $cached = Cache::remember($cacheKey, self::CACHE_TTL, function () {
             return CatalogGroupModel::query()
                 ->where('is_active', true)
-                ->select(['id', 'name', 'slug']) // OPTIMIZATION: Di-select kolom yang eksis saja untuk menghindari error 1054
+                ->select(['id', 'name', 'slug', 'is_active']) 
                 ->with([
                     'categories' => function ($query) {
-                        $query->whereNull('parent_id')
+                        $query->whereNull('parent_id') // Hanya ambil level root (Level 1) lewat Eloquent
                             ->where('is_active', true)
                             ->where('is_visible_in_menu', true)
-                            ->select([
-                                'id', 'catalog_group_id', 'parent_id', 'name',
-                                'slug', 'full_slug', 'image_url', 'icon_url', 'sort_order', 'level'
-                            ])
-                            ->with([
-                                'childrenRecursive' => function ($childQuery) {
-                                    $childQuery->where('is_active', true)
-                                        ->where('is_visible_in_menu', true)
-                                        ->select([
-                                            'id', 'catalog_group_id', 'parent_id', 'name',
-                                            'slug', 'full_slug', 'image_url', 'icon_url', 'sort_order', 'level'
-                                        ])
-                                        ->orderBy('sort_order')
-                                        ->orderBy('name');
-                                }
-                            ])
+                            ->with(['childrenRecursive' => function ($childQuery) {
+                                $childQuery->where('is_active', true)
+                                    ->where('is_visible_in_menu', true)
+                                    ->orderBy('sort_order')
+                                    ->orderBy('name');
+                            }])
                             ->orderBy('sort_order')
                             ->orderBy('name');
                     }
@@ -284,10 +308,11 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
                 ->get()
                 ->map(function ($group) {
                     return [
-                        'id'         => $group->id,
-                        'name'       => $group->name,
-                        'slug'       => $group->slug,
-                        'categories' => $group->categories
+                        'id'        => $group->id,
+                        'name'      => $group->name,
+                        'slug'      => $group->slug,
+                        'is_active' => (bool) $group->is_active,
+                        'categories'=> $group->categories
                             ->map(fn($category) => $this->mapHeaderCategory($category))
                             ->values()
                             ->all()
@@ -295,23 +320,27 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
                 })->values()->all();
         });
 
-        return collect($cached);
+        return collect($cached)->map(
+            fn(array $item) => CatalogGroupMapper::toEntityFromArray($item)
+        );
     }
 
     private function mapHeaderCategory($category): array
     {
         return [
-            'id'               => $category->id,
-            'catalog_group_id' => $category->catalog_group_id,
-            'parent_id'        => $category->parent_id,
-            'name'             => $category->name,
-            'slug'             => $category->slug,
-            'full_slug'        => $category->full_slug,
-            'image_url'        => $category->image_url,
-            'icon_url'         => $category->icon_url,
-            'sort_order'       => $category->sort_order,
-            'level'            => $category->level,
-            'children'         => collect($category->childrenRecursive ?? [])
+            'id'                 => $category->id,
+            'catalog_group_id'   => $category->catalog_group_id,
+            'parent_id'          => $category->parent_id,
+            'name'               => $category->name,
+            'slug'               => $category->slug,
+            'full_slug'          => $category->full_slug,
+            'image_url'          => $category->image_url,
+            'icon_url'           => $category->icon_url,
+            'sort_order'         => $category->sort_order,
+            'level'              => (int) $category->level,
+            'is_active'          => (bool) $category->is_active,
+            'is_visible_in_menu' => (bool) $category->is_visible_in_menu,
+            'children'           => collect($category->childrenRecursive ?? $category->children ?? [])
                 ->map(fn($child) => $this->mapHeaderCategory($child))
                 ->values()
                 ->all(),
@@ -324,26 +353,20 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
             ->where('full_slug', $path)
             ->where('is_active', true)
             ->withCount('products')
-            ->with(['children'])
             ->first();
 
         return $category ? CategoryMapper::toEntity($category) : null;
     }
 
-    /**
-     * Helper untuk menghapus semua cache yang berkaitan dengan katalog menu
-     */
     private function clearCache(): void
     {
         Cache::forget('header_menu_v1');
         Cache::forget('catalog_groups_with_categories_v1');
         Cache::forget('category_menu_tree_all_v1');
 
-        // Menghapus cache spesifik group jika ada pembaharuan massal
-        // Jika driver menggunakan 'redis' atau 'memcached', bisa menggunakan tags.
-        // Namun untuk kompatibilitas 'file' driver, kita flush atau biarkan TTL bekerja jika ID dinamis.
-        if (config('cache.default') !== 'file') {
-            Cache::flush();
+        $groups = CatalogGroupModel::select('id')->get();
+        foreach ($groups as $group) {
+            Cache::forget("category_menu_tree_{$group->id}_v1");
         }
     }
 }

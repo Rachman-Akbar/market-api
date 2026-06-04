@@ -1,35 +1,31 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Domains\Catalog\Presentation\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Domains\Catalog\Domain\Entities\Category;
 
-final class CategoryResource extends JsonResource
+class CategoryResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        /** @var Category $category */
-        $category = $this->resource;
-
+        // $this->resource adalah objek Domain Entity Category
         return [
-            'id'                => $category->id(),
-            'catalog_group_id'  => $category->catalogGroupId(),
-            'parent_id'         => $category->parentId(),
-            'name'              => $category->name(),
-            'slug'              => $category->slug(),
-            'full_slug'         => $category->fullSlug(),
-            'image_url'         => $category->imageUrl(),
-            'icon_url'          => $category->iconUrl(),
-            'level'             => $category->level(),
-            'sort_order'        => $category->sortOrder(),
-            'products_count'    => $category->productsCount(),
-            'is_active'         => $category->isActive(),
-            'is_visible_in_menu'=> $category->isVisibleInMenu(),
-            'children'          => CategoryResource::collection($category->children()),
+            'id'                 => $this->resource->id(),
+            'catalog_group_id'   => $this->resource->catalogGroupId(),
+            'parent_id'          => $this->resource->parentId(),
+            'name'               => $this->resource->name(),
+            'slug'               => $this->resource->slug(),
+            'full_slug'          => $this->resource->fullSlug(),
+            'image_url'          => $this->resource->imageUrl(),
+            'icon_url'           => $this->resource->iconUrl(),
+            'level'              => $this->resource->level(),
+            'sort_order'         => $this->resource->sortOrder(),
+            'products_count'     => $this->resource->productsCount(),
+            'is_active'          => $this->resource->isActive(),
+            'is_visible_in_menu' => $this->resource->isVisibleInMenu(),
+            // Recursive loading untuk children tree
+            'children'           => CategoryResource::collection($this->resource->children()),
         ];
     }
 }

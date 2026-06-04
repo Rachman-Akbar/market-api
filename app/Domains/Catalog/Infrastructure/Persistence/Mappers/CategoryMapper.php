@@ -39,9 +39,6 @@ final class CategoryMapper
         );
     }
 
-    /**
-     * Untuk keperluan Caching (Array → Entity)
-     */
     public static function toEntityFromArray(array $data): Category
     {
         $children = collect($data['children'] ?? [])
@@ -83,5 +80,3 @@ final class CategoryMapper
         ]);
     }
 }
-
-

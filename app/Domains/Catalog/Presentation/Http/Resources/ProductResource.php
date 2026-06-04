@@ -37,6 +37,10 @@ final class ProductResource extends JsonResource
             'primary_category' => $this->mapCategory($product->primaryCategory()),
             'categories' => $this->mapCategories($product->categories()),
 
+            // ➕ TAMBAHKAN: Pemetaan Varian Produk
+            // Menggunakan method check method_exists atau directly call jika method pasti ada di Entity
+            'variants' => method_exists($product, 'variants') ? $this->mapVariants($product->variants()) : [],
+
             /**
              * Legacy response supaya frontend lama tidak langsung rusak.
              */
@@ -44,7 +48,6 @@ final class ProductResource extends JsonResource
             'category' => $this->mapCategory($product->primaryCategory()),
 
             'images' => $this->mapImages($product->images()),
-            
         ];
     }
 
@@ -97,5 +100,43 @@ final class ProductResource extends JsonResource
                 'is_primary' => (bool) ($image->is_primary ?? false),
             ];
         }, $images);
+    }
+
+    /**
+     * ➕ TAMBAHKAN: Helper method untuk mapping array Variant Entity / Array data variant
+     */
+    private function mapVariants(?array $variants): array
+    {
+        if (empty($variants)) {
+            return [];
+        }
+
+        return array_map(function (mixed $variant): array {
+            // Jika Variant bertipe Object (Domain Entity Variant)
+            if (is_object($variant)) {
+                return [
+                    'id'         => method_exists($variant, 'id') ? $variant->id() : ($variant->id ?? null),
+                    'name'       => method_exists($variant, 'name') ? $variant->name() : ($variant->name ?? null),
+                    'sku'        => method_exists($variant, 'sku') ? $variant->sku() : ($variant->sku ?? null),
+                    'price'      => method_exists($variant, 'price') ? $variant->price() : ($variant->price ?? null),
+                    'stock'      => method_exists($variant, 'stock') ? $variant->stock() : ($variant->stock ?? null),
+                    'options'    => method_exists($variant, 'options') ? $variant->options() : ($variant->options ?? []), // e.g., ['color' => 'red', 'size' => 'L']
+                ];
+            }
+
+            // Jika Variant bertipe Array murni
+            if (is_array($variant)) {
+                return [
+                    'id'         => $variant['id'] ?? null,
+                    'name'       => $variant['name'] ?? null,
+                    'sku'        => $variant['sku'] ?? null,
+                    'price'      => $variant['price'] ?? null,
+                    'stock'      => $variant['stock'] ?? null,
+                    'options'    => $variant['options'] ?? [], 
+                ];
+            }
+
+            return [];
+        }, $variants);
     }
 }

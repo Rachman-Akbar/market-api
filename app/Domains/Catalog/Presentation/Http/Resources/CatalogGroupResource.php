@@ -4,25 +4,18 @@ namespace App\Domains\Catalog\Presentation\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Domains\Catalog\Domain\Entities\CatalogGroup;
 
-final class CatalogGroupResource extends JsonResource
+class CatalogGroupResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        /** @var CatalogGroup $group */
-        $group = $this->resource;
-
+        // $this->resource adalah objek Domain Entity CatalogGroup
         return [
-            'id'              => $group->id(),
-            'name'            => $group->name(),
-            'slug'            => $group->slug(),
-            'is_active'       => $group->isActive(),
-
-            // Ini yang paling penting
-            'categories' => CategoryResource::collection(
-                $group->categories()
-            ),
+            'id'         => $this->resource->id(),
+            'name'       => $this->resource->name(),
+            'slug'       => $this->resource->slug(),
+            'is_active'  => $this->resource->isActive(),
+            'categories' => CategoryResource::collection($this->resource->categories()),
         ];
     }
 }

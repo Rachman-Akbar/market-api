@@ -26,42 +26,48 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
         );
     }
 
-private function freshCatalogGroupsAsArray(): array
-{
-    $models = CatalogGroupModel::query()
-        ->where('is_active', true)
-        ->select(['id', 'name', 'slug']) // OPTIMIZATION: Hapus image_url & cover_image_url dari Group
-        ->with(['categories' => function ($query) {
-            $query->where('is_active', true)
-                  ->where('is_visible_in_menu', true)
-                  ->select([
-                      'id', 'catalog_group_id', 'parent_id', 'name', 'slug',
-                      'image_url', 'icon_url', 'sort_order'
-                  ])
-                  ->orderBy('sort_order')
-                  ->orderBy('name');
-        }])
-        ->orderBy('name')
-        ->get();
+    private function freshCatalogGroupsAsArray(): array
+    {
+        $models = CatalogGroupModel::query()
+            ->where('is_active', true)
+            ->select(['id', 'name', 'slug', 'is_active']) 
+            ->with(['categories' => function ($query) {
+                $query->where('is_active', true)
+                     ->where('is_visible_in_menu', true)
+                     ->select([
+                         'id', 'catalog_group_id', 'parent_id', 'name', 'slug',
+                         'full_slug', 'image_url', 'icon_url', 'sort_order', 'level', 'is_active', 'is_visible_in_menu'
+                     ])
+                     ->orderBy('sort_order')
+                     ->orderBy('name');
+            }])
+            ->orderBy('name')
+            ->get();
 
-    return $models->map(function ($model) {
-        return [
-            'id'          => $model->id,
-            'name'        => $model->name,
-            'slug'        => $model->slug,
-            'categories'  => $model->categories->map(fn($cat) => [
-                'id'         => $cat->id,
-                'parent_id'  => $cat->parent_id,
-                'name'       => $cat->name,
-                'slug'       => $cat->slug,
-                'image_url'  => $cat->image_url,
-                'icon_url'   => $cat->icon_url,
-                'sort_order' => $cat->sort_order,
-            ])->all(),
-        ];
-    })->all(); // PERBAIKAN: Mengubah )->all() menjadi })->all()
-}
-
+        return $models->map(function ($model) {
+            return [
+                'id'         => $model->id,
+                'name'       => $model->name,
+                'slug'       => $model->slug,
+                'is_active'  => (bool) $model->is_active,
+                'categories' => $model->categories->map(fn($cat) => [
+                    'id'                 => $cat->id,
+                    'catalog_group_id'   => $cat->catalog_group_id,
+                    'parent_id'          => $cat->parent_id,
+                    'name'               => $cat->name,
+                    'slug'               => $cat->slug,
+                    'full_slug'          => $cat->full_slug,
+                    'image_url'          => $cat->image_url,
+                    'icon_url'           => $cat->icon_url,
+                    'level'              => (int) $cat->level,
+                    'sort_order'         => $cat->sort_order,
+                    'is_active'          => (bool) $cat->is_active,
+                    'is_visible_in_menu' => (bool) $cat->is_visible_in_menu,
+                    'children'           => []
+                ])->all(),
+            ];
+        })->all();
+    }
 
     public function findById(int $id): ?CatalogGroup
     {
@@ -101,7 +107,9 @@ private function freshCatalogGroupsAsArray(): array
                     'name'               => $cat->name,
                     'slug'               => $cat->slug,
                     'full_slug'          => $cat->full_slug,
-                    'level'              => $cat->level,
+                    'image_url'          => $cat->image_url,
+                    'icon_url'           => $cat->icon_url,
+                    'level'              => (int) $cat->level,
                     'sort_order'         => $cat->sort_order,
                     'products_count'     => $cat->products_count ?? 0,
                     'is_active'          => (bool) $cat->is_active,
@@ -209,7 +217,7 @@ private function freshCatalogGroupsAsArray(): array
                     'full_slug'          => $cat->full_slug,
                     'image_url'          => $cat->image_url,
                     'icon_url'           => $cat->icon_url,
-                    'level'              => $cat->level,
+                    'level'              => (int) $cat->level,
                     'sort_order'         => $cat->sort_order,
                     'products_count'     => $cat->products_count ?? 0,
                     'is_active'          => (bool) $cat->is_active,
@@ -224,6 +232,3 @@ private function freshCatalogGroupsAsArray(): array
         return CatalogGroupMapper::toEntityFromArray($cached);
     }
 }
-
-
-
