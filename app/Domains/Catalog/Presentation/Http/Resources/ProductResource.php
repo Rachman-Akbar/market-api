@@ -44,6 +44,7 @@ final class ProductResource extends JsonResource
             'category' => $this->mapCategory($product->primaryCategory()),
 
             'images' => $this->mapImages($product->images()),
+            
         ];
     }
 

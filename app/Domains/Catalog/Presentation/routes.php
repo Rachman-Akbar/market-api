@@ -2,173 +2,207 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Route;
+
 use App\Domains\Catalog\Presentation\Http\Controllers\BannerController;
 use App\Domains\Catalog\Presentation\Http\Controllers\CatalogGroupController;
 use App\Domains\Catalog\Presentation\Http\Controllers\CategoryController;
 use App\Domains\Catalog\Presentation\Http\Controllers\ProductController;
-use App\Domains\Catalog\Presentation\Http\Controllers\Seller\SellerProductController;
-use App\Domains\Catalog\Presentation\Http\Controllers\Seller\SellerStoreCatalogGroupController;
-use App\Domains\Catalog\Presentation\Http\Controllers\Seller\SellerStoreCategoryController;
-use App\Http\Middleware\EnsureActiveRole;
-use App\Http\Middleware\EnsureApiTokenIsValid;
-use Illuminate\Support\Facades\Route;
+use App\Domains\Catalog\Presentation\Http\Controllers\ProductAttributeController;
+use App\Domains\Catalog\Presentation\Http\Controllers\ProductVariantController;
 
-/**
- * Public / Buyer catalog routes.
- */
 Route::prefix('catalog')
     ->name('catalog.')
     ->group(function () {
 
-
-     Route::get(
+        /*
+        |--------------------------------------------------------------------------
+        | HEADER MENU
+        |--------------------------------------------------------------------------
+        */
+        Route::get(
             '/header-menu',
             [CategoryController::class, 'headerMenu']
-        );
+        )->name('header-menu');
 
-        
-        Route::prefix('products')
-            ->name('products.')
+        /*
+        |--------------------------------------------------------------------------
+        | PRODUCT ATTRIBUTES
+        |--------------------------------------------------------------------------
+        */
+        Route::prefix('attributes')
+            ->name('attributes.')
+            ->controller(ProductAttributeController::class)
             ->group(function () {
-                Route::get('/', [ProductController::class, 'index'])
+
+                Route::get('/', 'index')
                     ->name('index');
 
-                Route::get('/id/{id}', [ProductController::class, 'show'])
+                Route::get('/{id}', 'show')
                     ->whereNumber('id')
                     ->name('show');
 
-                Route::get('/{slug}', [ProductController::class, 'showBySlug'])
+                // nanti jika sudah siap CRUD
+
+                // Route::post('/', 'store')
+                //     ->name('store');
+
+                // Route::put('/{id}', 'update')
+                //     ->whereNumber('id')
+                //     ->name('update');
+
+                // Route::delete('/{id}', 'destroy')
+                //     ->whereNumber('id')
+                //     ->name('destroy');
+
+        });
+        /*
+        |--------------------------------------------------------------------------
+        | PRODUCTS
+        |--------------------------------------------------------------------------
+        */
+        Route::prefix('products')
+            ->name('products.')
+            ->controller(ProductController::class)
+            ->group(function () {
+
+                Route::get('/', 'index')
+                    ->name('index');
+
+                Route::post('/', 'store')
+                    ->name('store');
+
+                Route::get('/id/{id}', 'show')
+                    ->whereNumber('id')
+                    ->name('show');
+
+                Route::put('/{id}', 'update')
+                    ->whereNumber('id')
+                    ->name('update');
+
+                Route::delete('/{id}', 'destroy')
+                    ->whereNumber('id')
+                    ->name('destroy');
+
+                Route::prefix('{productId}/variants')
+                        ->name('variants.')
+                        ->controller(ProductVariantController::class)
+                        ->group(function () {
+    
+                            Route::get('/', 'index');
+    
+                            Route::get(
+                                '/{variantId}', 'show');
+    
+                            Route::post('/', 'store');
+    
+                            Route::put(
+                                '/{variantId}',
+                                'update'
+                            );
+    
+                            Route::delete(
+                                '/{variantId}',
+                                'destroy'
+                            );
+                        });
+
+                Route::get('/{slug}', 'showBySlug')
                     ->where('slug', '[A-Za-z0-9\-]+')
                     ->name('show-by-slug');
+            
             });
 
-        Route::prefix('catalog-groups')->group(function () {
-    Route::get('/', [CatalogGroupController::class, 'index']);
-    Route::post('/', [CatalogGroupController::class, 'store']);
-    
-    // Route::get('{id}', [CatalogGroupController::class, 'show']);
-    // Route::put('{id}', [CatalogGroupController::class, 'update']);
-    
-       // GET CATEGORIES
-    // Route::get('/{id}/categories', [
-    //     CatalogGroupController::class,
-    //     'categories'
-    // ])->whereNumber('id');
-    
-    // GET BY SLUG
-    Route::get('/{slug}', [
-        CatalogGroupController::class,
-        'showBySlug'
-    ]);
+        /*
+        |--------------------------------------------------------------------------
+        | CATALOG GROUPS
+        |--------------------------------------------------------------------------
+        */
+        Route::prefix('catalog-groups')
+            ->name('catalog-groups.')
+            ->group(function () {
 
-    
-    // Endpoint penting untuk marketplace
-    Route::get('{id}/categories', [CatalogGroupController::class, 'categories']);
-});
+                Route::get('/', [
+                    CatalogGroupController::class,
+                    'index'
+                ]);
 
-    Route::prefix('categories')
-        ->controller(CategoryController::class)
-        ->group(function () {
+                Route::post('/', [
+                    CatalogGroupController::class,
+                    'store'
+                ]);
 
-        /**
-         * ALL CATEGORIES
-         */
-        Route::get('/', 'index');
+                Route::get('/{slug}', [
+                    CatalogGroupController::class,
+                    'showBySlug'
+                ]);
 
-        /**
-         * MENU
-         */
-        Route::get('/menu', 'menu');
+                Route::get('/{id}/categories', [
+                    CatalogGroupController::class,
+                    'categories'
+                ])->whereNumber('id');
+            });
 
-        /**
-         * PRODUCTS BY FULL PATH
-         *
-         * IMPORTANT:
-         * MUST BE ABOVE /path/{path}
-         */
-        Route::get(
-            '/path/{path}/products',
-            'productsByPath'
-        )->where('path', '.*');
+        /*
+        |--------------------------------------------------------------------------
+        | CATEGORIES
+        |--------------------------------------------------------------------------
+        */
+        Route::prefix('categories')
+            ->controller(CategoryController::class)
+            ->group(function () {
 
-        /**
-         * CATEGORY BY FULL PATH
-         */
-        Route::get(
-            '/path/{path}',
-            'showByPath'
-        )->where('path', '.*');
+                Route::get('/', 'index');
 
-        /**
-         * CATEGORY BY SLUG
-         */
-        Route::get(
-            '/slug/{slug}',
-            'showBySlug'
-        );
+                Route::get('/menu', 'menu');
 
-        /**
-         * PRODUCTS BY SLUG
-         */
-        Route::get(
-            '/{slug}/products',
-            'productsBySlug'
-        );
+                Route::get(
+                    '/path/{path}/products',
+                    'productsByPath'
+                )->where('path', '.*');
 
-        /**
-         * CREATE
-         */
-        Route::post('/', 'store');
+                Route::get(
+                    '/path/{path}',
+                    'showByPath'
+                )->where('path', '.*');
 
-        /**
-         * UPDATE
-         */
-        Route::put(
-            '/{id}',
-            'update'
-        )->whereNumber('id');
+                Route::get(
+                    '/slug/{slug}',
+                    'showBySlug'
+                );
 
-        /**
-         * DELETE
-         */
-        Route::delete(
-            '/{id}',
-            'destroy'
-        )->whereNumber('id');
-    });
+                Route::get(
+                    '/{slug}/products',
+                    'productsBySlug'
+                );
 
-    
+                Route::post('/', 'store');
+
+                Route::put(
+                    '/{id}',
+                    'update'
+                )->whereNumber('id');
+
+                Route::delete(
+                    '/{id}',
+                    'destroy'
+                )->whereNumber('id');
+            });
+
+        /*
+        |--------------------------------------------------------------------------
+        | BANNERS
+        |--------------------------------------------------------------------------
+        */
         Route::prefix('banners')
             ->name('banners.')
             ->group(function () {
-                Route::get('/', [BannerController::class, 'index'])
-                    ->name('index');
+
+                Route::get(
+                    '/',
+                    [BannerController::class, 'index']
+                )->name('index');
             });
+
+
     });
-
-// /**
-//  * Seller catalog routes.
-//  */
-// Route::middleware([
-//     'auth:sanctum',
-//     'active.role:seller',
-// ])
-    // ->prefix('seller/catalog')
-    // ->name('seller.catalog.')
-    // ->group(function () {
-    //     Route::apiResource('products', SellerProductController::class);
-
-    //     Route::apiResource(
-    //         'store-categories',
-    //         SellerStoreCategoryController::class
-    //     )->parameters([
-    //         'store-categories' => 'storeCategory',
-    //     ]);
-
-    //     Route::apiResource(
-    //         'store-catalog-groups',
-    //         SellerStoreCatalogGroupController::class
-    //     )->parameters([
-    //         'store-catalog-groups' => 'storeCatalogGroup',
-    //     ]);
-    // });

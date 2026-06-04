@@ -175,3 +175,5 @@ final class Product
         $this->categoryIds = array_values(array_unique($categoryIds));
     }
 }
+
+

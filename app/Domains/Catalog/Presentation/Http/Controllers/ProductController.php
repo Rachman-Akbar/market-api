@@ -79,8 +79,9 @@ public function showBySlug(
 
     return new ProductResource($product);
 }
-    
+
 
 }
+
 
 
