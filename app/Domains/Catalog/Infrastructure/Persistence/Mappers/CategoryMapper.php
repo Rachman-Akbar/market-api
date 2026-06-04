@@ -14,8 +14,8 @@ final class CategoryMapper
         $children = [];
 
         if ($model->relationLoaded('childrenRecursive') || $model->relationLoaded('children')) {
-            $relation = $model->relationLoaded('childrenRecursive') 
-                ? $model->childrenRecursive 
+            $relation = $model->relationLoaded('childrenRecursive')
+                ? $model->childrenRecursive
                 : $model->children;
 
             $children = $relation->map(fn (CategoryModel $child) => self::toEntity($child))->all();
@@ -28,10 +28,8 @@ final class CategoryMapper
             name: $model->name,
             slug: $model->slug,
             fullSlug: $model->full_slug,
-            description: $model->description,
             imageUrl: $model->image_url,
             iconUrl: $model->icon_url,
-            coverImageUrl: $model->cover_image_url,
             level: (int) ($model->level ?? 1),
             sortOrder: (int) ($model->sort_order ?? 0),
             productsCount: $model->products_count ?? null,
@@ -57,10 +55,8 @@ final class CategoryMapper
             name: $data['name'],
             slug: $data['slug'],
             fullSlug: $data['full_slug'] ?? null,
-            description: $data['description'] ?? null,
             imageUrl: $data['image_url'] ?? null,
             iconUrl: $data['icon_url'] ?? null,
-            coverImageUrl: $data['cover_image_url'] ?? null,
             level: (int) ($data['level'] ?? 1),
             sortOrder: (int) ($data['sort_order'] ?? 0),
             productsCount: $data['products_count'] ?? null,
@@ -78,10 +74,8 @@ final class CategoryMapper
             'name'               => $category->name(),
             'slug'               => $category->slug(),
             'full_slug'          => $category->fullSlug(),
-            'description'        => $category->description(),
             'image_url'          => $category->imageUrl(),
             'icon_url'           => $category->iconUrl(),
-            'cover_image_url'    => $category->coverImageUrl(),
             'level'              => $category->level(),
             'sort_order'         => $category->sortOrder(),
             'is_active'          => $category->isActive(),

@@ -15,23 +15,21 @@ use Illuminate\Support\Facades\Cache;
 final class EloquentCategoryRepository implements CategoryRepositoryInterface
 {
     private const CACHE_TTL = 600;
- 
+
     public function getAll(array $filters = []): Collection
-{
-    $query = CategoryModel::query()
-        ->with(['catalogGroup', 'parent'])
-        ->withCount('products');
+    {
+        $query = CategoryModel::query()
+            ->with(['catalogGroup', 'parent'])
+            ->withCount('products');
 
-    $this->applyFilters($query, $filters);
+        $this->applyFilters($query, $filters);
 
-    return $query
-        ->orderBy('sort_order')
-        ->orderBy('name')
-        ->get()
-        ->map(
-            fn($model) => CategoryMapper::toEntity($model)
-        );
-}
+        return $query
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn($model) => CategoryMapper::toEntity($model));
+    }
 
     private function applyFilters($query, array $filters): void
     {
@@ -48,13 +46,9 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         if (!empty($filters['search'])) {
             $query->where('name', 'like', "%{$filters['search']}%");
         }
-
-        // Tambahkan filter lain sesuai kebutuhan...
     }
 
-    // Method lain (findById, findBySlug, save, delete, getTree) bisa disederhanakan serupa...
-
-       public function findById(int $id): ?Category
+    public function findById(int $id): ?Category
     {
         $model = CategoryModel::query()
             ->with(['catalogGroup', 'parent', 'children'])
@@ -76,113 +70,75 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         return $model ? CategoryMapper::toEntity($model) : null;
     }
 
-    // public function getTree(?int $catalogGroupId = null): Collection
-    // {
-    //     return CategoryModel::query()
-    //         ->whereNull('parent_id')
-    //         ->when($catalogGroupId, function ($query) use ($catalogGroupId) {
-    //             $query->where('catalog_group_id', $catalogGroupId);
-    //         })
-    //         ->where('is_active', true)
-    //         ->with([
-    //             'childrenRecursive' => function ($query) {
-    //                 $query
-    //                     ->where('is_active', true)
-    //                     ->orderBy('sort_order')
-    //                     ->orderBy('name');
-    //             },
-    //         ])
-    //         ->orderBy('sort_order')
-    //         ->orderBy('name')
-    //         ->get()
-    //         ->map(fn ($model) => CategoryMapper::toEntity($model));
-    // }
+    public function getMenuTree(?int $catalogGroupId = null): Collection
+    {
+        $cacheKey = $catalogGroupId
+            ? "category_menu_tree_{$catalogGroupId}_v1"
+            : "category_menu_tree_all_v1";
 
-public function getMenuTree(?int $catalogGroupId = null): Collection
-{
-    $cacheKey = $catalogGroupId
-        ? "category_menu_tree_{$catalogGroupId}_v1"
-        : "category_menu_tree_all_v1";
+        $cached = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($catalogGroupId) {
+            return $this->freshMenuTree($catalogGroupId);
+        });
 
-    $cached = Cache::get($cacheKey);
-
-    if ($cached === null) {
-
-        $fresh = $this->freshMenuTree($catalogGroupId);
-
-        Cache::put(
-            $cacheKey,
-            $fresh,
-            self::CACHE_TTL
+        return collect($cached)->map(
+            fn(array $item) => CategoryMapper::toEntityFromArray($item)
         );
-
-        $cached = $fresh;
     }
 
-    return collect($cached)
-        ->map(
-            fn(array $item)
-                => CategoryMapper::toEntityFromArray($item)
-        );
-}
+    private function freshMenuTree(?int $catalogGroupId = null): array
+    {
+        $models = CategoryModel::query()
+            ->whereNull('parent_id')
+            ->when($catalogGroupId, fn($q) => $q->where('catalog_group_id', $catalogGroupId))
+            ->where('is_active', true)
+            ->where('is_visible_in_menu', true)
+            ->select([
+                'id', 'parent_id', 'catalog_group_id', 'name',
+                'slug', 'image_url', 'icon_url', 'sort_order'
+            ])
+            ->with(['childrenRecursive' => function ($query) {
+                $query
+                    ->where('is_active', true)
+                    ->where('is_visible_in_menu', true)
+                    ->select([
+                        'id', 'parent_id', 'name', 'slug',
+                        'image_url', 'icon_url', 'sort_order'
+                    ])
+                    ->orderBy('sort_order')
+                    ->orderBy('name');
+            }])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
 
-
-private function freshMenuTree(?int $catalogGroupId = null): array
-{
-    $models = CategoryModel::query()
-        ->whereNull('parent_id')
-        ->when($catalogGroupId, fn($q) => $q->where('catalog_group_id', $catalogGroupId))
-        ->where('is_active', true)
-        ->where('is_visible_in_menu', true)
-        ->select([
-            'id', 'parent_id', 'catalog_group_id', 'name', 
-            'slug', 'image_url', 'icon_url', 'sort_order'
-        ])
-        ->with(['childrenRecursive' => function ($query) {
-            $query
-                ->where('is_active', true)
-                ->where('is_visible_in_menu', true)
-                ->select([
-                    'id', 'parent_id', 'name', 'slug', 
-                    'image_url', 'icon_url', 'sort_order'
-                ])
-                ->orderBy('sort_order')
-                ->orderBy('name');
-        }])
-        ->orderBy('sort_order')
-        ->orderBy('name')
-        ->get();
-
-    return $models->map(function ($model) {
-        return [
-            'id'                => $model->id,
-            'parent_id'         => $model->parent_id,
-            'catalog_group_id'  => $model->catalog_group_id,
-            'name'              => $model->name,
-            'slug'              => $model->slug,
-            'image_url'         => $model->image_url,
-            'icon_url'          => $model->icon_url,
-            'sort_order'        => $model->sort_order,
-            'children'          => $model->childrenRecursive->map(fn($child) => [
-                'id'         => $child->id,
-                'parent_id'  => $child->parent_id,
-                'name'       => $child->name,
-                'slug'       => $child->slug,
-                'image_url'  => $child->image_url,
-                'icon_url'   => $child->icon_url,
-                'sort_order' => $child->sort_order,
-            ])->all()
-        ];
-    })->all();
-}   
+        return $models->map(function ($model) {
+            return [
+                'id'               => $model->id,
+                'parent_id'        => $model->parent_id,
+                'catalog_group_id' => $model->catalog_group_id,
+                'name'             => $model->name,
+                'slug'             => $model->slug,
+                'image_url'        => $model->image_url,
+                'icon_url'         => $model->icon_url,
+                'sort_order'       => $model->sort_order,
+                'children'         => $model->childrenRecursive->map(fn($child) => [
+                    'id'         => $child->id,
+                    'parent_id'  => $child->parent_id,
+                    'name'       => $child->name,
+                    'slug'       => $child->slug,
+                    'image_url'  => $child->image_url,
+                    'icon_url'   => $child->icon_url,
+                    'sort_order' => $child->sort_order,
+                ])->all()
+            ];
+        })->all();
+    }
 
     public function save(Category $category): Category
     {
-        $model = $category->id()
-            ? CategoryModel::find($category->id())
-            : null;
+        $model = $category->id() ? CategoryModel::find($category->id()) : null;
 
-        if (! $model) {
+        if (!$model) {
             $model = CategoryMapper::toModel($category);
         } else {
             $model->catalog_group_id = $category->catalogGroupId();
@@ -201,298 +157,193 @@ private function freshMenuTree(?int $catalogGroupId = null): array
         }
 
         $model->save();
+        $this->clearCache();
 
-        $model->load(['catalogGroup', 'parent', 'children']);
-        $model->loadCount('products');
+        $model->load(['catalogGroup', 'parent', 'children'])->loadCount('products');
 
         return CategoryMapper::toEntity($model);
     }
 
-   public function delete(int $id): bool
-{
-    $deleted = CategoryModel::where('id', $id)->delete() > 0;
+    public function delete(int $id): bool
+    {
+        $deleted = CategoryModel::where('id', $id)->delete() > 0;
 
-    if ($deleted) {
-        Cache::flush();
+        if ($deleted) {
+            $this->clearCache();
+        }
+
+        return $deleted;
     }
 
-    return $deleted;
-}
+    public function getAllWithCategories(): Collection
+    {
+        $cacheKey = 'catalog_groups_with_categories_v1';
 
-public function getAllWithCategories(): Collection
-{
-    $cacheKey = 'catalog_groups_with_categories_v1';
+        $cached = Cache::remember($cacheKey, self::CACHE_TTL, function () {
+            return CatalogGroupModel::query()
+                ->where('is_active', true)
+                ->select(['id', 'name', 'slug']) // OPTIMIZATION: Hapus image_url & cover_image_url dari Group
+                ->with([
+                    'categories' => function ($q) {
+                        $q->where('is_active', true)
+                            ->where('is_visible_in_menu', true)
+                            ->select([
+                                'id', 'parent_id', 'catalog_group_id', 'name',
+                                'slug', 'image_url', 'icon_url', 'sort_order'
+                            ])
+                            ->orderBy('sort_order')
+                            ->orderBy('name');
+                    }
+                ])
+                ->orderBy('name')
+                ->get()
+                ->map(function ($model) {
+                    return [
+                        'id'         => $model->id,
+                        'name'       => $model->name,
+                        'slug'       => $model->slug,
+                        'categories' => $model->categories->map(function ($category) {
+                            return [
+                                'id'               => $category->id,
+                                'parent_id'        => $category->parent_id,
+                                'catalog_group_id' => $category->catalog_group_id,
+                                'name'             => $category->name,
+                                'slug'             => $category->slug,
+                                'image_url'        => $category->image_url,
+                                'icon_url'         => $category->icon_url,
+                                'sort_order'       => $category->sort_order,
+                            ];
+                        })->values()->all()
+                    ];
+                })->values()->all();
+        });
 
-    $cached = Cache::get($cacheKey);
-
-    if ($cached === null) {
-
-        $models = CatalogGroupModel::query()
-            ->where('is_active', true)
-            ->select([
-                'id',
-                'name',
-                'slug',
-                'image_url',
-                'cover_image_url'
-            ])
-            ->with([
-                'categories' => function ($q) {
-                    $q->where('is_active', true)
-                        ->where('is_visible_in_menu', true)
-                        ->select([
-                            'id',
-                            'parent_id',
-                            'catalog_group_id',
-                            'name',
-                            'slug',
-                            'image_url',
-                            'icon_url',
-                            'sort_order'
-                        ])
-                        ->orderBy('sort_order')
-                        ->orderBy('name');
-                }
-            ])
-            ->orderBy('name')
-            ->get();
-
-        $fresh = $models->map(function ($model) {
-
-            return [
-                'id' => $model->id,
-                'name' => $model->name,
-                'slug' => $model->slug,
-                'image_url' => $model->image_url,
-                'cover_image_url' => $model->cover_image_url,
-
-                'categories' => $model->categories
-                    ->map(function ($category) {
-
-                        return [
-                            'id' => $category->id,
-                            'parent_id' => $category->parent_id,
-                            'catalog_group_id' => $category->catalog_group_id,
-                            'name' => $category->name,
-                            'slug' => $category->slug,
-                            'image_url' => $category->image_url,
-                            'icon_url' => $category->icon_url,
-                            'sort_order' => $category->sort_order,
-                        ];
-
-                    })
-                    ->values()
-                    ->all()
-            ];
-
-        })->values()->all();
-
-        Cache::put(
-            $cacheKey,
-            $fresh,
-            self::CACHE_TTL
+        return collect($cached)->map(
+            fn(array $item) => CatalogGroupMapper::toEntityFromArray($item)
         );
-
-        $cached = $fresh;
     }
-
-    return collect($cached)
-        ->map(
-            fn(array $item)
-                => CatalogGroupMapper::toEntityFromArray($item)
-        );
-}
 
     public function create(Category $category): Category
-{
-    $model = CategoryMapper::toModel($category);
+    {
+        $model = CategoryMapper::toModel($category);
+        $model->save();
 
-    $model->save();
+        $this->clearCache();
 
-    $model->load([
-        'catalogGroup',
-        'parent',
-        'children'
-    ]);
+        $model->load(['catalogGroup', 'parent', 'children'])->loadCount('products');
 
-    $model->loadCount('products');
+        return CategoryMapper::toEntity($model);
+    }
 
-    Cache::flush();
+    public function update(int $id, array $data): Category
+    {
+        $model = CategoryModel::findOrFail($id);
+        $model->update($data);
 
-    return CategoryMapper::toEntity($model);
-}
+        $this->clearCache();
 
-public function update(int $id, array $data): Category
-{
-    $model = CategoryModel::findOrFail($id);
+        $model->load(['catalogGroup', 'parent', 'children'])->loadCount('products');
 
-    $model->update($data);
+        return CategoryMapper::toEntity($model);
+    }
 
-    $model->load([
-        'catalogGroup',
-        'parent',
-        'children'
-    ]);
+    public function getHeaderMenu(): Collection
+    {
+        $cacheKey = 'header_menu_v1';
 
-    $model->loadCount('products');
+        $cached = Cache::remember($cacheKey, self::CACHE_TTL, function () {
+            return CatalogGroupModel::query()
+                ->where('is_active', true)
+                ->select(['id', 'name', 'slug']) // OPTIMIZATION: Di-select kolom yang eksis saja untuk menghindari error 1054
+                ->with([
+                    'categories' => function ($query) {
+                        $query->whereNull('parent_id')
+                            ->where('is_active', true)
+                            ->where('is_visible_in_menu', true)
+                            ->select([
+                                'id', 'catalog_group_id', 'parent_id', 'name',
+                                'slug', 'full_slug', 'image_url', 'icon_url', 'sort_order', 'level'
+                            ])
+                            ->with([
+                                'childrenRecursive' => function ($childQuery) {
+                                    $childQuery->where('is_active', true)
+                                        ->where('is_visible_in_menu', true)
+                                        ->select([
+                                            'id', 'catalog_group_id', 'parent_id', 'name',
+                                            'slug', 'full_slug', 'image_url', 'icon_url', 'sort_order', 'level'
+                                        ])
+                                        ->orderBy('sort_order')
+                                        ->orderBy('name');
+                                }
+                            ])
+                            ->orderBy('sort_order')
+                            ->orderBy('name');
+                    }
+                ])
+                ->orderBy('name')
+                ->get()
+                ->map(function ($group) {
+                    return [
+                        'id'         => $group->id,
+                        'name'       => $group->name,
+                        'slug'       => $group->slug,
+                        'categories' => $group->categories
+                            ->map(fn($category) => $this->mapHeaderCategory($category))
+                            ->values()
+                            ->all()
+                    ];
+                })->values()->all();
+        });
 
-    Cache::flush();
+        return collect($cached);
+    }
 
-    return CategoryMapper::toEntity($model);
-}
+    private function mapHeaderCategory($category): array
+    {
+        return [
+            'id'               => $category->id,
+            'catalog_group_id' => $category->catalog_group_id,
+            'parent_id'        => $category->parent_id,
+            'name'             => $category->name,
+            'slug'             => $category->slug,
+            'full_slug'        => $category->full_slug,
+            'image_url'        => $category->image_url,
+            'icon_url'         => $category->icon_url,
+            'sort_order'       => $category->sort_order,
+            'level'            => $category->level,
+            'children'         => collect($category->childrenRecursive ?? [])
+                ->map(fn($child) => $this->mapHeaderCategory($child))
+                ->values()
+                ->all(),
+        ];
+    }
 
-public function getHeaderMenu(): Collection
-{
-    $cacheKey = 'header_menu_v1';
-
-    $cached = Cache::get($cacheKey);
-
-    if ($cached === null) {
-
-        $models = CatalogGroupModel::query()
+    public function findByPath(string $path): ?Category
+    {
+        $category = CategoryModel::query()
+            ->where('full_slug', $path)
             ->where('is_active', true)
+            ->withCount('products')
+            ->with(['children'])
+            ->first();
 
-            ->select([
-                'id',
-                'name',
-                'slug',
-                'image_url',
-                'cover_image_url'
-            ])
-
-            ->with([
-                'categories' => function ($query) {
-
-                    $query
-                        ->whereNull('parent_id')
-                        ->where('is_active', true)
-                        ->where('is_visible_in_menu', true)
-
-                        ->select([
-                            'id',
-                            'catalog_group_id',
-                            'parent_id',
-                            'name',
-                            'slug',
-                            'full_slug',
-                            'image_url',
-                            'icon_url',
-                            'sort_order',
-                            'level'
-                        ])
-
-                        ->with([
-                            'childrenRecursive' => function ($childQuery) {
-
-                                $childQuery
-                                    ->where('is_active', true)
-                                    ->where('is_visible_in_menu', true)
-
-                                    ->select([
-                                        'id',
-                                        'catalog_group_id',
-                                        'parent_id',
-                                        'name',
-                                        'slug',
-                                        'full_slug',
-                                        'image_url',
-                                        'icon_url',
-                                        'sort_order',
-                                        'level'
-                                    ])
-
-                                    ->orderBy('sort_order')
-                                    ->orderBy('name');
-                            }
-                        ])
-
-                        ->orderBy('sort_order')
-                        ->orderBy('name');
-                }
-            ])
-
-            ->orderBy('name')
-            ->get();
-
-        $fresh = $models->map(function ($group) {
-
-            return [
-
-                'id' => $group->id,
-                'name' => $group->name,
-                'slug' => $group->slug,
-                'image_url' => $group->image_url,
-                'cover_image_url' => $group->cover_image_url,
-
-                'categories' => $group->categories
-                    ->map(fn($category) => $this->mapHeaderCategory($category))
-                    ->values()
-                    ->all()
-
-            ];
-
-        })->values()->all();
-
-        Cache::put(
-            $cacheKey,
-            $fresh,
-            self::CACHE_TTL
-        );
-
-        $cached = $fresh;
+        return $category ? CategoryMapper::toEntity($category) : null;
     }
 
-    return collect($cached);
-}
+    /**
+     * Helper untuk menghapus semua cache yang berkaitan dengan katalog menu
+     */
+    private function clearCache(): void
+    {
+        Cache::forget('header_menu_v1');
+        Cache::forget('catalog_groups_with_categories_v1');
+        Cache::forget('category_menu_tree_all_v1');
 
-private function mapHeaderCategory($category): array
-{
-    return [
-
-        'id' => $category->id,
-        'catalog_group_id' => $category->catalog_group_id,
-        'parent_id' => $category->parent_id,
-
-        'name' => $category->name,
-
-        'slug' => $category->slug,
-        'full_slug' => $category->full_slug,
-
-        'image_url' => $category->image_url,
-        'icon_url' => $category->icon_url,
-
-        'sort_order' => $category->sort_order,
-        'level' => $category->level,
-
-        'children' => collect(
-            $category->childrenRecursive ?? []
-        )
-            ->map(fn($child) => $this->mapHeaderCategory($child))
-            ->values()
-            ->all(),
-    ];
-}
-
-public function findByPath(
-    string $path
-): ?Category {
-
-    $category = CategoryModel::query()
-        ->where('full_slug', $path)
-        ->where('is_active', true)
-        ->withCount('products')  
-        ->with(['children'])   
-        ->first();
-
-    if (! $category) {
-        return null;
+        // Menghapus cache spesifik group jika ada pembaharuan massal
+        // Jika driver menggunakan 'redis' atau 'memcached', bisa menggunakan tags.
+        // Namun untuk kompatibilitas 'file' driver, kita flush atau biarkan TTL bekerja jika ID dinamis.
+        if (config('cache.default') !== 'file') {
+            Cache::flush();
+        }
     }
-
-    return CategoryMapper::toEntity(
-        $category
-    );
 }
-
-}
-
-    

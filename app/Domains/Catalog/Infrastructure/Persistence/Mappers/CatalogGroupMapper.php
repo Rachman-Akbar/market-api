@@ -22,9 +22,6 @@ public static function toEntity(CatalogGroupModel $model): CatalogGroup
         id: $model->id,
         name: $model->name,
         slug: $model->slug,
-        description: $model->description,
-        imageUrl: $model->image_url,
-        coverImageUrl: $model->cover_image_url,
         isActive: (bool) $model->is_active,
         categories: $categories
     );
@@ -35,9 +32,6 @@ public static function toEntity(CatalogGroupModel $model): CatalogGroup
         return new CatalogGroupModel([
             'name' => $group->name(),
             'slug' => $group->slug(),
-            'description' => $group->description(),
-            'image_url' => $group->imageUrl(),
-            'cover_image_url' => $group->coverImageUrl(),
             'is_active' => $group->isActive(),
         ]);
     }
@@ -60,9 +54,6 @@ public static function toEntityFromArray(array|object $data): CatalogGroup
         id: $data['id'] ?? null,
         name: $data['name'],
         slug: $data['slug'],
-        description: $data['description'] ?? null,
-        imageUrl: $data['image_url'] ?? null,
-        coverImageUrl: $data['cover_image_url'] ?? null,
         isActive: (bool) ($data['is_active'] ?? true),
         categories: $categories
     );

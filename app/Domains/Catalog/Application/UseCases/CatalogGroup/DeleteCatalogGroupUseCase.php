@@ -15,3 +15,4 @@ final class DeleteCatalogGroupUseCase
         return $this->repository->delete($id);
     }
 }
+

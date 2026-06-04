@@ -11,10 +11,8 @@ final class Category
         private string $name,
         private string $slug,
         private ?string $fullSlug = null,
-        private ?string $description = null,
         private ?string $imageUrl = null,
         private ?string $iconUrl = null,
-        private ?string $coverImageUrl = null,
         private int $level = 1,
         private int $sortOrder = 0,
         private ?int $productsCount = null,
@@ -53,11 +51,6 @@ final class Category
         return $this->fullSlug;
     }
 
-    public function description(): ?string
-    {
-        return $this->description;
-    }
-
     public function imageUrl(): ?string
     {
         return $this->imageUrl;
@@ -66,11 +59,6 @@ final class Category
     public function iconUrl(): ?string
     {
         return $this->iconUrl;
-    }
-
-    public function coverImageUrl(): ?string
-    {
-        return $this->coverImageUrl;
     }
 
     public function level(): int
@@ -118,11 +106,6 @@ final class Category
         $this->fullSlug = $fullSlug;
     }
 
-    public function changeDescription(?string $description): void
-    {
-        $this->description = $description;
-    }
-
     public function changeCatalogGroup(?int $catalogGroupId): void
     {
         $this->catalogGroupId = $catalogGroupId;
@@ -141,11 +124,6 @@ final class Category
     public function changeIconUrl(?string $iconUrl): void
     {
         $this->iconUrl = $iconUrl;
-    }
-
-    public function changeCoverImageUrl(?string $coverImageUrl): void
-    {
-        $this->coverImageUrl = $coverImageUrl;
     }
 
     public function changeLevel(int $level): void

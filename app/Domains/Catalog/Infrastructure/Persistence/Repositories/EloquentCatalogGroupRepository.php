@@ -17,121 +17,104 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
 
     public function getAll(array $filters = []): Collection
     {
-        $cached = Cache::get(self::CACHE_KEY);
+        $cached = Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
+            return $this->freshCatalogGroupsAsArray();
+        });
 
-        if ($cached === null) {
-            $cached = $this->freshCatalogGroupsAsArray();
-            Cache::put(self::CACHE_KEY, $cached, self::CACHE_TTL);
-        }
-
-        // Convert array ke Entity
         return collect($cached)->map(
             fn(array $item) => CatalogGroupMapper::toEntityFromArray($item)
         );
     }
 
-    private function freshCatalogGroupsAsArray(): array
-    {
-        $models = CatalogGroupModel::query()
-            ->where('is_active', true)
-            ->select(['id', 'name', 'slug', 'description', 'image_url', 'cover_image_url'])
-            ->with(['categories' => function ($query) {
-                $query->where('is_active', true)
-                      ->where('is_visible_in_menu', true)
-                      ->select([
-                          'id', 'catalog_group_id', 'parent_id', 'name', 'slug',
-                          'image_url', 'icon_url', 'sort_order'
-                      ])
-                      ->orderBy('sort_order')
-                      ->orderBy('name');
-            }])
-            ->orderBy('name')
-            ->get();
-
-        return $models->map(function ($model) {
-            return [
-                'id'              => $model->id,
-                'name'            => $model->name,
-                'slug'            => $model->slug,
-                'description'     => $model->description,
-                'image_url'       => $model->image_url,
-                'cover_image_url' => $model->cover_image_url,
-                'categories'      => $model->categories->map(fn($cat) => [
-                    'id'         => $cat->id,
-                    'parent_id'  => $cat->parent_id,
-                    'name'       => $cat->name,
-                    'slug'       => $cat->slug,
-                    'image_url'  => $cat->image_url,
-                    'icon_url'   => $cat->icon_url,
-                    'sort_order' => $cat->sort_order,
-                ])->all(),
-            ];
-        })->all();
-    }
-
-public function findById(int $id): ?CatalogGroup
+private function freshCatalogGroupsAsArray(): array
 {
-    $cacheKey = "catalog_group_{$id}";
+    $models = CatalogGroupModel::query()
+        ->where('is_active', true)
+        ->select(['id', 'name', 'slug']) // OPTIMIZATION: Hapus image_url & cover_image_url dari Group
+        ->with(['categories' => function ($query) {
+            $query->where('is_active', true)
+                  ->where('is_visible_in_menu', true)
+                  ->select([
+                      'id', 'catalog_group_id', 'parent_id', 'name', 'slug',
+                      'image_url', 'icon_url', 'sort_order'
+                  ])
+                  ->orderBy('sort_order')
+                  ->orderBy('name');
+        }])
+        ->orderBy('name')
+        ->get();
 
-    $cached = Cache::get($cacheKey);
-
-    // Jika cache lama berupa object rusak
-    if ($cached instanceof \__PHP_Incomplete_Class) {
-        Cache::forget($cacheKey);
-        $cached = null;
-    }
-
-    if ($cached === null) {
-        $model = CatalogGroupModel::query()
-            ->with([
-                'categories' => function ($q) {
-                    $q->where('is_active', true)
-                        ->where('is_visible_in_menu', true)
-                        ->orderBy('sort_order')
-                        ->orderBy('name');
-                }
-            ])
-            ->find($id);
-
-        if (!$model) {
-            return null;
-        }
-
-        // Simpan sebagai ARRAY
-        $cached = [
-            'id' => $model->id,
-            'name' => $model->name,
-            'slug' => $model->slug,
-            'description' => $model->description,
-            'image_url' => $model->image_url,
-            'cover_image_url' => $model->cover_image_url,
-            'is_active' => (bool) $model->is_active,
-
-            'categories' => $model->categories->map(fn ($cat) => [
-                'id' => $cat->id,
-                'catalog_group_id' => $cat->catalog_group_id,
-                'parent_id' => $cat->parent_id,
-                'name' => $cat->name,
-                'slug' => $cat->slug,
-                'full_slug' => $cat->full_slug,
-                'description' => $cat->description,
-                'image_url' => $cat->image_url,
-                'icon_url' => $cat->icon_url,
-                'cover_image_url' => $cat->cover_image_url,
-                'level' => $cat->level,
+    return $models->map(function ($model) {
+        return [
+            'id'          => $model->id,
+            'name'        => $model->name,
+            'slug'        => $model->slug,
+            'categories'  => $model->categories->map(fn($cat) => [
+                'id'         => $cat->id,
+                'parent_id'  => $cat->parent_id,
+                'name'       => $cat->name,
+                'slug'       => $cat->slug,
+                'image_url'  => $cat->image_url,
+                'icon_url'   => $cat->icon_url,
                 'sort_order' => $cat->sort_order,
-                'products_count' => $cat->products_count ?? 0,
-                'is_active' => (bool) $cat->is_active,
-                'is_visible_in_menu' => (bool) $cat->is_visible_in_menu,
-                'children' => [],
             ])->all(),
         ];
-
-        Cache::put($cacheKey, $cached, 600);
-    }
-
-    return CatalogGroupMapper::toEntityFromArray($cached);
+    })->all(); // PERBAIKAN: Mengubah )->all() menjadi })->all()
 }
+
+
+    public function findById(int $id): ?CatalogGroup
+    {
+        $cacheKey = "catalog_group_{$id}";
+        $cached = Cache::get($cacheKey);
+
+        if ($cached instanceof \__PHP_Incomplete_Class) {
+            Cache::forget($cacheKey);
+            $cached = null;
+        }
+
+        if ($cached === null) {
+            $model = CatalogGroupModel::query()
+                ->with([
+                    'categories' => function ($q) {
+                        $q->where('is_active', true)
+                            ->where('is_visible_in_menu', true)
+                            ->orderBy('sort_order')
+                            ->orderBy('name');
+                    }
+                ])
+                ->find($id);
+
+            if (!$model) {
+                return null;
+            }
+
+            $cached = [
+                'id'          => $model->id,
+                'name'        => $model->name,
+                'slug'        => $model->slug,
+                'is_active'   => (bool) $model->is_active,
+                'categories'  => $model->categories->map(fn ($cat) => [
+                    'id'                 => $cat->id,
+                    'catalog_group_id'   => $cat->catalog_group_id,
+                    'parent_id'          => $cat->parent_id,
+                    'name'               => $cat->name,
+                    'slug'               => $cat->slug,
+                    'full_slug'          => $cat->full_slug,
+                    'level'              => $cat->level,
+                    'sort_order'         => $cat->sort_order,
+                    'products_count'     => $cat->products_count ?? 0,
+                    'is_active'          => (bool) $cat->is_active,
+                    'is_visible_in_menu' => (bool) $cat->is_visible_in_menu,
+                    'children'           => [],
+                ])->all(),
+            ];
+
+            Cache::put($cacheKey, $cached, 600);
+        }
+
+        return CatalogGroupMapper::toEntityFromArray($cached);
+    }
 
     public function getCategoriesByGroupId(int $groupId): Collection
     {
@@ -174,80 +157,70 @@ public function findById(int $id): ?CatalogGroup
     }
 
     public function clearCache(): void
-{
-    Cache::forget(self::CACHE_KEY);
+    {
+        Cache::forget(self::CACHE_KEY);
 
-    $groups = CatalogGroupModel::select('id', 'slug')->get();
+        $groups = CatalogGroupModel::select('id', 'slug')->get();
 
-    foreach ($groups as $group) {
-        Cache::forget("catalog_group_{$group->id}");
-        Cache::forget("catalog_group_slug_{$group->slug}");
+        foreach ($groups as $group) {
+            Cache::forget("catalog_group_{$group->id}");
+            Cache::forget("catalog_group_slug_{$group->slug}");
+        }
     }
-}
 
     public function findBySlug(string $slug): ?CatalogGroup
-{
-    $cacheKey = "catalog_group_slug_{$slug}";
+    {
+        $cacheKey = "catalog_group_slug_{$slug}";
+        $cached = Cache::get($cacheKey);
 
-    $cached = Cache::get($cacheKey);
-
-    if ($cached instanceof \__PHP_Incomplete_Class) {
-        Cache::forget($cacheKey);
-        $cached = null;
-    }
-
-    if ($cached === null) {
-
-        $model = CatalogGroupModel::query()
-            ->with([
-                'categories' => function ($q) {
-                    $q->where('is_active', true)
-                        ->where('is_visible_in_menu', true)
-                        ->orderBy('sort_order')
-                        ->orderBy('name');
-                }
-            ])
-            ->where('slug', $slug)
-            ->first();
-
-        if (!$model) {
-            return null;
+        if ($cached instanceof \__PHP_Incomplete_Class) {
+            Cache::forget($cacheKey);
+            $cached = null;
         }
 
-        $cached = [
-            'id' => $model->id,
-            'name' => $model->name,
-            'slug' => $model->slug,
-            'description' => $model->description,
-            'image_url' => $model->image_url,
-            'cover_image_url' => $model->cover_image_url,
-            'is_active' => (bool) $model->is_active,
+        if ($cached === null) {
+            $model = CatalogGroupModel::query()
+                ->with([
+                    'categories' => function ($q) {
+                        $q->where('is_active', true)
+                            ->where('is_visible_in_menu', true)
+                            ->orderBy('sort_order')
+                            ->orderBy('name');
+                    }
+                ])
+                ->where('slug', $slug)
+                ->first();
 
-            'categories' => $model->categories->map(fn ($cat) => [
-                'id' => $cat->id,
-                'catalog_group_id' => $cat->catalog_group_id,
-                'parent_id' => $cat->parent_id,
-                'name' => $cat->name,
-                'slug' => $cat->slug,
-                'full_slug' => $cat->full_slug,
-                'description' => $cat->description,
-                'image_url' => $cat->image_url,
-                'icon_url' => $cat->icon_url,
-                'cover_image_url' => $cat->cover_image_url,
-                'level' => $cat->level,
-                'sort_order' => $cat->sort_order,
-                'products_count' => $cat->products_count ?? 0,
-                'is_active' => (bool) $cat->is_active,
-                'is_visible_in_menu' => (bool) $cat->is_visible_in_menu,
-                'children' => [],
-            ])->all(),
-        ];
+            if (!$model) {
+                return null;
+            }
 
-        Cache::put($cacheKey, $cached, 600);
+            $cached = [
+                'id'          => $model->id,
+                'name'        => $model->name,
+                'slug'        => $model->slug,
+                'is_active'   => (bool) $model->is_active,
+                'categories'  => $model->categories->map(fn ($cat) => [
+                    'id'                 => $cat->id,
+                    'catalog_group_id'   => $cat->catalog_group_id,
+                    'parent_id'          => $cat->parent_id,
+                    'name'               => $cat->name,
+                    'slug'               => $cat->slug,
+                    'full_slug'          => $cat->full_slug,
+                    'image_url'          => $cat->image_url,
+                    'icon_url'           => $cat->icon_url,
+                    'level'              => $cat->level,
+                    'sort_order'         => $cat->sort_order,
+                    'products_count'     => $cat->products_count ?? 0,
+                    'is_active'          => (bool) $cat->is_active,
+                    'is_visible_in_menu' => (bool) $cat->is_visible_in_menu,
+                    'children'           => [],
+                ])->all(),
+            ];
+
+            Cache::put($cacheKey, $cached, 600);
+        }
+
+        return CatalogGroupMapper::toEntityFromArray($cached);
     }
-
-    return CatalogGroupMapper::toEntityFromArray($cached);
 }
-
-}
-

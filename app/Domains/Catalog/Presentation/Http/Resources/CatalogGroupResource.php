@@ -17,11 +17,8 @@ final class CatalogGroupResource extends JsonResource
             'id'              => $group->id(),
             'name'            => $group->name(),
             'slug'            => $group->slug(),
-            'description'     => $group->description(),
-            'image_url'       => $group->imageUrl(),
-            'cover_image_url' => $group->coverImageUrl(),
             'is_active'       => $group->isActive(),
-            
+
             // Ini yang paling penting
             'categories' => CategoryResource::collection(
                 $group->categories()

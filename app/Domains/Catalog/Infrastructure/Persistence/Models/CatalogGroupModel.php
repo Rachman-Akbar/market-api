@@ -13,9 +13,6 @@ class CatalogGroupModel extends Model
     protected $fillable = [
         'name',
         'slug',
-        'description',
-        'image_url',
-        'cover_image_url',
         'is_active',
     ];
 

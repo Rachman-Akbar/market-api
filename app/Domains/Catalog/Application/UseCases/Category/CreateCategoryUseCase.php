@@ -23,3 +23,5 @@ final class CreateCategoryUseCase
         return $this->repository->save($category);
     }
 }
+
+
