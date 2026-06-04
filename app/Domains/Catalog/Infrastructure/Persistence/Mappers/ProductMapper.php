@@ -12,14 +12,12 @@ final class ProductMapper
     public static function toEntity(ProductModel $model): Product
     {
         $primaryCategory = null;
-
         if ($model->relationLoaded('primaryCategory') && $model->primaryCategory) {
             $primaryCategory = CategoryMapper::toEntity($model->primaryCategory);
         }
 
         $categories = [];
         $categoryIds = [];
-
         if ($model->relationLoaded('categories')) {
             $categories = $model->categories
                 ->map(fn ($category) => CategoryMapper::toEntity($category))
@@ -37,6 +35,14 @@ final class ProductMapper
             $categoryIds = [(int) $model->primary_category_id];
         }
 
+        // Ditambahkan: Map relasi varian
+        $variants = [];
+        if ($model->relationLoaded('variants')) {
+            $variants = $model->variants
+                ->map(fn ($variantModel) => ProductVariantMapper::toEntity($variantModel))
+                ->all();
+        }
+
         return new Product(
             id: $model->id ? (int) $model->id : null,
             storeId: $model->store_id ? (int) $model->store_id : null,
@@ -46,15 +52,12 @@ final class ProductMapper
             name: (string) $model->name,
             slug: (string) $model->slug,
             description: $model->description,
-            price: (float) $model->price,
-            stock: (int) $model->stock,
             thumbnail: $model->thumbnail,
             status: (string) $model->status,
             primaryCategory: $primaryCategory,
             categories: $categories,
-            images: $model->relationLoaded('images')
-                ? $model->images->all()
-                : [],
+            images: $model->relationLoaded('images') ? $model->images->all() : [],
+            variants: $variants // Set data varian ke dalam entitas
         );
     }
 
@@ -67,12 +70,9 @@ final class ProductMapper
             'name' => $product->name(),
             'slug' => $product->slug(),
             'description' => $product->description(),
-            'price' => $product->price(),
-            'stock' => $product->stock(),
             'thumbnail' => $product->thumbnail(),
             'status' => $product->status(),
+            // Kolom price & stock dibersihkan dari pemetaan model utama
         ]);
     }
 }
-
-

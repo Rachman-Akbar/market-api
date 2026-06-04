@@ -17,8 +17,9 @@ final class EloquentProductRepository implements ProductRepositoryInterface
 {
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
+        // Contoh pada fungsi paginate() dan pencarian lainnya:
         $query = ProductModel::query()
-            ->with(['primaryCategory', 'categories', 'store', 'images']);
+        ->with(['primaryCategory', 'categories', 'store', 'images', 'variants']);
 
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -53,7 +54,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     public function findById(int $id): ?Product
     {
         $model = ProductModel::query()
-            ->with(['primaryCategory', 'categories', 'store', 'images'])
+            ->with(['primaryCategory', 'categories', 'store', 'images', 'variants'])
             ->find($id);
 
         return $model ? ProductMapper::toEntity($model) : null;
@@ -62,7 +63,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     public function findBySlug(string $slug): ?Product
     {
         $model = ProductModel::query()
-            ->with(['primaryCategory', 'categories', 'store', 'images'])
+            ->with(['primaryCategory', 'categories', 'store', 'images', 'variants'])
             ->where('slug', $slug)
             ->first();
 
@@ -72,7 +73,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     public function findPublishedByStoreId(int $storeId): Collection
     {
         return ProductModel::query()
-            ->with(['primaryCategory', 'categories', 'store', 'images'])
+            ->with(['primaryCategory', 'categories', 'store', 'images', 'variants'])
             ->where('store_id', $storeId)
             ->where('status', 'published')
             ->orderByDesc('created_at')
@@ -99,7 +100,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             : [];
 
         $query = ProductModel::query()
-            ->with(['primaryCategory', 'categories', 'store', 'images'])
+            ->with(['primaryCategory', 'categories', 'store', 'images', 'variants'])
             ->where('status', 'published');
 
         if (! empty($categoryIds)) {
@@ -150,7 +151,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             : [(int) $category->id];
 
         $query = ProductModel::query()
-            ->with(['primaryCategory', 'categories', 'store', 'images'])
+            ->with(['primaryCategory', 'categories', 'store', 'images', 'variants'])
             ->where('status', 'published');
 
         $this->applyCategoryIdsFilter($query, $categoryIds);
@@ -175,7 +176,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             : [$categoryId];
 
         $query = ProductModel::query()
-            ->with(['primaryCategory', 'categories', 'store', 'images'])
+            ->with(['primaryCategory', 'categories', 'store', 'images', 'variants'])
             ->where('status', 'published');
 
         $this->applyCategoryIdsFilter($query, $categoryIds);
@@ -202,8 +203,6 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             $model->name                = $product->name();
             $model->slug                = $product->slug();
             $model->description         = $product->description();
-            $model->price               = $product->price();
-            $model->stock               = $product->stock();
             $model->thumbnail           = $product->thumbnail();
             $model->status              = $product->status();
         }
@@ -227,7 +226,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         }
 
         $model->categories()->sync($syncPayload);
-        $model->load(['primaryCategory', 'categories', 'store', 'images']);
+        $model->load(['primaryCategory', 'categories', 'store', 'images', 'variants']);
 
         return ProductMapper::toEntity($model);
     }

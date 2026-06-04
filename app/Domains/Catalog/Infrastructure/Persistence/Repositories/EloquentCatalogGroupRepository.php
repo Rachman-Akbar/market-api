@@ -224,3 +224,6 @@ private function freshCatalogGroupsAsArray(): array
         return CatalogGroupMapper::toEntityFromArray($cached);
     }
 }
+
+
+

@@ -20,13 +20,10 @@ final class ProductModel extends Model
         'seller_id',
         'name',
         'slug',
-        'sku',
         'description',
         'short_description',
         'brand',
         'weight_gram',
-        'price',
-        'stock',
         'thumbnail',
         'status',
         'is_featured',
@@ -36,8 +33,6 @@ final class ProductModel extends Model
     protected $casts = [
         'store_id' => 'integer',
         'primary_category_id' => 'integer',
-        'price' => 'decimal:2',
-        'stock' => 'integer',
         'weight_gram' => 'integer',
         'is_featured' => 'boolean',
         'is_active' => 'boolean',
@@ -60,8 +55,7 @@ final class ProductModel extends Model
             'product_categories',
             'product_id',
             'category_id'
-        )
-            ->withPivot('is_primary');
+        )->withPivot('is_primary');
     }
 
     public function images(): HasMany
@@ -69,6 +63,9 @@ final class ProductModel extends Model
         return $this->hasMany(ProductImageModel::class, 'product_id');
     }
 
+    // Ditambahkan: Menghubungkan produk ke tabel varian fisiknya
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariantModel::class, 'product_id');
+    }
 }
-
-
