@@ -21,9 +21,6 @@ final class CatalogGroupData
             id: $entity->id(),
             name: $entity->name(),
             slug: $entity->slug(),
-            description: $entity->description(),
-            imageUrl: $entity->imageUrl(),
-            coverImageUrl: $entity->coverImageUrl(),
             isActive: $entity->isActive(),
             categories: $entity->categories(),
         );

@@ -28,11 +28,19 @@ final class CatalogGroupMapper
 
     public static function toModel(CatalogGroup $group): CatalogGroupModel
     {
-        return new CatalogGroupModel([
+        $model = new CatalogGroupModel([
             'name' => $group->name(),
             'slug' => $group->slug(),
             'is_active' => $group->isActive(),
         ]);
+
+        // Krusial untuk CRUD Update: Pasang kembali ID jika entitas memilikinya
+        if ($group->id() !== null) {
+            $model->id = $group->id();
+            $model->exists = true;
+        }
+
+        return $model;
     }
 
     public static function toEntityFromArray(array|object $data): CatalogGroup

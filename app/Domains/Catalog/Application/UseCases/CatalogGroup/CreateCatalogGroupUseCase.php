@@ -18,7 +18,8 @@ final class CreateCatalogGroupUseCase
             id: null,
             name: $data['name'],
             slug: $data['slug'] ?? Str::slug($data['name']),
-            description: $data['description'] ?? null,
+            isActive: (bool) ($data['is_active'] ?? true), // Ambil is_active dari request dan konversi ke bool
+            categories: [] // Inisialisasi dengan array kosong karena data baru
         );
 
         return $this->repository->create($group);

@@ -88,19 +88,19 @@ Route::prefix('catalog')
                         ->name('variants.')
                         ->controller(ProductVariantController::class)
                         ->group(function () {
-    
+
                             Route::get('/', 'index');
-    
+
                             Route::get(
                                 '/{variantId}', 'show');
-    
+
                             Route::post('/', 'store');
-    
+
                             Route::put(
                                 '/{variantId}',
                                 'update'
                             );
-    
+
                             Route::delete(
                                 '/{variantId}',
                                 'destroy'
@@ -110,7 +110,7 @@ Route::prefix('catalog')
                 Route::get('/{slug}', 'showBySlug')
                     ->where('slug', '[A-Za-z0-9\-]+')
                     ->name('show-by-slug');
-            
+
             });
 
         /*
@@ -132,16 +132,20 @@ Route::prefix('catalog')
                     'store'
                 ]);
 
-                Route::get('/{slug}', [
-                    CatalogGroupController::class,
-                    'showBySlug'
-                ]);
+                Route::get('/{id}', [CatalogGroupController::class, 'show'])->whereNumber('id');
+
 
                 Route::get('/{id}/categories', [
                     CatalogGroupController::class,
                     'categories'
-                ])->whereNumber('id');
-            });
+                    ])->whereNumber('id');
+
+                Route::get('/{slug}', [
+                        CatalogGroupController::class,
+                        'showBySlug'
+                    ]);
+
+          });
 
         /*
         |--------------------------------------------------------------------------

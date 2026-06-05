@@ -28,9 +28,16 @@ class CatalogGroupController extends Controller
         ]);
     }
 
-    public function show(GetCatalogGroupUseCase $useCase, int $id): JsonResponse
+public function show(GetCatalogGroupUseCase $useCase, int $id): JsonResponse
 {
     $group = $useCase->execute($id);
+
+    if (!$group) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Catalog group not found'
+        ], 404);
+    }
 
     return response()->json([
         'success' => true,
@@ -94,3 +101,4 @@ class CatalogGroupController extends Controller
 }
 
 }
+
