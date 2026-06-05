@@ -5,6 +5,7 @@ namespace App\Domains\Catalog\Presentation\Http\Controllers;
 use Illuminate\Routing\Controller;
 use App\Domains\Catalog\Application\UseCases\CatalogGroup\{
     CreateCatalogGroupUseCase,
+    DeleteCatalogGroupUseCase,
     GetCatalogGroupsUseCase,
     GetCatalogGroupUseCase,
     UpdateCatalogGroupUseCase,
@@ -99,6 +100,23 @@ public function show(GetCatalogGroupUseCase $useCase, int $id): JsonResponse
         'data' => new CatalogGroupResource($group),
     ]);
 }
+
+public function destroy(DeleteCatalogGroupUseCase $useCase, int $id): JsonResponse
+    {
+        $deleted = $useCase->execute($id);
+
+        if (!$deleted) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Catalog group not found or failed to delete'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Catalog group deleted successfully'
+        ]);
+    }
 
 }
 

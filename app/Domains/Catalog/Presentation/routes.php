@@ -133,8 +133,9 @@ Route::prefix('catalog')
                 ]);
 
                 Route::get('/{id}', [CatalogGroupController::class, 'show'])->whereNumber('id');
-                
+
                 Route::put('/{id}', [CatalogGroupController::class, 'update'])->whereNumber('id');
+                Route::delete('/{id}', [CatalogGroupController::class, 'destroy'])->whereNumber('id');
 
 
                 Route::get('/{id}/categories', [
