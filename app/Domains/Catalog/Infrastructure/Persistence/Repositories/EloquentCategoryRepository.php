@@ -42,7 +42,7 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         $itemChanger = function($items) use (&$itemChanger, $grouped) {
             return collect($items)->map(function(Category $category) use (&$itemChanger, $grouped) {
                 $children = $grouped->get($category->id(), collect());
-                
+
                 if ($children->isNotEmpty()) {
                     $children = $itemChanger($children);
                 }
@@ -181,30 +181,31 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
     }
 
     public function save(Category $category): Category
-    {
-        $model = $category->id() ? CategoryModel::find($category->id()) : null;
+{
+    $model = $category->id() ? CategoryModel::find($category->id()) : new CategoryModel();
 
-        if (!$model) {
-            $model = CategoryMapper::toModel($category);
-        } else {
-            $model->catalog_group_id = $category->catalogGroupId();
-            $model->parent_id = $category->parentId();
-            $model->name = $category->name();
-            $model->slug = $category->slug();
-            $model->full_slug = $category->fullSlug();
-            $model->image_url = $category->imageUrl();
-            $model->icon_url = $category->iconUrl();
-            $model->level = $category->level();
-            $model->sort_order = $category->sortOrder();
-            $model->is_active = $category->isActive();
-            $model->is_visible_in_menu = $category->isVisibleInMenu();
-        }
-
-        $model->save();
-        $this->clearCache();
-
-        return CategoryMapper::toEntity($model);
+    if (!$model) {
+        throw new \InvalidArgumentException("Model tidak ditemukan untuk ID: " . $category->id());
     }
+
+    $model->catalog_group_id   = $category->catalogGroupId();
+    $model->parent_id          = $category->parentId();
+    $model->name               = $category->name();
+    $model->slug               = $category->slug();
+    $model->full_slug          = $category->fullSlug();
+    $model->level              = $category->level();
+    $model->sort_order         = $category->sortOrder();
+    $model->is_active          = $category->isActive();
+    $model->is_visible_in_menu = $category->isVisibleInMenu();
+    $model->image_url          = $category->imageUrl();
+    $model->icon_url           = $category->iconUrl();
+
+    $model->save();
+
+    $this->clearCache();
+
+    return CategoryMapper::toEntity($model);
+}
 
     public function delete(int $id): bool
     {
@@ -288,7 +289,7 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         $cached = Cache::remember($cacheKey, self::CACHE_TTL, function () {
             return CatalogGroupModel::query()
                 ->where('is_active', true)
-                ->select(['id', 'name', 'slug', 'is_active']) 
+                ->select(['id', 'name', 'slug', 'is_active'])
                 ->with([
                     'categories' => function ($query) {
                         $query->whereNull('parent_id') // Hanya ambil level root (Level 1) lewat Eloquent
