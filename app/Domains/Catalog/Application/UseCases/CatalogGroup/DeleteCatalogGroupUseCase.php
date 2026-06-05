@@ -12,7 +12,14 @@ final class DeleteCatalogGroupUseCase
 
     public function execute(int $id): bool
     {
+        // Cek dulu apakah datanya ada sebelum dihapus (Opsional, tapi bagus untuk validasi bisnis)
+        $catalogGroup = $this->repository->findById($id);
+
+        if (!$catalogGroup) {
+            throw new \InvalidArgumentException("Catalog Group tidak ditemukan.");
+        }
+
+        // Panggil method delete yang benar
         return $this->repository->delete($id);
     }
 }
-

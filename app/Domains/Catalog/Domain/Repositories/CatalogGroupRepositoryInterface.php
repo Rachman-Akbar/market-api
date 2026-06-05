@@ -2,28 +2,25 @@
 
 namespace App\Domains\Catalog\Domain\Repositories;
 
-use App\Domains\Catalog\Domain\Entities\CatalogGroup;
 use Illuminate\Support\Collection;
+use App\Domains\Catalog\Domain\Entities\CatalogGroup;
 
 interface CatalogGroupRepositoryInterface
 {
-    /**
-     * Get all active catalog groups with categories
-     */
     public function getAll(array $filters = []): Collection;
 
     public function findById(int $id): ?CatalogGroup;
 
-    public function create(CatalogGroup $data): CatalogGroup;
+    public function findBySlug(string $slug): ?CatalogGroup;
 
-    public function update(int $id, array $data): CatalogGroup;
+    public function getCategoriesByGroupId(int $groupId): Collection;
+
+    /**
+     * Kontrak tunggal untuk persistence state domain (Create & Update)
+     */
+    public function save(CatalogGroup $catalogGroup): CatalogGroup;
 
     public function delete(int $id): bool;
 
-    /**
-     * NEW: Ambil kategori berdasarkan Catalog Group ID
-     */
-    public function getCategoriesByGroupId(int $groupId): Collection;
-
-    public function findBySlug(string $slug): ?CatalogGroup;
+    public function clearCache(): void;
 }

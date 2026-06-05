@@ -2,8 +2,8 @@
 
 namespace App\Domains\Catalog\Application\UseCases\CatalogGroup;
 
-use App\Domains\Catalog\Domain\Repositories\CatalogGroupRepositoryInterface;
 use App\Domains\Catalog\Domain\Entities\CatalogGroup;
+use App\Domains\Catalog\Domain\Repositories\CatalogGroupRepositoryInterface;
 use Illuminate\Support\Str;
 
 final class CreateCatalogGroupUseCase
@@ -14,14 +14,19 @@ final class CreateCatalogGroupUseCase
 
     public function execute(array $data): CatalogGroup
     {
-        $group = new CatalogGroup(
+        // 1. Otomatisasi pembuatan slug jika tidak diinput dari request
+        $slug = $data['slug'] ?? Str::slug($data['name']);
+
+        // 2. Instansiasi objek Entity baru (Tanpa ID karena auto-increment database)
+        // Catatan: Sesuaikan constructor ini dengan property yang ada pada Entity CatalogGroup Anda
+        $catalogGroup = new CatalogGroup(
             id: null,
             name: $data['name'],
-            slug: $data['slug'] ?? Str::slug($data['name']),
-            isActive: (bool) ($data['is_active'] ?? true), // Ambil is_active dari request dan konversi ke bool
-            categories: [] // Inisialisasi dengan array kosong karena data baru
+            slug: $slug,
+            isActive: isset($data['is_active']) ? (bool) $data['is_active'] : true
         );
 
-        return $this->repository->create($group);
+        // 3. Simpan state Entity baru menggunakan method save()
+        return $this->repository->save($catalogGroup);
     }
 }

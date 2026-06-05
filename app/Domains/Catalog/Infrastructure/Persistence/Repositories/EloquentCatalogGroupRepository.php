@@ -35,7 +35,7 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
                 'categories' => function ($query) {
                     $query->where('is_active', true)
                           ->where('is_visible_in_menu', true)
-                          ->withCount('products') // Optimal: Mencegah N+1 query
+                          ->withCount('products')
                           ->select([
                               'id', 'catalog_group_id', 'parent_id', 'name', 'slug',
                               'full_slug', 'image_url', 'icon_url', 'sort_order', 'level', 'is_active', 'is_visible_in_menu'
@@ -47,30 +47,13 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
             ->orderBy('name')
             ->get();
 
-        return $models->map(function ($model) {
-            return [
-                'id'         => $model->id,
-                'name'       => $model->name,
-                'slug'       => $model->slug,
-                'is_active'  => (bool) $model->is_active,
-                'categories' => $model->categories->map(fn($cat) => [
-                    'id'                 => $cat->id,
-                    'catalog_group_id'   => $cat->catalog_group_id,
-                    'parent_id'          => $cat->parent_id,
-                    'name'               => $cat->name,
-                    'slug'               => $cat->slug,
-                    'full_slug'          => $cat->full_slug,
-                    'image_url'          => $cat->image_url,
-                    'icon_url'           => $cat->icon_url,
-                    'level'              => (int) $cat->level,
-                    'sort_order'         => $cat->sort_order,
-                    'products_count'     => $cat->products_count ?? 0,
-                    'is_active'          => (bool) $cat->is_active,
-                    'is_visible_in_menu' => (bool) $cat->is_visible_in_menu,
-                    'children'           => []
-                ])->all(),
-            ];
-        })->all();
+        return $models->map(fn($model) => [
+            'id'         => $model->id,
+            'name'       => $model->name,
+            'slug'       => $model->slug,
+            'is_active'  => (bool) $model->is_active,
+            'categories' => $this->mapCategoriesToArray($model->categories),
+        ])->all();
     }
 
     public function findById(int $id): ?CatalogGroup
@@ -105,22 +88,7 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
                 'name'       => $model->name,
                 'slug'       => $model->slug,
                 'is_active'  => (bool) $model->is_active,
-                'categories' => $model->categories->map(fn ($cat) => [
-                    'id'                 => $cat->id,
-                    'catalog_group_id'   => $cat->catalog_group_id,
-                    'parent_id'          => $cat->parent_id,
-                    'name'               => $cat->name,
-                    'slug'               => $cat->slug,
-                    'full_slug'          => $cat->full_slug,
-                    'image_url'          => $cat->image_url,
-                    'icon_url'           => $cat->icon_url,
-                    'level'              => (int) $cat->level,
-                    'sort_order'         => $cat->sort_order,
-                    'products_count'     => $cat->products_count ?? 0,
-                    'is_active'          => (bool) $cat->is_active,
-                    'is_visible_in_menu' => (bool) $cat->is_visible_in_menu,
-                    'children'           => [],
-                ])->all(),
+                'categories' => $this->mapCategoriesToArray($model->categories),
             ];
 
             Cache::put($cacheKey, $cached, 600);
@@ -162,22 +130,7 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
                 'name'       => $model->name,
                 'slug'       => $model->slug,
                 'is_active'  => (bool) $model->is_active,
-                'categories' => $model->categories->map(fn ($cat) => [
-                    'id'                 => $cat->id,
-                    'catalog_group_id'   => $cat->catalog_group_id,
-                    'parent_id'          => $cat->parent_id,
-                    'name'               => $cat->name,
-                    'slug'               => $cat->slug,
-                    'full_slug'          => $cat->full_slug,
-                    'image_url'          => $cat->image_url,
-                    'icon_url'           => $cat->icon_url,
-                    'level'              => (int) $cat->level,
-                    'sort_order'         => $cat->sort_order,
-                    'products_count'     => $cat->products_count ?? 0,
-                    'is_active'          => (bool) $cat->is_active,
-                    'is_visible_in_menu' => (bool) $cat->is_visible_in_menu,
-                    'children'           => [],
-                ])->all(),
+                'categories' => $this->mapCategoriesToArray($model->categories),
             ];
 
             Cache::put($cacheKey, $cached, 600);
@@ -201,27 +154,28 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
         });
     }
 
-public function create(CatalogGroup $data): CatalogGroup
-{
-    $model = CatalogGroupMapper::toModel($data);
-    $model->save();
-
-    // Ini wajib agar tidak crash saat di-mapping balik ke Entity
-    $model->setRelation('categories', collect());
-
-    $this->clearCache();
-
-    return CatalogGroupMapper::toEntity($model);
-}
-
-    public function update(int $id, array $data): CatalogGroup
+    /**
+     * Pengganti method Create & Update (DDD Strict Standard)
+     */
+    public function save(CatalogGroup $catalogGroup): CatalogGroup
     {
-        $model = CatalogGroupModel::findOrFail($id);
-        $model->update($data);
+        $model = $catalogGroup->id()
+            ? CatalogGroupModel::findOrFail($catalogGroup->id())
+            : new CatalogGroupModel();
+
+        $model->name      = $catalogGroup->name();
+        $model->slug      = $catalogGroup->slug();
+        $model->is_active = $catalogGroup->isActive();
+        $model->save();
+
+        // Mencegah crash mapping jika data baru dibuat (belum punya relasi)
+        if (!$model->relationLoaded('categories')) {
+            $model->setRelation('categories', collect());
+        }
 
         $this->clearCache();
 
-        return CatalogGroupMapper::toEntity($model->fresh(['categories']));
+        return CatalogGroupMapper::toEntity($model);
     }
 
     public function delete(int $id): bool
@@ -237,13 +191,34 @@ public function create(CatalogGroup $data): CatalogGroup
     {
         Cache::forget(self::CACHE_KEY_ALL);
 
-        // Hapus cache detail item yang aktif maupun tidak aktif secara menyeluruh
         $groups = CatalogGroupModel::select('id', 'slug')->get();
-
         foreach ($groups as $group) {
             Cache::forget("catalog_group_{$group->id}");
             Cache::forget("catalog_group_slug_{$group->slug}");
             Cache::forget("catalog_group_{$group->id}_categories");
         }
+    }
+
+    /**
+     * Helper privat untuk standarisasi mapping data array kategori (Mencegah DRY)
+     */
+    private function mapCategoriesToArray(Collection $categories): array
+    {
+        return $categories->map(fn($cat) => [
+            'id'                 => $cat->id,
+            'catalog_group_id'   => $cat->catalog_group_id,
+            'parent_id'          => $cat->parent_id,
+            'name'               => $cat->name,
+            'slug'               => $cat->slug,
+            'full_slug'          => $cat->full_slug,
+            'image_url'          => $cat->image_url,
+            'icon_url'           => $cat->icon_url,
+            'level'              => (int) $cat->level,
+            'sort_order'         => $cat->sort_order,
+            'products_count'     => $cat->products_count ?? 0,
+            'is_active'          => (bool) $cat->is_active,
+            'is_visible_in_menu' => (bool) $cat->is_visible_in_menu,
+            'children'           => []
+        ])->all();
     }
 }
