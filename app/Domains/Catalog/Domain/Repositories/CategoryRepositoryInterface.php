@@ -8,7 +8,7 @@ use App\Domains\Catalog\Domain\Entities\Category;
 interface CategoryRepositoryInterface
 {
     /**
-     * Get all categories
+     * Get all categories as a tree structure
      */
     public function getAll(array $filters = []): Collection;
 
@@ -23,34 +23,32 @@ interface CategoryRepositoryInterface
     public function findBySlug(string $slug): ?Category;
 
     /**
-     * Menu tree
+     * Menu tree based on catalog group
      */
     public function getMenuTree(?int $catalogGroupId = null): Collection;
 
     /**
-     * Create category
+     * Save category (Handles both Create and Update inside Domain Layer)
      */
-    public function create(Category $category): Category;
+    public function save(Category $category): Category;
 
     /**
-     * Update category
-     */
-    public function update(int $id, array $data): Category;
-
-    /**
-     * Delete category
+     * Delete category by ID
      */
     public function delete(int $id): bool;
 
     /**
-     * Catalog groups with categories
+     * Catalog groups with active categories
      */
     public function getAllWithCategories(): Collection;
 
+    /**
+     * Mega menu structure for public header
+     */
     public function getHeaderMenu(): Collection;
 
+    /**
+     * Find category by its full URL path (e.g., electronic/computer/laptop)
+     */
     public function findByPath(string $path): ?Category;
-
-    
 }
-

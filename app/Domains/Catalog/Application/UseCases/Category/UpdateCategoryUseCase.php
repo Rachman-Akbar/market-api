@@ -25,7 +25,10 @@ final class UpdateCategoryUseCase
 
         // Cek jika ada perubahan parent_id
         $newParent = null;
+        $parentChanged = false;
+
         if (array_key_exists('parent_id', $data) && $data['parent_id'] !== $category->parentId()) {
+            $parentChanged = true;
             if ($data['parent_id'] === $category->id()) {
                 throw new \InvalidArgumentException("Kategori tidak bisa menjadi parent dari dirinya sendiri.");
             }
@@ -37,12 +40,12 @@ final class UpdateCategoryUseCase
             }
         }
 
-        // Update entitas utama
+        // Update entitas utama melalui aturan bisnis internal Domain Entity
         $category->updateData($data, $newParent);
         $updatedCategory = $this->repository->save($category);
 
-        // EFEK DOMINO: Jika slug atau parent berubah, update semua sub-kategori di bawahnya
-        if ($newParent !== null || array_key_exists('slug', $data)) {
+        // EFEK DOMINO: Jika slug atau parent berubah, update semua sub-kategori di bawahnya secara berantai
+        if ($parentChanged || array_key_exists('slug', $data)) {
             $this->updateChildrenHierarchies($updatedCategory);
         }
 
@@ -55,19 +58,16 @@ final class UpdateCategoryUseCase
     private function updateChildrenHierarchies(Category $parent): void
     {
         // Ambil data flat children langsung dari database menggunakan filter parent_id
-        $filters = ['parent_id' => $parent->id()];
-
-        // Menggunakan query langsung via Model/Repository untuk menghindari loop tree
         $childrenModels = \App\Domains\Catalog\Infrastructure\Persistence\Models\CategoryModel::where('parent_id', $parent->id())->get();
 
         foreach ($childrenModels as $model) {
             $child = \App\Domains\Catalog\Infrastructure\Persistence\Mappers\CategoryMapper::toEntity($model);
 
-            // Paksa update data dengan parent yang sudah ter-update
+            // Paksa update data dengan membawa objek parent yang sudah disinkronisasi
             $child->updateData([], $parent);
             $this->repository->save($child);
 
-            // Rekursif ke level berikutnya (Level 3, 4, dst)
+            // Rekursif ke level berikutnya (Sub-kategori Level 3, 4, dst)
             $this->updateChildrenHierarchies($child);
         }
     }

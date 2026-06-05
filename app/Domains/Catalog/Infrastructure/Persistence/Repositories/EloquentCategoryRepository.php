@@ -103,8 +103,7 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         $model = CategoryModel::query()
             ->with(['catalogGroup', 'parent', 'children'])
             ->withCount('products')
-            ->where('slug', $slug)
-            ->orWhere('full_slug', $slug)
+            ->where('slug', $slug) // Dioptimalkan tanpa orWhere full_slug yang redundant
             ->first();
 
         return $model ? CategoryMapper::toEntity($model) : null;
@@ -181,31 +180,31 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
     }
 
     public function save(Category $category): Category
-{
-    $model = $category->id() ? CategoryModel::find($category->id()) : new CategoryModel();
+    {
+        $model = $category->id() ? CategoryModel::find($category->id()) : new CategoryModel();
 
-    if (!$model) {
-        throw new \InvalidArgumentException("Model tidak ditemukan untuk ID: " . $category->id());
+        if (!$model) {
+            throw new \InvalidArgumentException("Model tidak ditemukan untuk ID: " . $category->id());
+        }
+
+        $model->catalog_group_id   = $category->catalogGroupId();
+        $model->parent_id          = $category->parentId();
+        $model->name               = $category->name();
+        $model->slug               = $category->slug();
+        $model->full_slug          = $category->fullSlug();
+        $model->level              = $category->level();
+        $model->sort_order         = $category->sortOrder();
+        $model->is_active          = $category->isActive();
+        $model->is_visible_in_menu = $category->isVisibleInMenu();
+        $model->image_url          = $category->imageUrl();
+        $model->icon_url           = $category->iconUrl();
+
+        $model->save();
+
+        $this->clearCache();
+
+        return CategoryMapper::toEntity($model);
     }
-
-    $model->catalog_group_id   = $category->catalogGroupId();
-    $model->parent_id          = $category->parentId();
-    $model->name               = $category->name();
-    $model->slug               = $category->slug();
-    $model->full_slug          = $category->fullSlug();
-    $model->level              = $category->level();
-    $model->sort_order         = $category->sortOrder();
-    $model->is_active          = $category->isActive();
-    $model->is_visible_in_menu = $category->isVisibleInMenu();
-    $model->image_url          = $category->imageUrl();
-    $model->icon_url           = $category->iconUrl();
-
-    $model->save();
-
-    $this->clearCache();
-
-    return CategoryMapper::toEntity($model);
-}
 
     public function delete(int $id): bool
     {
@@ -266,22 +265,6 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         );
     }
 
-    public function create(Category $category): Category
-    {
-        $model = CategoryMapper::toModel($category);
-        $model->save();
-        $this->clearCache();
-        return CategoryMapper::toEntity($model);
-    }
-
-    public function update(int $id, array $data): Category
-    {
-        $model = CategoryModel::findOrFail($id);
-        $model->update($data);
-        $this->clearCache();
-        return CategoryMapper::toEntity($model);
-    }
-
     public function getHeaderMenu(): Collection
     {
         $cacheKey = 'header_menu_v1';
@@ -292,7 +275,7 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
                 ->select(['id', 'name', 'slug', 'is_active'])
                 ->with([
                     'categories' => function ($query) {
-                        $query->whereNull('parent_id') // Hanya ambil level root (Level 1) lewat Eloquent
+                        $query->whereNull('parent_id')
                             ->where('is_active', true)
                             ->where('is_visible_in_menu', true)
                             ->with(['childrenRecursive' => function ($childQuery) {
@@ -341,10 +324,10 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
             'level'              => (int) $category->level,
             'is_active'          => (bool) $category->is_active,
             'is_visible_in_menu' => (bool) $category->is_visible_in_menu,
-            'children'           => collect($category->childrenRecursive ?? $category->children ?? [])
-                ->map(fn($child) => $this->mapHeaderCategory($child))
-                ->values()
-                ->all(),
+            'children'           => array_map(
+                fn($child) => $this->mapHeaderCategory($child),
+                $category->childrenRecursive ? $category->childrenRecursive->all() : []
+            ),
         ];
     }
 

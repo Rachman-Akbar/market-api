@@ -34,6 +34,7 @@ final class CreateCategoryUseCase
             iconUrl: $data['icon_url'] ?? null
         );
 
+        // Disimpan menggunakan method save tunggal yang sesuai standar DDD
         return $this->repository->save($category);
     }
 }
