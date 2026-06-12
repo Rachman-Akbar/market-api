@@ -19,10 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withProviders([
+        // Daftarkan semua Domain Service Provider di sini
+        App\Domains\Identity\Infrastructure\Providers\IdentityServiceProvider::class, // <-- TAMBAHKAN INI
         App\Domains\Catalog\Infrastructure\Providers\CatalogServiceProvider::class,
-        App\Domains\Stores\Infrastructure\Providers\StoreServiceProvider::class,
-        App\Domains\Cart\Infrastructure\Providers\CartServiceProvider::class,
-        App\Domains\Ordering\Infrastructure\Providers\OrderingServiceProvider::class,
+        // App\Domains\Stores\Infrastructure\Providers\StoreServiceProvider::class,
+        // App\Domains\Cart\Infrastructure\Providers\CartServiceProvider::class,
+        // App\Domains\Ordering\Infrastructure\Providers\OrderingServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(HandleCors::class);
@@ -30,22 +32,24 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'firebase.token' => ValidateFirebaseToken::class,
             'verified.email' => EnsureEmailIsVerified::class,
-            'role' => EnsureUserHasRole::class,
-            'active.role' => EnsureActiveRole::class,
+            'role'           => EnsureUserHasRole::class,
+            'active.role'    => EnsureActiveRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(function (
-            AuthenticationException $exception,
-            Request $request
-        ) {
+        $exceptions->render(function (AuthenticationException $exception, Request $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
                     'message' => 'Unauthenticated.',
                 ], 401);
             }
-
             return null;
         });
     })
     ->create();
+
+
+
+
+
+    

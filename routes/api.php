@@ -12,7 +12,7 @@ $domainRouteFiles = [
     app_path('Domains/Identity/Presentation/routes.php'),
     app_path('Domains/Catalog/Presentation/routes.php'),
     app_path('Domains/Stores/Presentation/routes.php'),
-    app_path('Domains/Ordering/Presentation/routes.php'),
+    app_path('Domains/Order/Presentation/routes.php'),
     app_path('Domains/Cart/Presentation/routes.php'),
 ];
 
@@ -30,3 +30,5 @@ Route::prefix('v1')->group(function () use ($domainRouteFiles): void {
         }
     }
 });
+
+

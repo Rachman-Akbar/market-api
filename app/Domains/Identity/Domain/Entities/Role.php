@@ -1,11 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Identity\Domain\Entities;
 
-final class Role
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+final class Role extends Model
 {
-    public function __construct(
-        public readonly int $id,
-        public readonly string $name,
-    ) {}
+    protected $fillable = [
+        'name',
+    ];
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_roles')
+            ->withTimestamps();
+    }
 }
