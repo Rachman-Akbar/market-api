@@ -23,7 +23,8 @@ class UpdateUserUseCase
             throw new UserNotFoundException("User with ID {$id} not found.");
         }
 
-        if ($dto->email !== null && $dto->email !== $user->getEmail()) {
+        // PERBAIKAN: Mengubah $user->getEmail() menjadi $user->email
+        if ($dto->email !== null && $dto->email !== $user->email) {
             $existingUser = $this->userRepository->findByEmail($dto->email);
             if ($existingUser) {
                 throw new EmailAlreadyExistsException("Email {$dto->email} is already taken.");

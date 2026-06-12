@@ -98,16 +98,18 @@ final class EloquentUserRepository implements UserRepositoryInterface
         return $user->refresh();
     }
 
-    public function delete(string $id): bool
-    {
-        $user = $this->findById($id);
+public function delete(string $id): bool
+{
+    // Menggunakan withTrashed() agar data yang sudah ter-soft delete tetap bisa ditemukan untuk di-hard delete
+    $user = User::withTrashed()->find($id);
 
-        if (!$user) {
-            return false;
-        }
-
-        return (bool) $user->delete();
+    if (!$user) {
+        return false;
     }
+
+    // Hapus permanen dari database
+    return (bool) $user->forceDelete(); 
+}
 
     // ─────────────────────────────
     // Auth & Firebase Logic

@@ -68,19 +68,17 @@ class UserController extends Controller
         }
     }
 
-    public function store(StoreUserRequest $request): JsonResponse
-    {
-        try {
-            $dto = CreateUserDTO::fromArray($request->validated());
-            $user = $this->createUserUseCase->execute($dto);
+ public function store(StoreUserRequest $request, CreateUserUseCase $useCase)
+{
+    // Ini yang memanggil fungsi yang kita buat di atas
+    $dto = CreateUserDTO::fromArray($request->validated());
 
-            return (new UserResource($user))
-                ->response()
-                ->setStatusCode(Response::HTTP_CREATED);
-        } catch (EmailAlreadyExistsException $e) {
-            return response()->json(['message' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-    }
+    $user = $useCase->execute($dto);
+
+    return (new UserResource($user))
+        ->response()
+        ->setStatusCode(Response::HTTP_CREATED); // Status 201 untuk Create
+}
 
     public function update(UpdateUserRequest $request, string $id): JsonResponse
     {
@@ -98,13 +96,20 @@ class UserController extends Controller
         }
     }
 
-    public function destroy(string $id): JsonResponse
-    {
-        try {
-            $this->deleteUserUseCase->execute($id);
-            return response()->json(null, Response::HTTP_NO_CONTENT);
-        } catch (UserNotFoundException $e) {
-            return response()->json(['message' => $e->getMessage()], Response::HTTP_NOT_FOUND);
-        }
+   public function destroy(string $id, DeleteUserUseCase $useCase): JsonResponse
+{
+    try {
+        $useCase->execute($id);
+
+        // Jika benar-benar sukses menghapus data yang ADA
+        return response()->json(null, Response::HTTP_NO_CONTENT); 
+        
+    } catch (UserNotFoundException $e) {
+        // Jika data tidak ditemukan / sudah terhapus sebelumnya, kembalikan 404!
+        return response()->json([
+            'message' => $e->getMessage()
+        ], Response::HTTP_NOT_FOUND);
     }
+}
+
 }
