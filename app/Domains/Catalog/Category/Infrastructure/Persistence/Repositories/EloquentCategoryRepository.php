@@ -8,6 +8,7 @@ use App\Domains\Catalog\Category\Domain\Entities\Category;
 use App\Domains\Catalog\Category\Domain\Repositories\CategoryRepositoryInterface;
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Mappers\CategoryMapper;
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
+use Illuminate\Database\Eloquent\Collection;
 
 final class EloquentCategoryRepository implements CategoryRepositoryInterface
 {
@@ -17,29 +18,47 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
             ->with('childrenTree')
             ->find($id);
 
-        return $model ? CategoryMapper::toEntity($model) : null;
+        return $this->toEntity($model);
     }
 
     public function findBySlug(string $slug): ?Category
     {
+        $slug = $this->normalizePath($slug);
+
+        if ($slug === '') {
+            return null;
+        }
+
         $model = CategoryModel::query()
             ->with('childrenTree')
             ->where('slug', $slug)
             ->first();
 
-        return $model ? CategoryMapper::toEntity($model) : null;
+        return $this->toEntity($model);
     }
 
-    public function findByFullSlug(string $fullSlug): ?Category
+    public function findByPath(string $path): ?Category
     {
-        $path = trim($fullSlug, '/');
+        $path = $this->normalizePath($path);
+
+        if ($path === '') {
+            return null;
+        }
 
         $model = CategoryModel::query()
             ->with('childrenTree')
             ->where('full_slug', $path)
+            ->when(! str_contains($path, '/'), function ($query) use ($path) {
+                $query->orWhere('slug', $path);
+            })
             ->first();
 
-        return $model ? CategoryMapper::toEntity($model) : null;
+        return $this->toEntity($model);
+    }
+
+    public function findByFullSlug(string $fullSlug): ?Category
+    {
+        return $this->findByPath($fullSlug);
     }
 
     public function listTree(): array
@@ -81,6 +100,10 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
 
     public function isDescendantOf(int $categoryId, int $possibleDescendantId): bool
     {
+        if ($categoryId === $possibleDescendantId) {
+            return false;
+        }
+
         $current = CategoryModel::query()->find($possibleDescendantId);
 
         while ($current && $current->parent_id !== null) {
@@ -151,7 +174,17 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         return (bool) $model->delete();
     }
 
-    private function buildTree($models): array
+    private function toEntity(?CategoryModel $model): ?Category
+    {
+        return $model ? CategoryMapper::toEntity($model) : null;
+    }
+
+    private function normalizePath(string $path): string
+    {
+        return trim(rawurldecode($path), '/');
+    }
+
+    private function buildTree(Collection $models): array
     {
         $entities = [];
         $roots = [];
@@ -165,11 +198,14 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
 
             if ($parentId !== null && isset($entities[$parentId])) {
                 $entities[$parentId]->addChild($entity);
-            } else {
-                $roots[] = $entity;
+
+                continue;
             }
+
+            $roots[] = $entity;
         }
 
         return $roots;
     }
-}
+
+   }

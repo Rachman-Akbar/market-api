@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Category\Presentation\Http\Controllers;
 
-use App\Domains\Catalog\Category\Application\Queries\GetCategoryByIdQuery;
 use App\Domains\Catalog\Category\Application\Queries\GetCategoryByPathQuery;
 use App\Domains\Catalog\Category\Application\Queries\GetHeaderMenuQuery;
 use App\Domains\Catalog\Category\Application\Queries\ListCategoryMenuQuery;
@@ -14,9 +13,11 @@ use App\Domains\Catalog\Category\Application\Queries\ListProductsByCategoryPathQ
 use App\Domains\Catalog\Category\Application\UseCases\CreateCategoryUseCase;
 use App\Domains\Catalog\Category\Application\UseCases\DeleteCategoryUseCase;
 use App\Domains\Catalog\Category\Application\UseCases\UpdateCategoryUseCase;
+
 use App\Domains\Catalog\Category\Presentation\Http\Requests\CategoryRequest;
 use App\Domains\Catalog\Category\Presentation\Http\Resources\CategoryResource;
 use App\Domains\Catalog\CatalogGroup\Presentation\Http\Resources\CatalogGroupResource;
+use App\Domains\Catalog\Category\Application\Queries\GetCategoryByIdQuery;
 use App\Domains\Catalog\Product\Presentation\Http\Resources\ProductResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

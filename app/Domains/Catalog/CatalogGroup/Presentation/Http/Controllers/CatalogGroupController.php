@@ -8,7 +8,7 @@ use Illuminate\Http\JsonResponse;
 use App\Domains\Catalog\CatalogGroup\Application\Dtos\CatalogGroupData;
 
 use App\Domains\Catalog\CatalogGroup\Application\Queries\GetCatalogGroupsQuery;
-use App\Domains\Catalog\CatalogGroup\Application\Queries\GetCatalogGroupDetailQuery;
+use App\Domains\Catalog\CatalogGroup\Application\Queries\GetCatalogGroupIdQuery;
 use App\Domains\Catalog\CatalogGroup\Application\Queries\GetCatalogGroupBySlugQuery;
 use App\Domains\Catalog\CatalogGroup\Application\Queries\GetCategoriesByCatalogGroupQuery;
 
@@ -32,7 +32,7 @@ class CatalogGroupController extends Controller
         ]);
     }
 
-    public function show(GetCatalogGroupDetailQuery $query, int $id): JsonResponse
+    public function show(GetCatalogGroupIdQuery $query, int $id): JsonResponse
     {
         $group = $query->execute($id);
 

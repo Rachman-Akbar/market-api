@@ -7,6 +7,7 @@ namespace App\Domains\Catalog\Category\Application\Queries;
 use App\Domains\Catalog\Category\Domain\Repositories\CategoryRepositoryInterface;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final class ListProductsByCategoryPathQuery
 {
@@ -16,19 +17,17 @@ final class ListProductsByCategoryPathQuery
     ) {
     }
 
-    public function execute(
-        string $path,
-        array $filters = []
-    ): LengthAwarePaginator {
-
+    public function execute(string $path, array $filters = []): LengthAwarePaginator
+    {
         $category = $this->categoryRepository->findByPath($path);
 
         if (! $category) {
-            abort(404, 'Category not found.');
+            throw new NotFoundHttpException('Category not found.');
         }
 
-        $includeDescendants = (bool) (
-            $filters['include_descendants'] ?? false
+        $includeDescendants = filter_var(
+            $filters['include_descendants'] ?? false,
+            FILTER_VALIDATE_BOOLEAN
         );
 
         return $this->productRepository->paginateByCategory(
@@ -38,5 +37,3 @@ final class ListProductsByCategoryPathQuery
         );
     }
 }
-
-

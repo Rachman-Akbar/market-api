@@ -12,6 +12,8 @@ interface CategoryRepositoryInterface
 
     public function findBySlug(string $slug): ?Category;
 
+    public function findByPath(string $path): ?Category;
+
     public function findByFullSlug(string $fullSlug): ?Category;
 
     public function listTree(): array;
@@ -27,4 +29,5 @@ interface CategoryRepositoryInterface
     public function save(Category $category): Category;
 
     public function delete(int $id): bool;
+
 }
