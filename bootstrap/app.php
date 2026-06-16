@@ -1,9 +1,10 @@
 <?php
 
-use App\Http\Middleware\EnsureActiveRole;
-use App\Http\Middleware\EnsureEmailIsVerified;
-use App\Http\Middleware\EnsureUserHasRole;
-use App\Http\Middleware\ValidateFirebaseToken;
+use App\Domains\Identity\Infrastructure\Middleware\EnsureActiveRole;
+use App\Domains\Identity\Infrastructure\Middleware\EnsureEmailIsVerified;
+use App\Domains\Identity\Infrastructure\Middleware\EnsureUserHasRole;
+use App\Domains\Identity\Infrastructure\Middleware\ValidateFirebaseToken;
+
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;

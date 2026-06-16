@@ -6,8 +6,10 @@ namespace App\Domains\Identity\Infrastructure\Persistence\Repositories;
 
 use App\Domains\Identity\Domain\Entities\User;
 use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
-use App\Domains\Identity\Domain\DTOs\CreateUserDTO;
-use App\Domains\Identity\Domain\DTOs\UpdateUserDTO;
+
+use App\Domains\Identity\Features\Users\Application\DTOs\CreateUserDTO;
+use App\Domains\Identity\Features\Users\Application\DTOs\UpdateUserDTO;
+
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -108,7 +110,7 @@ public function delete(string $id): bool
     }
 
     // Hapus permanen dari database
-    return (bool) $user->forceDelete(); 
+    return (bool) $user->forceDelete();
 }
 
     // ─────────────────────────────

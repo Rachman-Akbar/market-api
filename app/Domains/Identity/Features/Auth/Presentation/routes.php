@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Domains\Identity\Features\Auth\Presentation\Http\Controllers\AuthController;
 
-use App\Http\Middleware\ValidateFirebaseToken;
+use App\Domains\Identity\Infrastructure\Middleware\ValidateFirebaseToken;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Identity\Features\Users\Application\UseCases;
 
 use App\Domains\Identity\Domain\Entities\User;
-use App\Domains\Identity\Domain\DTOs\UpdateUserDTO;
+use App\Domains\Identity\Features\Users\Application\DTOs\UpdateUserDTO;
 use App\Domains\Identity\Domain\Exceptions\UserNotFoundException;
 use App\Domains\Identity\Domain\Exceptions\EmailAlreadyExistsException;
 use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
@@ -31,6 +31,6 @@ class UpdateUserUseCase
             }
         }
 
-        return $this->userRepository->update($id, $dto);
+        return $this->userRepository->update($id, $data);
     }
 }

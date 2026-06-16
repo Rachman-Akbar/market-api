@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Identity\Features\Users\Application\UseCases;
 
 use App\Domains\Identity\Domain\Entities\User;
-use App\Domains\Identity\Domain\DTOs\CreateUserDTO;
 use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
+use App\Domains\Identity\Features\Users\Application\DTOs\CreateUserDTO;
 use App\Domains\Identity\Domain\Exceptions\EmailAlreadyExistsException;
 
 class CreateUserUseCase

@@ -1,0 +1,9 @@
+Masalah utamanya: useCheckoutController kamu masih bergantung pada cart yang dikirim dari luar:
+
+useCheckoutController({ cart, cartLoading })
+
+Kalau parent component tidak mengirim cart dari CartContext, maka cart akan null, lalu ini jadi true:
+
+const isCartEmpty = !cartLoading && summary.items.length === 0;
+
+Akhirnya checkout page hanya menampilkan “Keranjang kosong”, bukan form

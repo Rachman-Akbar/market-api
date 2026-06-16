@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domains\Identity\Features\Users\Presentation\Http\Controllers;
 
-use App\Domains\Identity\Domain\DTOs\CreateUserDTO;
-use App\Domains\Identity\Domain\DTOs\UpdateUserDTO;
+use App\Domains\Identity\Features\Users\Application\DTOs\CreateUserDTO;
+use App\Domains\Identity\Features\Users\Application\DTOs\UpdateUserDTO;
 use App\Domains\Identity\Domain\Exceptions\EmailAlreadyExistsException;
 use App\Domains\Identity\Domain\Exceptions\UserNotFoundException;
 
 use App\Domains\Identity\Features\Users\Application\UseCases\CreateUserUseCase;
 use App\Domains\Identity\Features\Users\Application\UseCases\DeleteUserUseCase;
-use App\Domains\Identity\Features\Users\Application\UseCases\GetUserByEmailUseCase;
-use App\Domains\Identity\Features\Users\Application\UseCases\GetUserUseCase;
-use App\Domains\Identity\Features\Users\Application\UseCases\ListUsersUseCase;
 use App\Domains\Identity\Features\Users\Application\UseCases\UpdateUserUseCase;
+
+use App\Domains\Identity\Features\Users\Application\Queries\GetUserByEmailQuery;
+use App\Domains\Identity\Features\Users\Application\Queries\GetUserQuery;
+use App\Domains\Identity\Features\Users\Application\Queries\ListUsersQuery;
 
 use App\Domains\Identity\Features\Users\Presentation\Http\Requests\StoreUserRequest;
 use App\Domains\Identity\Features\Users\Presentation\Http\Requests\UpdateUserRequest;
@@ -28,9 +29,9 @@ use Symfony\Component\HttpFoundation\Response;
 class UserController extends Controller
 {
     public function __construct(
-        private readonly ListUsersUseCase $listUsersUseCase,
-        private readonly GetUserUseCase $getUserUseCase,
-        private readonly GetUserByEmailUseCase $getUserByEmailUseCase,
+        private readonly ListUsersQuery $listUsersUseCase,
+        private readonly GetUserQuery $getUserUseCase,
+        private readonly GetUserByEmailQuery $getUserByEmailUseCase,
         private readonly CreateUserUseCase $createUserUseCase,
         private readonly UpdateUserUseCase $updateUserUseCase,
         private readonly DeleteUserUseCase $deleteUserUseCase
@@ -102,8 +103,8 @@ class UserController extends Controller
         $useCase->execute($id);
 
         // Jika benar-benar sukses menghapus data yang ADA
-        return response()->json(null, Response::HTTP_NO_CONTENT); 
-        
+        return response()->json(null, Response::HTTP_NO_CONTENT);
+
     } catch (UserNotFoundException $e) {
         // Jika data tidak ditemukan / sudah terhapus sebelumnya, kembalikan 404!
         return response()->json([

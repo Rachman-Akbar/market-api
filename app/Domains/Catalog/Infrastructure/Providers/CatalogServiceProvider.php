@@ -1,20 +1,22 @@
 <?php
 
 namespace App\Domains\Catalog\Infrastructure\Providers;
-
 use Illuminate\Support\ServiceProvider;
-use App\Domains\Catalog\Domain\Repositories\ProductRepositoryInterface;
-use App\Domains\Catalog\Domain\Repositories\CategoryRepositoryInterface;
-use App\Domains\Catalog\Domain\Repositories\CatalogGroupRepositoryInterface;
-use App\Domains\Catalog\Domain\Repositories\BannerRepositoryInterface;
-use App\Domains\Catalog\Domain\Repositories\ProductAttributeRepositoryInterface;
-use App\Domains\Catalog\Domain\Repositories\ProductVariantRepositoryInterface;
-use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentProductRepository;
-use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentCategoryRepository;
-use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentCatalogGroupRepository;
-use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentBannerRepository;
-use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentProductAttributeRepository;
-use App\Domains\Catalog\Infrastructure\Persistence\Repositories\EloquentProductVariantRepository;
+
+use App\Domains\Catalog\Banner\Domain\Repositories\BannerRepositoryInterface;
+use App\Domains\Catalog\Banner\Infrastructure\Persistence\Repositories\EloquentBannerRepository;
+
+use App\Domains\Catalog\Category\Domain\Repositories\CategoryRepositoryInterface;
+use App\Domains\Catalog\CatalogGroup\Domain\Repositories\CatalogGroupRepositoryInterface;
+use App\Domains\Catalog\Category\Infrastructure\Persistence\Repositories\EloquentCategoryRepository;
+use App\Domains\Catalog\CatalogGroup\Infrastructure\Persistence\Repositories\EloquentCatalogGroupRepository;
+
+use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
+use App\Domains\Catalog\Product\Domain\Repositories\ProductVariantRepositoryInterface;
+use App\Domains\Catalog\Product\Domain\Repositories\ProductAttributeRepositoryInterface;
+use App\Domains\Catalog\Product\Infrastructure\Persistence\Repositories\EloquentProductRepository;
+use App\Domains\Catalog\Product\Infrastructure\Persistence\Repositories\EloquentProductAttributeRepository;
+use App\Domains\Catalog\Product\Infrastructure\Persistence\Repositories\EloquentProductVariantRepository;
 
 class CatalogServiceProvider extends ServiceProvider
 {
