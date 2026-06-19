@@ -10,14 +10,21 @@ final class ProductAttributeModel extends Model
 {
     protected $table = 'product_attributes';
 
+    public $timestamps = false;
+
     protected $fillable = [
         'name',
         'slug',
         'type',
-        'is_active',
     ];
 
-    protected $casts = [
-        'is_active' => 'boolean',
-    ];
+    public function productValues()
+    {
+        return $this->hasMany(ProductAttributeValueModel::class, 'attribute_id');
+    }
+
+    public function variantValues()
+    {
+        return $this->hasMany(ProductVariantValueModel::class, 'attribute_id');
+    }
 }

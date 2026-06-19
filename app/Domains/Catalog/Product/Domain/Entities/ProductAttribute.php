@@ -7,11 +7,10 @@ namespace App\Domains\Catalog\Product\Domain\Entities;
 final class ProductAttribute
 {
     public function __construct(
-        private ?int $id,
-        private string $name,
-        private string $slug,
-        private string $type,
-        private bool $isActive = true,
+        private readonly ?int $id,
+        private readonly string $name,
+        private readonly string $slug,
+        private readonly string $type
     ) {}
 
     public function id(): ?int
@@ -32,10 +31,5 @@ final class ProductAttribute
     public function type(): string
     {
         return $this->type;
-    }
-
-    public function isActive(): bool
-    {
-        return $this->isActive;
     }
 }

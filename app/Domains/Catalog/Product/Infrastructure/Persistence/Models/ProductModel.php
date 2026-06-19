@@ -4,12 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Product\Infrastructure\Persistence\Models;
 
-use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use App\Domains\Stores\Infrastructure\Persistence\Models\StoreModel;
+use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
+use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 
 final class ProductModel extends Model
 {
@@ -22,34 +19,29 @@ final class ProductModel extends Model
         'name',
         'slug',
         'description',
-        'short_description',
         'brand',
-        'weight_gram',
         'thumbnail',
         'status',
-        'is_featured',
         'is_active',
     ];
 
     protected $casts = [
         'store_id' => 'integer',
         'primary_category_id' => 'integer',
-        'weight_gram' => 'integer',
-        'is_featured' => 'boolean',
         'is_active' => 'boolean',
     ];
 
-    public function store(): BelongsTo
+    public function store()
     {
         return $this->belongsTo(StoreModel::class, 'store_id');
     }
 
-    public function primaryCategory(): BelongsTo
+    public function primaryCategory()
     {
         return $this->belongsTo(CategoryModel::class, 'primary_category_id');
     }
 
-    public function categories(): BelongsToMany
+    public function categories()
     {
         return $this->belongsToMany(
             CategoryModel::class,
@@ -59,14 +51,13 @@ final class ProductModel extends Model
         )->withPivot('is_primary');
     }
 
-    public function images(): HasMany
-    {
-        return $this->hasMany(ProductImageModel::class, 'product_id');
-    }
-
-    // Ditambahkan: Menghubungkan produk ke tabel varian fisiknya
-    public function variants(): HasMany
+    public function variants()
     {
         return $this->hasMany(ProductVariantModel::class, 'product_id');
+    }
+
+    public function attributeValues()
+    {
+        return $this->hasMany(ProductAttributeValueModel::class, 'product_id');
     }
 }

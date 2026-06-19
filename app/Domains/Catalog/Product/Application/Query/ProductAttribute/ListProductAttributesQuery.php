@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Product\Application\Query\ProductAttribute;
 
-use App\Domains\Catalog\Domain\Repositories\ProductAttributeRepositoryInterface;
-
+use App\Domains\Catalog\Product\Domain\Repositories\ProductAttributeRepositoryInterface;
 
 final class ListProductAttributesQuery
 {
     public function __construct(
-        private ProductAttributeRepositoryInterface $repository
+        private readonly ProductAttributeRepositoryInterface $repository
     ) {}
 
-    public function execute()
+    public function execute(array $filters = [])
     {
-        return $this->repository->paginate();
+        $perPage = (int) ($filters['per_page'] ?? 15);
+
+        return $this->repository->paginate($perPage);
     }
 }

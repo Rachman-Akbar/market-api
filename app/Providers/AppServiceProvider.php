@@ -4,7 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Kreait\Firebase\Contract\Auth;
-use App\Domains\Identity\Infrastructure\Firebase\FirebaseTokenVerifier;
+use App\Domains\Identity\Infrastructure\Middleware\FirebaseTokenVerifier;
 
 class AppServiceProvider extends ServiceProvider
 {

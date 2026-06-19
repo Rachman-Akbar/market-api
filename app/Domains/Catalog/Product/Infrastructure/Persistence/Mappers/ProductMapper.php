@@ -4,77 +4,60 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Product\Infrastructure\Persistence\Mappers;
 
-use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
-use App\Domains\Catalog\Product\Infrastructure\Persistence\Mappers\ProductVariantMapper;
 use App\Domains\Catalog\Product\Domain\Entities\Product;
-use App\Domains\Catalog\Category\Infrastructure\Persistence\Mappers\CategoryMapper;
+use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
 
 final class ProductMapper
 {
     public static function toEntity(ProductModel $model): Product
     {
-        $primaryCategory = null;
-        if ($model->relationLoaded('primaryCategory') && $model->primaryCategory) {
-            $primaryCategory = CategoryMapper::toEntity($model->primaryCategory);
-        }
+        $categoryIds = $model->relationLoaded('categories')
+            ? $model->categories->pluck('id')->map(fn ($id) => (int) $id)->all()
+            : [];
 
-        $categories = [];
-        $categoryIds = [];
-        if ($model->relationLoaded('categories')) {
-            $categories = $model->categories
-                ->map(fn ($category) => CategoryMapper::toEntity($category))
-                ->values()
-                ->all();
+        $attributeValues = $model->relationLoaded('attributeValues')
+            ? $model->attributeValues->map(fn ($item) => ProductAttributeValueMapper::toEntity($item))->all()
+            : [];
 
-            $categoryIds = $model->categories
-                ->pluck('id')
-                ->map(fn ($id) => (int) $id)
-                ->values()
-                ->all();
-        }
-
-        if (empty($categoryIds) && $model->primary_category_id) {
-            $categoryIds = [(int) $model->primary_category_id];
-        }
-
-        // Ditambahkan: Map relasi varian
-        $variants = [];
-        if ($model->relationLoaded('variants')) {
-            $variants = $model->variants
-                ->map(fn ($variantModel) => ProductVariantMapper::toEntity($variantModel))
-                ->all();
-        }
+        $variants = $model->relationLoaded('variants')
+            ? $model->variants->map(fn ($item) => ProductVariantMapper::toEntity($item))->all()
+            : [];
 
         return new Product(
-            id: $model->id ? (int) $model->id : null,
-            storeId: $model->store_id ? (int) $model->store_id : null,
+            id: (int) $model->id,
+            storeId: (int) $model->store_id,
             primaryCategoryId: $model->primary_category_id ? (int) $model->primary_category_id : null,
-            categoryIds: $categoryIds,
             sellerId: (string) $model->seller_id,
             name: (string) $model->name,
             slug: (string) $model->slug,
             description: $model->description,
+            brand: $model->brand,
             thumbnail: $model->thumbnail,
             status: (string) $model->status,
-            primaryCategory: $primaryCategory,
-            categories: $categories,
-            images: $model->relationLoaded('images') ? $model->images->all() : [],
-            variants: $variants // Set data varian ke dalam entitas
+            isActive: (bool) $model->is_active,
+            categoryIds: $categoryIds,
+            attributeValues: $attributeValues,
+            variants: $variants,
+            createdAt: $model->created_at?->toDateTimeString(),
+            updatedAt: $model->updated_at?->toDateTimeString()
         );
     }
 
     public static function toModel(Product $product): ProductModel
     {
-        return new ProductModel([
-            'store_id' => $product->storeId(),
-            'primary_category_id' => $product->primaryCategoryId(),
-            'seller_id' => $product->sellerId(),
-            'name' => $product->name(),
-            'slug' => $product->slug(),
-            'description' => $product->description(),
-            'thumbnail' => $product->thumbnail(),
-            'status' => $product->status(),
-            // Kolom price & stock dibersihkan dari pemetaan model utama
-        ]);
+        $model = new ProductModel();
+
+        $model->store_id = $product->storeId();
+        $model->primary_category_id = $product->primaryCategoryId();
+        $model->seller_id = $product->sellerId();
+        $model->name = $product->name();
+        $model->slug = $product->slug();
+        $model->description = $product->description();
+        $model->brand = $product->brand();
+        $model->thumbnail = $product->thumbnail();
+        $model->status = $product->status();
+        $model->is_active = $product->isActive();
+
+        return $model;
     }
 }

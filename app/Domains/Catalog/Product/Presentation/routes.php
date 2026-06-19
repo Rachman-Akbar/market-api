@@ -7,81 +7,27 @@ use App\Domains\Catalog\Product\Presentation\Http\Controllers\ProductController;
 use App\Domains\Catalog\Product\Presentation\Http\Controllers\ProductAttributeController;
 use App\Domains\Catalog\Product\Presentation\Http\Controllers\ProductVariantController;
 
-        Route::prefix('attributes')
-            ->name('attributes.')
-            ->controller(ProductAttributeController::class)
-            ->group(function () {
+Route::prefix('products')
+    ->name('products.')
+    ->group(function () {
+        Route::get('/', [ProductController::class, 'sellerIndex'])->name('index');
+        Route::post('/', [ProductController::class, 'store'])->name('store');
 
-                Route::get('/', 'index')
-                    ->name('index');
+        Route::get('/slug/{slug}', [ProductController::class, 'showBySlug'])->name('show-by-slug');
 
-                Route::get('/{id}', 'show')
-                    ->whereNumber('id')
-                    ->name('show');
+        Route::get('/product-attributes', [ProductAttributeController::class, 'index'])->name('product-attributes.index');
+        Route::post('/product-attributes', [ProductAttributeController::class, 'store'])->name('product-attributes.store');
+        Route::get('/product-attributes/{id}', [ProductAttributeController::class, 'show'])->whereNumber('id')->name('product-attributes.show');
+        Route::put('/product-attributes/{id}', [ProductAttributeController::class, 'update'])->whereNumber('id')->name('product-attributes.update');
+        Route::delete('/product-attributes/{id}', [ProductAttributeController::class, 'destroy'])->whereNumber('id')->name('product-attributes.destroy');
 
-                // nanti jika sudah siap CRUD
+        Route::get('/{id}', [ProductController::class, 'show'])->whereNumber('id')->name('show');
+        Route::put('/{id}', [ProductController::class, 'update'])->whereNumber('id')->name('update');
+        Route::delete('/{id}', [ProductController::class, 'destroy'])->whereNumber('id')->name('destroy');
 
-                // Route::post('/', 'store')
-                //     ->name('store');
-
-                // Route::put('/{id}', 'update')
-                //     ->whereNumber('id')
-                //     ->name('update');
-
-                // Route::delete('/{id}', 'destroy')
-                //     ->whereNumber('id')
-                //     ->name('destroy');
-
-        });
-
-        Route::prefix('products')
-            ->name('products.')
-            ->controller(ProductController::class)
-            ->group(function () {
-
-                Route::get('/', 'index')
-                    ->name('index');
-
-                Route::post('/', 'store')
-                    ->name('store');
-
-                Route::get('/id/{id}', 'show')
-                    ->whereNumber('id')
-                    ->name('show');
-
-                Route::put('/{id}', 'update')
-                    ->whereNumber('id')
-                    ->name('update');
-
-                Route::delete('/{id}', 'destroy')
-                    ->whereNumber('id')
-                    ->name('destroy');
-
-                Route::prefix('{productId}/variants')
-                        ->name('variants.')
-                        ->controller(ProductVariantController::class)
-                        ->group(function () {
-
-                            Route::get('/', 'index');
-
-                            Route::get(
-                                '/{variantId}', 'show');
-
-                            Route::post('/', 'store');
-
-                            Route::put(
-                                '/{variantId}',
-                                'update'
-                            );
-
-                            Route::delete(
-                                '/{variantId}',
-                                'destroy'
-                            );
-                        });
-
-                Route::get('/{slug}', 'showBySlug')
-                    ->where('slug', '[A-Za-z0-9\-]+')
-                    ->name('show-by-slug');
-
-            });
+        Route::get('/{productId}/variants', [ProductVariantController::class, 'index'])->whereNumber('productId')->name('variants.index');
+        Route::post('/{productId}/variants', [ProductVariantController::class, 'store'])->whereNumber('productId')->name('variants.store');
+        Route::get('/{productId}/variants/{variantId}', [ProductVariantController::class, 'show'])->whereNumber('productId')->whereNumber('variantId')->name('variants.show');
+        Route::put('/{productId}/variants/{variantId}', [ProductVariantController::class, 'update'])->whereNumber('productId')->whereNumber('variantId')->name('variants.update');
+        Route::delete('/{productId}/variants/{variantId}', [ProductVariantController::class, 'destroy'])->whereNumber('productId')->whereNumber('variantId')->name('variants.destroy');
+    });

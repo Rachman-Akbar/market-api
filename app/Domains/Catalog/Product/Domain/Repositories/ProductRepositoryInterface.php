@@ -24,22 +24,20 @@ interface ProductRepositoryInterface
         int $perPage = 15
     ): LengthAwarePaginator;
 
+    public function findPublishedByCategoryPath(
+        string $path,
+        array $filters,
+        bool $includeDescendants,
+        int $perPage
+    ): LengthAwarePaginator;
+
+    public function paginateByCategory(
+        int $categoryId,
+        array $filters,
+        bool $includeDescendants
+    ): LengthAwarePaginator;
+
     public function save(Product $product): Product;
 
     public function delete(int $id): bool;
-
-public function findPublishedByCategoryPath(
-    string $path,
-    array $filters,
-    bool $includeDescendants,
-    int $perPage
-): LengthAwarePaginator;
-
-public function paginateByCategory(
-    int $categoryId,
-    array $filters,
-    bool $includeDescendants
-): LengthAwarePaginator;
-
 }
-

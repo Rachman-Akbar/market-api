@@ -5,14 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Catalog\Product\Application\Query\Product;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use App\Domains\Catalog\Domain\Repositories\ProductRepositoryInterface;
+use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
 
 final class ListProductsQuery
 {
-    /**
-     * Untuk infinite scroll buyer.
-     * Frontend tidak perlu mengirim per_page.
-     */
     private const BUYER_PER_PAGE = 4;
 
     public function __construct(
@@ -23,11 +19,8 @@ final class ListProductsQuery
     {
         $perPage = self::BUYER_PER_PAGE;
 
-        /**
-         * Buyer product listing default hanya tampilkan published.
-         * Kalau nanti admin/seller butuh semua status, buat use case terpisah.
-         */
         $filters['status'] = $filters['status'] ?? 'published';
+        $filters['is_active'] = true;
 
         $categorySlug = $filters['category_slug']
             ?? $filters['category']

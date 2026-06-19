@@ -1,36 +1,58 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\Product\Presentation\Http\Controllers;
 
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-
-use App\Domains\Catalog\Product\Application\Query\ProductAttribute\ListProductAttributesQuery;
 use App\Domains\Catalog\Product\Application\Query\ProductAttribute\GetProductAttributeQuery;
+use App\Domains\Catalog\Product\Application\Query\ProductAttribute\ListProductAttributesQuery;
+use App\Domains\Catalog\Product\Application\UseCases\ProductAttribute\CreateProductAttributeUseCase;
+use App\Domains\Catalog\Product\Application\UseCases\ProductAttribute\UpdateProductAttributeUseCase;
+use App\Domains\Catalog\Product\Application\UseCases\ProductAttribute\DeleteProductAttributeUseCase;
+use App\Domains\Catalog\Product\Presentation\Http\Requests\StoreProductAttributeRequest;
+use App\Domains\Catalog\Product\Presentation\Http\Requests\UpdateProductAttributeRequest;
+use App\Domains\Catalog\Product\Presentation\Http\Resources\ProductAttributeResource;
 
-
-
-use App\Domains\Catalog\Presentation\Http\Resources\ProductAttributeResource;
-
-class ProductAttributeController extends Controller
+final class ProductAttributeController extends Controller
 {
-    public function index(
-        ListProductAttributesQuery $query
-    ) {
-        return ProductAttributeResource::collection(
-            $query ->execute()
-        );
+    public function index(Request $request, ListProductAttributesQuery $query)
+    {
+        $attributes = $query->execute($request->all());
+
+        return ProductAttributeResource::collection($attributes);
     }
 
-    public function show(
-        int $id,
-        GetProductAttributeQuery $query
-    ) {
+    public function store(StoreProductAttributeRequest $request, CreateProductAttributeUseCase $useCase)
+    {
+        $attribute = $useCase->execute($request->validated());
+
+        return new ProductAttributeResource($attribute);
+    }
+
+    public function show(int $id, GetProductAttributeQuery $query)
+    {
         $attribute = $query->execute($id);
 
-        abort_if(!$attribute, 404);
+        abort_if(! $attribute, 404, 'Product attribute not found.');
 
-        return new ProductAttributeResource(
-            $attribute
-        );
+        return new ProductAttributeResource($attribute);
+    }
+
+    public function update(UpdateProductAttributeRequest $request, int $id, UpdateProductAttributeUseCase $useCase)
+    {
+        $attribute = $useCase->execute($id, $request->validated());
+
+        return new ProductAttributeResource($attribute);
+    }
+
+    public function destroy(int $id, DeleteProductAttributeUseCase $useCase)
+    {
+        $useCase->execute($id);
+
+        return response()->json([
+            'message' => 'Product attribute deleted',
+        ]);
     }
 }

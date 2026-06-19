@@ -1,0 +1,212 @@
+API
+    GET|HEAD  api/v1/catalog/products products.index › App\Domains\Catalog\Product\Presentation\Http\Control…
+    POST      api/v1/catalog/products products.store › App\Domains\Catalog\Product\Presentation\Http\Control…
+    GET|HEAD  api/v1/catalog/products/product-attributes products.product-attributes.index › App\Domains\Cat…
+    POST      api/v1/catalog/products/product-attributes products.product-attributes.store › App\Domains\Cat…
+    GET|HEAD  api/v1/catalog/products/product-attributes/{id} products.product-attributes.show › App\Domains…
+    PUT       api/v1/catalog/products/product-attributes/{id} products.product-attributes.update › App\Domai…
+    DELETE    api/v1/catalog/products/product-attributes/{id} products.product-attributes.destroy › App\Doma…
+    GET|HEAD  api/v1/catalog/products/slug/{slug} products.show-by-slug › App\Domains\Catalog\Product\Presen…
+    GET|HEAD  api/v1/catalog/products/{id} products.show › App\Domains\Catalog\Product\Presentation\Http\Con…
+    PUT       api/v1/catalog/products/{id} products.update › App\Domains\Catalog\Product\Presentation\Http\C…
+    DELETE    api/v1/catalog/products/{id} products.destroy › App\Domains\Catalog\Product\Presentation\Http\…
+    GET|HEAD  api/v1/catalog/products/{productId}/variants products.variants.index › App\Domains\Catalog\Pro…
+    POST      api/v1/catalog/products/{productId}/variants products.variants.store › App\Domains\Catalog\Pro…
+    GET|HEAD  api/v1/catalog/products/{productId}/variants/{variantId} products.variants.show › App\Domains\…
+    PUT       api/v1/catalog/products/{productId}/variants/{variantId} products.variants.update › App\Domain…
+    DELETE    api/v1/catalog/products/{productId}/variants/{variantId}
+
+
+JSON CREATE
+    {
+    "store_id": 27,
+    "primary_category_id": 69,
+    "category_ids": [69],
+    "name": "Sepatu Olahraga",
+    "slug": "sepatu-olahraga",
+    "description": "Sepatu olahraga ringan dan nyaman",
+    "brand": "Nike",
+    "thumbnail": "products/sepatu.jpg",
+    "status": "published",
+    "is_active": true,
+    "attribute_values": [
+        {
+        "attribute_id": 1,
+        "values": ["M", "L", "XL"]
+        },
+        {
+        "attribute_id": 2,
+        "values": ["Putih", "Hitam"]
+        }
+    ],
+    "variants": [
+        {
+        "sku": "SPT-XL-PUTIH",
+        "name": "Sepatu Olahraga XL Putih",
+        "price": 250000,
+        "stock": 20,
+        "is_default": true,
+        "values": [
+            {
+            "attribute_id": 1,
+            "value": "XL"
+            },
+            {
+            "attribute_id": 2,
+            "value": "Putih"
+            }
+        ]
+        }
+    ]
+    }
+
+    Product dengan variant tunggal
+        {
+        "name": "Kaos Polos Cotton Combed 30s",
+        "slug": "kaos-polos-cotton-combed-30s",
+        "description": "Kaos polos premium bahan cotton combed 30s nyaman digunakan sehari-hari.",
+        "brand": "BasicWear",
+        "primary_category_id": 12,
+        "category_ids": [12, 15],
+        "status": "published",
+        "is_active": true,
+        "attribute_values": [
+            {
+            "attribute_id": 1,
+            "value": "Cotton"
+            }
+        ],
+        "variants": [
+            {
+            "sku": "KP-CC30S-BLK-S",
+            "name": "Kaos Polos Hitam - S",
+            "price": 45000,
+            "stock": 50,
+            "is_default": true,
+            "values": [
+                {
+                "attribute_id": 2,
+                "value": "S"
+                }
+            ]
+            },
+            {
+            "sku": "KP-CC30S-BLK-M",
+            "name": "Kaos Polos Hitam - M",
+            "price": 45000,
+            "stock": 100,
+            "is_default": false,
+            "values": [
+                {
+                "attribute_id": 2,
+                "value": "M"
+                }
+            ]
+            },
+            {
+            "sku": "KP-CC30S-BLK-L",
+            "name": "Kaos Polos Hitam - L",
+            "price": 50000,
+            "stock": 75,
+            "is_default": false,
+            "values": [
+                {
+                "attribute_id": 2,
+                "value": "L"
+                }
+            ]
+            }
+        ]
+        }
+
+        Product Multi Variant
+            {
+            "name": "Xphony X10 Pro",
+            "brand": "Xphony",
+            "primary_category_id": 5,
+            "category_ids": [5, 9],
+            "description": "Flagship smartphone dengan performa terbaik di kelasnya.",
+            "status": "published",
+            "is_active": true,
+            "attribute_values": [
+                {
+                "attribute_id": 5,
+                "value": "Android 16"
+                }
+            ],
+            "variants": [
+                {
+                "sku": "XP10P-BLK-128",
+                "name": "Xphony X10 Pro Space Black (8GB / 128GB)",
+                "price": 8999000,
+                "stock": 20,
+                "is_default": true,
+                "values": [
+                    {
+                    "attribute_id": 3,
+                    "value": "Space Black"
+                    },
+                    {
+                    "attribute_id": 4,
+                    "value": "128GB"
+                    }
+                ]
+                },
+                {
+                "sku": "XP10P-BLK-256",
+                "name": "Xphony X10 Pro Space Black (12GB / 256GB)",
+                "price": 9999000,
+                "stock": 15,
+                "is_default": false,
+                "values": [
+                    {
+                    "attribute_id": 3,
+                    "value": "Space Black"
+                    },
+                    {
+                    "attribute_id": 4,
+                    "value": "256GB"
+                    }
+                ]
+                },
+                {
+                "sku": "XP10P-SLV-256",
+                "name": "Xphony X10 Pro Satin Silver (12GB / 256GB)",
+                "price": 9999000,
+                "stock": 10,
+                "is_default": false,
+                "values": [
+                    {
+                    "attribute_id": 3,
+                    "value": "Satin Silver"
+                    },
+                    {
+                    "attribute_id": 4,
+                    "value": "256GB"
+                    }
+                ]
+                }
+            ]
+            }
+
+    Variant
+        {
+        "sku": "XP10P-SLV-128",
+        "name": "Xphony X10 Pro Satin Silver (8GB / 128GB)",
+        "price": 8999000,
+        "stock": 25,
+        "is_default": false,
+        "values": [
+            {
+            "attribute_id": 3,
+            "value": "Satin Silver"
+            },
+            {
+            "attribute_id": 4,
+            "value": "128GB"
+            }
+        ]
+        }
+
+    Attribute
+    

@@ -8,61 +8,91 @@ use App\Domains\Catalog\Product\Domain\Entities\ProductVariant;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductVariantRepositoryInterface;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Mappers\ProductVariantMapper;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductVariantModel;
+use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductVariantValueModel;
 
-final class EloquentProductVariantRepository
-implements ProductVariantRepositoryInterface
+final class EloquentProductVariantRepository implements ProductVariantRepositoryInterface
 {
-    public function paginate(
-        int $productId,
-        int $perPage = 15
-    ) {
+    public function paginate(int $productId, int $perPage = 15)
+    {
         return ProductVariantModel::query()
-            ->with('values')
+            ->with(['values.attribute'])
             ->where('product_id', $productId)
+            ->orderByDesc('is_default')
+            ->orderBy('id')
             ->paginate($perPage)
-            ->through(
-                fn ($item)
-                    => ProductVariantMapper::toEntity($item)
-            );
+            ->through(fn ($item) => ProductVariantMapper::toEntity($item));
     }
 
-    public function findById(
-        int $id
-    ): ?ProductVariant {
-
-        $model = ProductVariantModel::with('values')
+    public function findById(int $id): ?ProductVariant
+    {
+        $model = ProductVariantModel::query()
+            ->with(['values.attribute'])
             ->find($id);
 
-        return $model
-            ? ProductVariantMapper::toEntity($model)
-            : null;
+        return $model ? ProductVariantMapper::toEntity($model) : null;
     }
 
-    public function save(
-        ProductVariant $variant
-    ): ProductVariant {
+    public function save(ProductVariant $variant): ProductVariant
+    {
+        $model = $variant->id()
+            ? ProductVariantModel::query()->find($variant->id())
+            : new ProductVariantModel();
 
-        $model = ProductVariantModel::updateOrCreate(
-            ['id' => $variant->id()],
-            [
-                'product_id' => $variant->productId(),
-                'sku' => $variant->sku(),
-                'name' => $variant->name(),
-                'price' => $variant->price(),
-                'stock' => $variant->stock(),
-                'is_default' => $variant->isDefault(),
-            ]
-        );
+        if (! $model) {
+            $model = new ProductVariantModel();
+        }
 
-        return ProductVariantMapper::toEntity(
-            $model
-        );
+        $model->product_id = $variant->productId();
+        $model->sku = $variant->sku();
+        $model->name = $variant->name();
+        $model->price = $variant->price();
+        $model->stock = $variant->stock();
+        $model->is_default = $variant->isDefault();
+        $model->save();
+
+        if ($variant->isDefault()) {
+            ProductVariantModel::query()
+                ->where('product_id', $variant->productId())
+                ->where('id', '!=', $model->id)
+                ->update(['is_default' => false]);
+        }
+
+        $model->load(['values.attribute']);
+
+        return ProductVariantMapper::toEntity($model);
     }
 
-    public function delete(
-        int $id
-    ): void {
+    public function replaceValues(int $variantId, array $values): void
+    {
+        ProductVariantValueModel::query()
+            ->where('variant_id', $variantId)
+            ->delete();
 
-        ProductVariantModel::destroy($id);
+        $usedAttributeIds = [];
+
+        foreach ($values as $value) {
+            if (! isset($value['attribute_id']) || ! array_key_exists('value', $value)) {
+                continue;
+            }
+
+            $attributeId = (int) $value['attribute_id'];
+
+            if (in_array($attributeId, $usedAttributeIds, true)) {
+                continue;
+            }
+
+            $usedAttributeIds[] = $attributeId;
+
+            ProductVariantValueModel::query()->create([
+                'variant_id' => $variantId,
+                'attribute_id' => $attributeId,
+                'value' => (string) $value['value'],
+            ]);
+        }
+    }
+
+    public function delete(int $id): void
+    {
+        ProductVariantModel::query()->where('id', $id)->delete();
     }
 }

@@ -7,14 +7,16 @@ namespace App\Domains\Catalog\Product\Domain\Entities;
 final class ProductVariant
 {
     public function __construct(
-        private ?int $id,
-        private int $productId,
-        private ?string $sku,
-        private string $name,
-        private float $price,
-        private int $stock,
-        private bool $isDefault = false,
-        private array $values = [],
+        private readonly ?int $id,
+        private readonly int $productId,
+        private readonly string $sku,
+        private readonly string $name,
+        private readonly float $price,
+        private readonly int $stock,
+        private readonly bool $isDefault,
+        private readonly array $values = [],
+        private readonly ?string $createdAt = null,
+        private readonly ?string $updatedAt = null
     ) {}
 
     public function id(): ?int
@@ -27,7 +29,7 @@ final class ProductVariant
         return $this->productId;
     }
 
-    public function sku(): ?string
+    public function sku(): string
     {
         return $this->sku;
     }
@@ -55,5 +57,15 @@ final class ProductVariant
     public function values(): array
     {
         return $this->values;
+    }
+
+    public function createdAt(): ?string
+    {
+        return $this->createdAt;
+    }
+
+    public function updatedAt(): ?string
+    {
+        return $this->updatedAt;
     }
 }

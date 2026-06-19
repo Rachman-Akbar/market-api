@@ -9,21 +9,23 @@ use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductVariant
 
 final class ProductVariantMapper
 {
-    public static function toEntity(
-        ProductVariantModel $model
-    ): ProductVariant {
+    public static function toEntity(ProductVariantModel $model): ProductVariant
+    {
+        $values = $model->relationLoaded('values')
+            ? $model->values->map(fn ($item) => ProductVariantValueMapper::toEntity($item))->all()
+            : [];
 
         return new ProductVariant(
             id: (int) $model->id,
             productId: (int) $model->product_id,
-            sku: $model->sku,
-            name: $model->name,
+            sku: (string) $model->sku,
+            name: (string) $model->name,
             price: (float) $model->price,
             stock: (int) $model->stock,
             isDefault: (bool) $model->is_default,
-            values: $model->relationLoaded('values')
-                ? $model->values->toArray()
-                : [],
+            values: $values,
+            createdAt: $model->created_at?->toDateTimeString(),
+            updatedAt: $model->updated_at?->toDateTimeString()
         );
     }
 }

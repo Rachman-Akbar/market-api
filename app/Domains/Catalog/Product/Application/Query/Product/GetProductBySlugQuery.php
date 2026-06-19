@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\Product\Application\Query\Product;
 
-use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Catalog\Product\Domain\Entities\Product;
+use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
 
 final class GetProductBySlugQuery
 {

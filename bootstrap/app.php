@@ -21,8 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withProviders([
         // Daftarkan semua Domain Service Provider di sini
-        App\Domains\Identity\Infrastructure\Providers\IdentityServiceProvider::class, // <-- TAMBAHKAN INI
-        App\Domains\Catalog\Infrastructure\Providers\CatalogServiceProvider::class,
+        App\Domains\Identity\IdentityServiceProvider::class,
+        App\Domains\Catalog\CatalogServiceProvider::class,
         // App\Domains\Stores\Infrastructure\Providers\StoreServiceProvider::class,
         // App\Domains\Cart\Infrastructure\Providers\CartServiceProvider::class,
         // App\Domains\Ordering\Infrastructure\Providers\OrderingServiceProvider::class,
@@ -53,4 +53,3 @@ return Application::configure(basePath: dirname(__DIR__))
 
 
 
-    

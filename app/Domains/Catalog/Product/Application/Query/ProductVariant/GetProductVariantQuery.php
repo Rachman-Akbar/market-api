@@ -9,12 +9,11 @@ use App\Domains\Catalog\Product\Domain\Repositories\ProductVariantRepositoryInte
 final class GetProductVariantQuery
 {
     public function __construct(
-        private ProductVariantRepositoryInterface $repository
+        private readonly ProductVariantRepositoryInterface $repository
     ) {}
 
-    public function execute(
-        int $id
-    ) {
+    public function execute(int $id)
+    {
         return $this->repository->findById($id);
     }
 }

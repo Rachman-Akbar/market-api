@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Stores\Infrastructure\Persistence\Models;
+namespace App\Domains\Seller\Stores\Infrastructure\Persistence\Models;
 
+use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreDetailModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 

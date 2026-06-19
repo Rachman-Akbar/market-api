@@ -1,15 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\Product\Presentation\Http\Resources;
 
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Domains\Catalog\Domain\Entities\ProductAttribute;
 
-class ProductAttributeResource extends JsonResource
+final class ProductAttributeResource extends JsonResource
 {
-    public function toArray($request): array
+    public function toArray(Request $request): array
     {
-        /** @var ProductAttribute $attribute */
         $attribute = $this->resource;
 
         return [
@@ -17,9 +18,6 @@ class ProductAttributeResource extends JsonResource
             'name' => $attribute->name(),
             'slug' => $attribute->slug(),
             'type' => $attribute->type(),
-            'is_active' => $attribute->isActive(),
         ];
     }
 }
-
-

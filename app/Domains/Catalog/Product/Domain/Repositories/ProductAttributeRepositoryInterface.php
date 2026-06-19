@@ -8,19 +8,13 @@ use App\Domains\Catalog\Product\Domain\Entities\ProductAttribute;
 
 interface ProductAttributeRepositoryInterface
 {
-    public function paginate(
-        int $perPage = 15
-    );
+    public function paginate(int $perPage = 15);
 
-    public function findById(
-        int $id
-    ): ?ProductAttribute;
+    public function findById(int $id): ?ProductAttribute;
 
-    public function save(
-        ProductAttribute $attribute
-    ): ProductAttribute;
+    public function findBySlug(string $slug): ?ProductAttribute;
 
-    public function delete(
-        int $id
-    ): void;
+    public function save(ProductAttribute $attribute): ProductAttribute;
+
+    public function delete(int $id): void;
 }

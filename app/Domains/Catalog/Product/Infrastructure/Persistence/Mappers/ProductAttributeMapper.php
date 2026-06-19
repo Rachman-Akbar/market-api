@@ -9,16 +9,13 @@ use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductAttribu
 
 final class ProductAttributeMapper
 {
-    public static function toEntity(
-        ProductAttributeModel $model
-    ): ProductAttribute {
-
+    public static function toEntity(ProductAttributeModel $model): ProductAttribute
+    {
         return new ProductAttribute(
-            id: (int)$model->id,
-            name: (string)$model->name,
-            slug: (string)$model->slug,
-            type: (string)$model->type,
-            isActive: (bool)$model->is_active,
+            id: (int) $model->id,
+            name: (string) $model->name,
+            slug: (string) $model->slug,
+            type: (string) $model->type
         );
     }
 }
