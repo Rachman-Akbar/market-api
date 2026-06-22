@@ -19,6 +19,8 @@ use App\Domains\Catalog\Product\Infrastructure\Persistence\Repositories\Eloquent
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Repositories\EloquentProductAttributeRepository;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Repositories\EloquentProductAttributeValueRepository;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Repositories\EloquentProductVariantRepository;
+use App\Domains\Catalog\Promotion\Domain\Repositories\PromotionRepositoryInterface;
+use App\Domains\Catalog\Promotion\Infrastructure\Persistence\Repositories\EloquentPromotionRepository;
 
 class CatalogServiceProvider extends ServiceProvider
 {
@@ -31,5 +33,6 @@ class CatalogServiceProvider extends ServiceProvider
         $this->app->bind(ProductAttributeRepositoryInterface::class, EloquentProductAttributeRepository::class);
         $this->app->bind(ProductVariantRepositoryInterface::class, EloquentProductVariantRepository::class);
         $this->app->bind(ProductAttributeValueRepositoryInterface::class, EloquentProductAttributeValueRepository::class);
+        $this->app->bind(PromotionRepositoryInterface::class, EloquentPromotionRepository::class);
     }
 }

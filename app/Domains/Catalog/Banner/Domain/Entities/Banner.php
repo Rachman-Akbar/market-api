@@ -2,19 +2,24 @@
 
 namespace App\Domains\Catalog\Banner\Domain\Entities;
 
-final class Banner
+class Banner
 {
     public function __construct(
-        private ?int $id,
-        private string $title,
-        private string $imageUrl,
-        private ?string $linkUrl = null,
-        private bool $isActive = true,
+        public ?int $id,
+        public int $storeId,
+        public string $imageUrl,
+        public int $sortOrder,
+        public bool $isActive
     ) {}
 
-    public function id(): ?int { return $this->id; }
-    public function title(): string { return $this->title; }
-    public function imageUrl(): string { return $this->imageUrl; }
-    public function linkUrl(): ?string { return $this->linkUrl; }
-    public function isActive(): bool { return $this->isActive; }
+    public function toArray(): array
+    {
+        return [
+          'id'         => $this->id,
+          'store_id'   => $this->storeId,
+          'image_url'  => $this->imageUrl,
+          'sort_order' => $this->sortOrder,
+          'is_active'  => $this->isActive,
+        ];
+    }
 }

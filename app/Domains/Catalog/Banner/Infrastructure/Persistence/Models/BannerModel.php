@@ -1,34 +1,18 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Domains\Catalog\Banner\Infrastructure\Persistence\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Domains\Seller\Store\Infrastructure\Persistence\Models\StoreModel;
 
-final class BannerModel extends Model
+class BannerModel extends Model
 {
     protected $table = 'banners';
 
-    protected $fillable = [
-        'store_id',
-        'title',
-        'subtitle',
-        'image_url',
-        'link_url',
-        'is_active',
-        'sort_order',
-    ];
+    protected $fillable = ['store_id', 'image_url', 'sort_order', 'is_active'];
 
     protected $casts = [
-        'is_active' => 'boolean',
+        'store_id'  => 'integer',
         'sort_order' => 'integer',
+        'is_active'  => 'boolean',
     ];
-
-    public function store(): BelongsTo
-    {
-        return $this->belongsTo(StoreModel::class, 'store_id');
-    }
 }

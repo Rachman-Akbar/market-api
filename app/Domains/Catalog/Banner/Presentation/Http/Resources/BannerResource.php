@@ -2,20 +2,19 @@
 
 namespace App\Domains\Catalog\Banner\Presentation\Http\Resources;
 
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class BannerResource extends JsonResource
 {
-    public function toArray($request): array
+    public function toArray(Request $request): array
     {
+        // $this di sini merepresentasikan objek DTO atau Entity yang dikirim
         return [
             'id' => $this->id,
-            'title' => $this->title,
-            'subtitle' => null,
-            'image_url' => $this->imageUrl,
-            'mobile_image_url' => null,
-            'link_type' => null,
-            'link_url' => $this->linkUrl,
+            'store_id' => $this->storeId,
+            'image_url' => $this->imageUrl, // Memastikan output JSON konsisten
+            'sort_order' => $this->sortOrder,
             'is_active' => $this->isActive,
         ];
     }
