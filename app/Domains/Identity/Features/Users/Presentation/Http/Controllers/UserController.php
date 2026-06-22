@@ -97,16 +97,18 @@ class UserController extends Controller
         }
     }
 
-   public function destroy(string $id, DeleteUserUseCase $useCase): JsonResponse
+public function destroy(string $id, DeleteUserUseCase $useCase): JsonResponse
 {
     try {
         $useCase->execute($id);
 
-        // Jika benar-benar sukses menghapus data yang ADA
-        return response()->json(null, Response::HTTP_NO_CONTENT);
+        // Perbaikan: Mengembalikan pesan sukses dengan status 200 OK
+        return response()->json([
+            'success' => true,
+            'message' => 'User and their roles have been successfully deleted.'
+        ], Response::HTTP_OK);
 
     } catch (UserNotFoundException $e) {
-        // Jika data tidak ditemukan / sudah terhapus sebelumnya, kembalikan 404!
         return response()->json([
             'message' => $e->getMessage()
         ], Response::HTTP_NOT_FOUND);

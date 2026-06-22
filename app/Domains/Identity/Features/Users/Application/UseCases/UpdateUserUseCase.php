@@ -31,6 +31,6 @@ class UpdateUserUseCase
             }
         }
 
-        return $this->userRepository->update($id, $data);
+        return $this->userRepository->update($id, $dto);
     }
 }

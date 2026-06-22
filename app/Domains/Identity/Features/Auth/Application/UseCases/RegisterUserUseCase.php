@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Identity\Features\Auth\Application\UseCases;
 
 use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface; // Inject INTERFACE, bukan Eloquent
-use App\Domains\Identity\Domain\DTOs\CreateUserDTO;
+use App\Domains\Identity\Features\Users\Application\DTOs\CreateUserDTO;
 use Illuminate\Support\Facades\DB;
 
 final readonly class RegisterUserUseCase
@@ -19,13 +19,14 @@ final readonly class RegisterUserUseCase
     public function execute(string $name, string $email, string $password, ?string $deviceName): array
     {
         // 1. Bungkus dalam DB Transaction agar aman
-        $user = DB::transaction(function () use ($name, $email, $password) {
+       $user = DB::transaction(function () use ($name, $email, $password) {
 
-            // 2. Gunakan DTO untuk passing data (sesuai kesepakatan Shared Kernel kita)
+            // 2. Gunakan DTO untuk passing data dengan menyertakan roleIds
             $dto = new CreateUserDTO(
+                name: $name,
                 email: $email,
                 password: $password,
-                name: $name,
+                roleIds: [], // Tambahkan ini agar tidak memicu error argument #4
                 isEmailVerified: false
             );
 

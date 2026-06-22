@@ -23,7 +23,10 @@ final class AuthController extends Controller
     {
         $validated = $request->validate([
             'name'        => ['required', 'string', 'max:255'],
-            'email'       => ['required', 'email:rfc,dns', 'max:255', 'unique:users,email'],
+            // 'email'       => ['required', 'email:rfc,dns', 'max:255', 'unique:users,email'],
+
+            // Menjadi lebih longgar seperti ini (hanya cek format, tidak cek domain asli/palsu ke internet):
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password'    => ['required', 'confirmed', Password::min(8)],
             'device_name' => ['nullable', 'string', 'max:100'],
         ]);

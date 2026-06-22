@@ -6,7 +6,7 @@ namespace App\Domains\Identity\Infrastructure\Persistence\Repositories;
 
 use App\Domains\Identity\Domain\Entities\User;
 use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
-
+use App\Domains\Identity\Features\Auth\Application\DTOs\RegisterSellerDTO;
 use App\Domains\Identity\Features\Users\Application\DTOs\CreateUserDTO;
 use App\Domains\Identity\Features\Users\Application\DTOs\UpdateUserDTO;
 
@@ -101,17 +101,22 @@ final class EloquentUserRepository implements UserRepositoryInterface
     }
 
 public function delete(string $id): bool
-{
-    // Menggunakan withTrashed() agar data yang sudah ter-soft delete tetap bisa ditemukan untuk di-hard delete
-    $user = User::withTrashed()->find($id);
+    {
+        // Menggunakan withTrashed() agar data yang sudah ter-soft delete tetap bisa ditemukan untuk di-hard delete
+        $user = User::withTrashed()->find($id);
 
-    if (!$user) {
-        return false;
+        if (!$user) {
+            return false;
+        }
+
+        return DB::transaction(function () use ($user): bool {
+            // 1. Bersihkan semua relasi role milik user ini dari tabel pivot user_roles
+            $user->roles()->detach();
+
+            // 2. Hapus permanen user dari database
+            return (bool) $user->forceDelete();
+        });
     }
-
-    // Hapus permanen dari database
-    return (bool) $user->forceDelete();
-}
 
     // ─────────────────────────────
     // Auth & Firebase Logic
@@ -260,4 +265,35 @@ public function delete(string $id): bool
 
         return $sellerProfile?->store?->is_active === true;
     }
+
+
+    // Tambahkan di EloquentUserRepository.php
+
+public function registerStore(string $userId, RegisterSellerDTO $dto): int
+{
+    return DB::transaction(function () use ($userId, $dto): int {
+        // 1. Tambah data ke tabel stores
+        $storeId = DB::table('stores')->insertGetId([
+            'user_id'    => $userId,
+            'name'       => $dto->storeName,
+            'slug'       => $dto->slug,
+            'phone'      => $dto->phone,
+            'city'       => $dto->city,
+            'province'   => $dto->province,
+            'address'    => $dto->address,
+            'is_active'  => 1, // Otomatis aktif
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // 2. Tambah data default ke tabel store_details
+        DB::table('store_details')->insert([
+            'store_id'   => $storeId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $storeId;
+    });
+}
 }
