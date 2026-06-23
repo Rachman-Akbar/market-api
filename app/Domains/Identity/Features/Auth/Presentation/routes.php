@@ -23,8 +23,9 @@ Route::prefix('auth')
             Route::post('/logout-other-devices', [AuthController::class, 'logoutOtherDevices'])->name('logout-other-devices');
             Route::post('/logout-all-devices', [AuthController::class, 'logoutAllDevices'])->name('logout-all-devices');
             Route::delete('/account', [AuthController::class, 'deleteCurrentAccount'])->name('account.delete');
-            Route::post('/switch-role', [AuthController::class, 'switchRole'])->name('switch-role'); // <-- Tambahkan ini
-            // Ditambahkan middleware verifikasi email sebelum bisa mendaftar jadi seller
-            Route::post('/register-seller', [StoreController::class, 'registerStore'])->middleware('ensure.verified');
+            Route::post('/switch-role', [AuthController::class, 'switchRole'])->name('switch-role');
+            
+            // Menggunakan alias verified.email yang valid
+            Route::post('/register-seller', [StoreController::class, 'registerStore'])->middleware('verified.email');
         });
     });

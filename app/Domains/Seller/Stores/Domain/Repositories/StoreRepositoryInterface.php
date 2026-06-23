@@ -17,5 +17,5 @@ interface StoreRepositoryInterface
 
     // TAMBAHKAN INI UNTUK FUNGSI CREATE CRUD
     public function create(Store $store): Store;
-    public function update(Store $store): Store;
+    public function update(Store $store, ?array $detailData = null): Store;
 }

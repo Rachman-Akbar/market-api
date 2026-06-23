@@ -97,22 +97,51 @@ public function findBySlug(string $slug): ?StoreEntity
         return StoreMapper::toEntity($model);
     }
 
-    public function update(StoreEntity $store): StoreEntity
-    {
-        // Pastikan entity store memiliki method id() atau getId() sesuai rancanganmu
-        $model = StoreModel::query()->findOrFail($store->id());
+// Tambahkan parameter kedua ?array $detailData = null
+public function update(StoreEntity $store, ?array $detailData = null): StoreEntity
+{
+    // 1. Update Toko Utama
+    $model = StoreModel::query()->findOrFail($store->id());
+    $model->update([
+        'name'              => $store->name(),
+        'slug'              => $store->slug(),
+        'description'       => $store->description(),
+        'short_description' => $store->shortDescription(),
+        'phone'             => $store->phone(),
+        'email'             => $store->email(),
+        'city'              => $store->city(),
+        'province'          => $store->province(),
+        'address'           => $store->address(),
+        'logo'              => $store->logo(),
+        'is_active'         => $store->isActive() ? 1 : 0,
+    ]);
 
-        $model->update([
-            'name'        => $store->name(),
-            'slug'        => $store->slug(),
-            'description' => $store->description(),
-            'logo'        => $store->logo(),
-            'is_active'   => $store->isActive() ? 1 : 0,
-        ]);
-
-        return StoreMapper::toEntity($model);
+    // 2. FIX LENGKAP: Update atau Create seluruh kolom store_details
+    if ($detailData !== null) {
+        $model->detail()->updateOrCreate(
+            ['store_id' => $model->id], // Cari berdasarkan store_id
+            [
+                'owner_name'      => $detailData['owner_name'] ?? ($model->detail->owner_name ?? null),
+                'owner_phone'     => $detailData['owner_phone'] ?? ($model->detail->owner_phone ?? null),
+                'description'     => $detailData['description'] ?? ($model->detail->description ?? null),
+                'shipping_policy' => $detailData['shipping_policy'] ?? ($model->detail->shipping_policy ?? null),
+                'return_policy'   => $detailData['return_policy'] ?? ($model->detail->return_policy ?? null),
+                'open_days'       => $detailData['open_days'] ?? ($model->detail->open_days ?? null),
+                'open_time'       => $detailData['open_time'] ?? ($model->detail->open_time ?? null),
+                'close_time'      => $detailData['close_time'] ?? ($model->detail->close_time ?? null),
+                'whatsapp_url'    => $detailData['whatsapp_url'] ?? ($model->detail->whatsapp_url ?? null),
+                'instagram_url'   => $detailData['instagram_url'] ?? ($model->detail->instagram_url ?? null),
+                'tiktok_url'      => $detailData['tiktok_url'] ?? ($model->detail->tiktok_url ?? null),
+                'website_url'     => $detailData['website_url'] ?? ($model->detail->website_url ?? null),
+            ]
+        );
     }
 
+    // 3. Eager load relasi detail yang baru disimpan
+    $model->load('detail');
+
+    return StoreMapper::toEntity($model);
+}
     /**
      * Mengambil produk berdasarkan Slug Toko (Berpaginasi & Menggunakan Left Join Variant)
      */

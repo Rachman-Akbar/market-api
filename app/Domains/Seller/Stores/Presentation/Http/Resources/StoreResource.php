@@ -11,19 +11,25 @@ final class StoreResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        /** @var \App\Domains\Seller\Stores\Domain\Entities\Store $store */
         $store = $this->resource;
 
         return [
-            'id' => $store->id(),
-            'user_id' => $store->userId(),
-            'name' => $store->name(),
-            'slug' => $store->slug(),
-            'description' => $store->description(),
-            'logo' => $store->logo(),
-            'is_active' => $store->isActive(),
-            'created_at' => $store->createdAt(),
-            'updated_at' => $store->updatedAt(),
+            'id'                => $store->id,
+            'user_id'           => $store->userId,
+            'name'              => $store->name,
+            'slug'              => $store->slug,
+            'description'       => $store->description,
+            'short_description' => $store->shortDescription,
+            'phone'             => $store->phone,
+            'email'             => $store->email,
+            'city'              => $store->city,
+            'province'          => $store->province,
+            'address'           => $store->address,
+            'is_active'         => $store->isActive,
+            'logo'              => $store->logo,
+            'detail'            => $store->detail ? new StoreDetailResource($store->detail) : null,
+            'created_at'        => $store->createdAt,
+            'updated_at'        => $store->updatedAt,
         ];
     }
 }

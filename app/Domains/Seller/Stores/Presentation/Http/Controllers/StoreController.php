@@ -118,30 +118,46 @@ public function showById(int $id): JsonResponse
     /**
      * PUT/PATCH /stores/{id} (Mengupdate Informasi Toko)
      */
-  public function updateStore(int $id, Request $request, UpdateStoreUseCase $useCase): JsonResponse
+public function updateStore(int $id, Request $request, UpdateStoreUseCase $useCase): JsonResponse
 {
     $validated = $request->validate([
-        'store_name' => 'nullable|string|max:255',
-        'address'    => 'nullable|string',
-        'logo'       => 'nullable|string',
-        'is_active'  => 'nullable|boolean',
+        // Validasi Toko Utama
+        'store_name'        => 'nullable|string|max:255',
+        'description'       => 'nullable|string',
+        'short_description' => 'nullable|string|max:255',
+        'phone'             => 'nullable|string|max:30',
+        'email'             => 'nullable|email|max:120',
+        'city'              => 'nullable|string|max:80',
+        'province'          => 'nullable|string|max:80',
+        'address'           => 'nullable|string',
+        'logo'              => 'nullable|string',
+        'is_active'         => 'nullable|boolean',
+
+        // FIX LENGKAP: Daftarkan semua field untuk tabel store_details di sini
+        'detail'                 => 'nullable|array',
+        'detail.owner_name'      => 'nullable|string|max:120',
+        'detail.owner_phone'     => 'nullable|string|max:30',
+        'detail.description'     => 'nullable|string',
+        'detail.shipping_policy' => 'nullable|string',
+        'detail.return_policy'   => 'nullable|string',
+        'detail.open_days'       => 'nullable|string|max:120',
+        'detail.open_time'       => 'nullable|string|max:10',
+        'detail.close_time'      => 'nullable|string|max:10',
+        'detail.whatsapp_url'    => 'nullable|string|max:255',
+        'detail.instagram_url'   => 'nullable|string|max:255',
+        'detail.tiktok_url'      => 'nullable|string|max:255',
+        'detail.website_url'     => 'nullable|string|max:255',
     ]);
 
-    // Ambil ID user yang login dan rolenya dari token / session auth Laravel
     $currentUserId = (string) $request->user()->id;
-    $role = (string) $request->user()->role; // Pastikan kolom/attribute 'role' tersedia di model User Anda (misal: 'admin' atau 'seller')
+    $role = (string) $request->user()->role; 
 
-    // Kirim data autentikasi ke dalam UseCase
+    // Jalankan UseCase
     $storeData = $useCase->execute($id, $currentUserId, $role, $validated);
 
     return response()->json([
         'message' => 'Store updated successfully',
-        'data'    => [
-            'id'        => $storeData->id,
-            'name'      => $storeData->name,
-            'slug'      => $storeData->slug,
-            'is_active' => $storeData->isActive
-        ]
+        'data'    => new \App\Domains\Seller\Stores\Presentation\Http\Resources\StoreResource($storeData)
     ], 200);
 }
 }

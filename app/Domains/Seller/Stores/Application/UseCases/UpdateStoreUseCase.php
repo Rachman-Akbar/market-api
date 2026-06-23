@@ -1,6 +1,6 @@
 <?php
 
-declare(declare_types=1);
+declare(strict_types=1);
 
 namespace App\Domains\Seller\Stores\Application\UseCases;
 
@@ -33,29 +33,26 @@ final readonly class UpdateStoreUseCase
             throw new AccessDeniedHttpException("Anda tidak memiliki akses untuk mengubah toko ini.");
         }
 
-        // 3. Mutasi data Entity (Menyesuaikan input atau data lama jika kosong)
-        // Catatan: Jika updateDetails() kamu mengembalikan objek baru (Immutable), gunakan: $storeEntity = $storeEntity->updateDetails(...);
+        // 3. FIX: Mutasi data Entity dengan argumen lengkap sesuai struktur tabel baru
         $storeEntity->updateDetails(
             name: $data['store_name'] ?? $storeEntity->name(),
             slug: isset($data['store_name']) ? Str::slug($data['store_name']) : $storeEntity->slug(),
-            description: $data['address'] ?? $storeEntity->description(), // Memperbaiki mapping address ke description dari kode sebelumnya
+            description: $data['description'] ?? $storeEntity->description(),
+            shortDescription: $data['short_description'] ?? $storeEntity->shortDescription(),
+            phone: $data['phone'] ?? $storeEntity->phone(),
+            email: $data['email'] ?? $storeEntity->email(),
+            city: $data['city'] ?? $storeEntity->city(),
+            province: $data['province'] ?? $storeEntity->province(),
+            address: $data['address'] ?? $storeEntity->address(),
             logo: $data['logo'] ?? $storeEntity->logo(),
+            
             isActive: isset($data['is_active']) ? (bool) $data['is_active'] : $storeEntity->isActive()
         );
 
         // 4. Simpan perubahan ke database melalui repositori
-        $savedStore = $this->storeRepository->update($storeEntity);
+       $savedStore = $this->storeRepository->update($storeEntity, $data['detail'] ?? null);
 
-        // 5. Kembalikan data dalam bentuk DTO
-        return new StoreData(
-            id: $savedStore->id(),
-            userId: $savedStore->userId(),
-            name: $savedStore->name(),
-            slug: $savedStore->slug(),
-            description: $savedStore->description(),
-            logo: $savedStore->logo(),
-            isActive: $savedStore->isActive(),
-            detail: null
-        );
+        // 5. FIX: Gunakan static factory method dari DTO (`fromEntity`) agar otomatis memetakan seluruh kolom termasuk relasi detailnya jika ada
+        return StoreData::fromEntity($savedStore);
     }
 }

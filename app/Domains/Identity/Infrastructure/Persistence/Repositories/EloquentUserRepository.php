@@ -52,11 +52,11 @@ final class EloquentUserRepository implements UserRepositoryInterface
             $user->id = (string) Str::uuid();
 
             $user->forceFill([
-                'email' => strtolower(trim($dto->email)),
-                'password' => $dto->password ? Hash::make($dto->password) : null,
-                'name' => $dto->name ? trim($dto->name) : null,
-                'firebase_uid' => $dto->firebaseUid ? trim($dto->firebaseUid) : null,
-                'avatar' => $dto->avatar,
+                'email'             => strtolower(trim($dto->email)),
+                'password'          => $dto->password ? Hash::make($dto->password) : null,
+                'name'              => $dto->name ? trim($dto->name) : null,
+                'firebase_uid'      => $dto->firebaseUid ? trim($dto->firebaseUid) : null,
+                'avatar'            => $dto->avatar,
                 'is_email_verified' => $dto->isEmailVerified,
             ]);
 
@@ -100,9 +100,9 @@ final class EloquentUserRepository implements UserRepositoryInterface
         return $user->refresh();
     }
 
-public function delete(string $id): bool
+    public function delete(string $id): bool
     {
-        // Menggunakan withTrashed() agar data yang sudah ter-soft delete tetap bisa ditemukan untuk di-hard delete
+        // Menggunakan withTrashed() agar data yang sudah ter-soft delete tetap bisa di-hard delete
         $user = User::withTrashed()->find($id);
 
         if (!$user) {
@@ -118,34 +118,31 @@ public function delete(string $id): bool
         });
     }
 
+    // ─────────────────────────────
+    // Auth & Firebase Logic
+    // ─────────────────────────────
+
     public function deleteCurrentToken(User $user): void
     {
         $token = $user->currentAccessToken();
 
-        // Pastikan token adalah instance yang bisa dihapus dari database
-        if ($token instanceof \Laravel\Sanctum\PersonalAccessToken) {
-            $token->delete();
-        } elseif (method_exists($token, 'delete')) {
+        if ($token instanceof PersonalAccessToken || method_exists($token, 'delete')) {
             $token->delete();
         }
     }
-    
-    // ─────────────────────────────
-    // Auth & Firebase Logic
-    // ─────────────────────────────
 
     public function syncFromFirebase(array $firebaseUser): User
     {
         return DB::transaction(function () use ($firebaseUser): User {
             $firebaseUid = trim((string) ($firebaseUser['uid'] ?? $firebaseUser['sub'] ?? ''));
-            $email = strtolower(trim((string) ($firebaseUser['email'] ?? '')));
+            $email       = strtolower(trim((string) ($firebaseUser['email'] ?? '')));
 
             if ($firebaseUid === '' || $email === '') {
                 throw new InvalidArgumentException('Data Firebase UID atau Email tidak valid.');
             }
 
-            $name = $firebaseUser['name'] ?? null;
-            $avatar = $firebaseUser['picture'] ?? null;
+            $name            = $firebaseUser['name'] ?? null;
+            $avatar          = $firebaseUser['picture'] ?? null;
             $isEmailVerified = (bool) ($firebaseUser['email_verified'] ?? true);
 
             // SKENARIO 1: User sudah login via Google sebelumnya
@@ -153,9 +150,9 @@ public function delete(string $id): bool
 
             if ($user !== null) {
                 $user->forceFill([
-                    'email' => $email,
-                    'name' => $name ?: $user->name,
-                    'avatar' => $avatar ?: $user->avatar,
+                    'email'             => $email,
+                    'name'              => $name ?: $user->name,
+                    'avatar'            => $avatar ?: $user->avatar,
                     'is_email_verified' => $isEmailVerified,
                 ])->save();
 
@@ -172,9 +169,9 @@ public function delete(string $id): bool
                 }
 
                 $user->forceFill([
-                    'firebase_uid' => $firebaseUid,
-                    'name' => $user->name ?: $name,
-                    'avatar' => $user->avatar ?: $avatar,
+                    'firebase_uid'      => $firebaseUid,
+                    'name'              => $user->name ?: $name,
+                    'avatar'            => $user->avatar ?: $avatar,
                     'is_email_verified' => $isEmailVerified,
                 ])->save();
 
@@ -187,11 +184,11 @@ public function delete(string $id): bool
             $user->id = (string) Str::uuid();
 
             $user->forceFill([
-                'firebase_uid' => $firebaseUid,
-                'email' => $email,
-                'password' => Hash::make(Str::random(40)),
-                'name' => $name ?: Str::before($email, '@'),
-                'avatar' => $avatar,
+                'firebase_uid'      => $firebaseUid,
+                'email'             => $email,
+                'password'          => Hash::make(Str::random(40)),
+                'name'              => $name ?: Str::before($email, '@'),
+                'avatar'            => $avatar,
                 'is_email_verified' => $isEmailVerified,
             ]);
 
@@ -201,6 +198,10 @@ public function delete(string $id): bool
             return $user->refresh();
         });
     }
+
+    // ─────────────────────────────
+    // Domain Helpers & Access Logic
+    // ─────────────────────────────
 
     public function resolveDefaultActiveRole(User $user): ?string
     {
@@ -213,33 +214,31 @@ public function delete(string $id): bool
         return $roles[0] ?? null;
     }
 
+    /**
+     * Cek apakah user memiliki akses seller berdasarkan role 
+     * dan keberadaan toko yang aktif.
+     */
     public function hasSellerAccess(User $user): bool
     {
-        $user->loadMissing(['sellerProfile.store']);
-
+        // Pastikan punya role seller terlebih dahulu
         if (!$user->hasRole('seller')) {
             return false;
         }
 
-        $sellerProfile = $user->sellerProfile;
+        // Langsung load relasi 'store' (tanpa sellerProfile)
+        $user->loadMissing(['store']);
 
-        if ($sellerProfile !== null) {
-            return $sellerProfile->status === 'active';
-        }
-
-        return $sellerProfile?->store?->is_active === true;
+        // Akses diberikan jika toko ada dan statusnya aktif
+        return $user->store !== null && (bool) $user->store->is_active === true;
     }
 
-
-    // Tambahkan di EloquentUserRepository.php
-
-public function assignRoleByName(User $user, string $role): void
+    public function assignRoleByName(User $user, string $role): void
     {
         $roleName = strtolower(trim($role));
-        $roleId = DB::table('roles')->where('name', $roleName)->value('id');
+        $roleId   = DB::table('roles')->where('name', $roleName)->value('id');
 
         if ($roleId === null) {
-            throw new \RuntimeException("Role [{$roleName}] tidak ditemukan di database.");
+            throw new RuntimeException("Role [{$roleName}] tidak ditemukan di database.");
         }
 
         DB::table('user_roles')->updateOrInsert(
@@ -247,6 +246,27 @@ public function assignRoleByName(User $user, string $role): void
             ['created_at' => now(), 'updated_at' => now()]
         );
     }
+
+    public function getActiveRoleFromCurrentToken(User $user): ?string
+    {
+        $token = $user->currentAccessToken();
+
+        if (!$token instanceof PersonalAccessToken) {
+            return null;
+        }
+
+        foreach ($token->abilities ?? [] as $ability) {
+            if (is_string($ability) && str_starts_with($ability, 'active-role:')) {
+                return str_replace('active-role:', '', $ability);
+            }
+        }
+
+        return null;
+    }
+
+    // ─────────────────────────────
+    // External Domain Logic (Store)
+    // ─────────────────────────────
 
     public function registerStore(string $userId, RegisterSellerDTO $dto): int
     {
@@ -275,27 +295,4 @@ public function assignRoleByName(User $user, string $role): void
             return $storeId;
         });
     }
-
-    /**
-     * Cek apakah user memiliki akses seller berdasarkan role 
-     * dan keberadaan toko yang aktif.
-     */
-
-    public function getActiveRoleFromCurrentToken(User $user): ?string
-    {
-        $token = $user->currentAccessToken();
-
-        if (!$token instanceof PersonalAccessToken) {
-            return null;
-        }
-
-        foreach ($token->abilities ?? [] as $ability) {
-            if (is_string($ability) && str_starts_with($ability, 'active-role:')) {
-                return str_replace('active-role:', '', $ability);
-            }
-        }
-
-        return null;
-    }
-
 }

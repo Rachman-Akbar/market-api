@@ -35,11 +35,11 @@ final class EnsureActiveRole
             ], 401);
         }
 
-        if (! $this->users->hasRole($user, $role)) {
-            return response()->json([
-                'message' => 'Role does not belong to current user.',
-            ], 403);
-        }
+    if (! $request->user() || ! $request->user()->hasRole($role)) {
+    return response()->json([
+        'message' => "Forbidden. Anda tidak memiliki role {$role}.",
+    ], 403);
+}
 
         $abilities = $token->abilities ?? [];
 

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Seller\Stores\Domain\Entities;
 
+// Import entity StoreDetail jika berada di namespace yang sama atau berbeda
+// use App\Domains\Seller\Stores\Domain\Entities\StoreDetail;
+
 final class Store
 {
     public function __construct(
@@ -12,10 +15,17 @@ final class Store
         private string $name,
         private string $slug,
         private ?string $description,
-        private ?string $logo,
+        private ?string $shortDescription,
+        private ?string $phone,
+        private ?string $email,
+        private ?string $city,
+        private ?string $province,
+        private ?string $address,
         private bool $isActive,
-        private string $createdAt,
-        private string $updatedAt
+        private ?string $logo,
+        private ?string $createdAt,
+        private ?string $updatedAt,
+        private ?StoreDetail $detail = null // 1. TAMBAHKAN: Menyimpan data relasi detail toko
     ) {}
 
     public function id(): int { return $this->id; }
@@ -23,8 +33,43 @@ final class Store
     public function name(): string { return $this->name; }
     public function slug(): string { return $this->slug; }
     public function description(): ?string { return $this->description; }
-    public function logo(): ?string { return $this->logo; }
+    public function shortDescription(): ?string { return $this->shortDescription; }
+    public function phone(): ?string { return $this->phone; }
+    public function email(): ?string { return $this->email; }
+    public function city(): ?string { return $this->city; }
+    public function province(): ?string { return $this->province; }
+    public function address(): ?string { return $this->address; }
     public function isActive(): bool { return $this->isActive; }
-    public function createdAt(): string { return $this->createdAt; }
-    public function updatedAt(): string { return $this->updatedAt; }
+    public function logo(): ?string { return $this->logo; }
+    public function createdAt(): ?string { return $this->createdAt; }
+    public function updatedAt(): ?string { return $this->updatedAt; }
+    
+    // 2. TAMBAHKAN: Getter untuk mengambil data detail agar bisa dibaca oleh DTO / Resource
+    public function detail(): ?StoreDetail { return $this->detail; }
+
+    public function updateDetails(
+        string $name,
+        string $slug,
+        ?string $description,
+        ?string $shortDescription,
+        ?string $phone,
+        ?string $email,
+        ?string $city,
+        ?string $province,
+        ?string $address,
+        ?string $logo,
+        bool $isActive
+    ): void {
+        $this->name = $name;
+        $this->slug = $slug;
+        $this->description = $description;
+        $this->shortDescription = $shortDescription;
+        $this->phone = $phone;
+        $this->email = $email;
+        $this->city = $city;
+        $this->province = $province;
+        $this->address = $address;
+        $this->logo = $logo;
+        $this->isActive = $isActive;
+    }
 }

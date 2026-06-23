@@ -35,6 +35,12 @@ JSON CREATE
         "device_name": "Mobile-App"
         }
 
+    Switch Role
+        {
+        "role": "seller",
+        "device_name": "Laptop-Asus"
+        }
+        
 DB
     User
         CREATE TABLE `users` (

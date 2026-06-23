@@ -5,19 +5,24 @@ namespace App\Domains\Seller\Stores\Application\DTOs;
 final class StoreData
 {
     public function __construct(
-        public ?int $id,
+        public int $id,
         public string $userId,
         public string $name,
         public string $slug,
-        public ?string $description = null,
-        public ?string $logo = null,
-        public bool $isActive = true,
+        public ?string $description,
+        public ?string $shortDescription,
+        public ?string $phone,
+        public ?string $email,
+        public ?string $city,
+        public ?string $province,
+        public ?string $address,
+        public bool $isActive,
+        public ?string $logo,
+        public ?string $createdAt,
+        public ?string $updatedAt,
         public ?StoreDetailData $detail = null,
     ) {}
 
-    /**
-     * @param \App\Domains\Seller\Stores\Domain\Entities\Store $entity
-     */
     public static function fromEntity($entity): self
     {
         return new self(
@@ -26,9 +31,16 @@ final class StoreData
             name: $entity->name(),
             slug: $entity->slug(),
             description: $entity->description(),
-            logo: $entity->logo(),
+            shortDescription: $entity->shortDescription(),
+            phone: $entity->phone(),
+            email: $entity->email(),
+            city: $entity->city(),
+            province: $entity->province(),
+            address: $entity->address(),
             isActive: $entity->isActive(),
-            // Jalankan ini jika Entity Store kamu memiliki relasi method detail() ke StoreDetail Entity
+            logo: $entity->logo(),
+            createdAt: $entity->createdAt(),
+            updatedAt: $entity->updatedAt(),
             detail: method_exists($entity, 'detail') && $entity->detail() 
                 ? StoreDetailData::fromEntity($entity->detail()) 
                 : null,

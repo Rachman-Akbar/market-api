@@ -28,3 +28,46 @@ JSON
         }
 
 DB
+    CREATE TABLE `stores` (
+    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+    `user_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `description` text COLLATE utf8mb4_unicode_ci,
+    `short_description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `phone` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `email` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `city` varchar(80) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `province` varchar(80) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `address` text COLLATE utf8mb4_unicode_ci,
+    `is_active` tinyint(1) NOT NULL DEFAULT '1',
+    `logo` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `created_at` timestamp NULL DEFAULT NULL,
+    `updated_at` timestamp NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `stores_user_id_unique` (`user_id`),
+    UNIQUE KEY `stores_slug_unique` (`slug`),
+    CONSTRAINT `stores_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+
+    CREATE TABLE `store_details` (
+    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+    `store_id` bigint unsigned NOT NULL,
+    `owner_name` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `owner_phone` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `description` text COLLATE utf8mb4_unicode_ci,
+    `shipping_policy` text COLLATE utf8mb4_unicode_ci,
+    `return_policy` text COLLATE utf8mb4_unicode_ci,
+    `open_days` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `open_time` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `close_time` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `whatsapp_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `instagram_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `tiktok_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `website_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `created_at` timestamp NULL DEFAULT NULL,
+    `updated_at` timestamp NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `store_details_store_id_unique` (`store_id`),
+    CONSTRAINT `fk_store_details_store` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
