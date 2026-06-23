@@ -2,6 +2,8 @@
 
 namespace App\Domains\Seller\Stores\Application\DTOs;
 
+use App\Domains\Seller\Stores\Domain\Entities\StoreDetail;
+
 final class StoreDetailData
 {
     public function __construct(
@@ -23,7 +25,7 @@ final class StoreDetailData
         public ?string $updatedAt,
     ) {}
 
-    public static function fromEntity($entity): self
+    public static function fromEntity(StoreDetail $entity): self
     {
         return new self(
             id: $entity->id(),

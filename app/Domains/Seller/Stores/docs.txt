@@ -27,6 +27,33 @@ JSON
         "is_active": false
         }
 
+    {
+    "store_name": "Gadget Core Store",
+    "description": "Toko resmi yang menyediakan berbagai macam smartphone, laptop, dan aksesori gadget original dengan garansi resmi.",
+    "short_description": "Pusat gadget original dan bergaransi resmi.",
+    "phone": "081234567890",
+    "email": "info@gadgetcore.com",
+    "city": "Sidoarjo",
+    "province": "Jawa Timur",
+    "address": "Jl. Jenggolo No. 12, Kecamatan Buduran",
+    "logo": "stores/logos/gadget-core.png",
+    "is_active": true,
+    "detail": {
+        "owner_name": "Rian Wijaya",
+        "owner_phone": "081987654321",
+        "description": "Layanan operasional pusat Gadget Core Indonesia.",
+        "shipping_policy": "Pengiriman diproses di hari yang sama untuk order sebelum jam 15.00. Mendukung Instant Courier (Gojek/Grab).",
+        "return_policy": "Garansi retur 3x24 jam jika produk cacat pabrik, wajib menyertakan video unboxing lengkap tanpa edit.",
+        "open_days": "Senin - Minggu",
+        "open_time": "09:00",
+        "close_time": "21:00",
+        "whatsapp_url": "https://wa.me/6281987654321",
+        "instagram_url": "https://instagram.com/gadgetcore.id",
+        "tiktok_url": "https://tiktok.com/@gadgetcore.id",
+        "website_url": "https://gadgetcore.com"
+    }
+    }    
+
 DB
     CREATE TABLE `stores` (
     `id` bigint unsigned NOT NULL AUTO_INCREMENT,

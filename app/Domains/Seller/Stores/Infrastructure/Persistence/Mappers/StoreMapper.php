@@ -6,10 +6,11 @@ namespace App\Domains\Seller\Stores\Infrastructure\Persistence\Mappers;
 
 use App\Domains\Seller\Stores\Domain\Entities\Store;
 use App\Domains\Seller\Stores\Domain\Entities\StoreDetail;
+use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 
 final class StoreMapper
 {
-    public static function toEntity($model): Store
+    public static function toEntity(StoreModel $model): Store
     {
         $detailEntity = null;
 
