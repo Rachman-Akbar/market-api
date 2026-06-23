@@ -16,7 +16,7 @@ class BannerData
     {
         return new self(
             id: $data['id'] ?? null,
-   storeId: (int) ($data['store_id'] ?? 27),
+            storeId: (int) ($data['store_id']),
             imageUrl: $data['image_url'],
             sortOrder: (int) ($data['sort_order'] ?? 0),
             isActive: (bool) ($data['is_active'] ?? true)

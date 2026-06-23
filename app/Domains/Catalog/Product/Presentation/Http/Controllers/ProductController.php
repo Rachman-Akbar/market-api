@@ -19,14 +19,10 @@ use App\Domains\Catalog\Product\Presentation\Http\Resources\ProductResource;
 
 final class ProductController extends Controller
 {
-    private const DEFAULT_SELLER_ID = '7d140c91-2c01-431f-9c5b-f41c629b1a06';
 
-    /**
-     * Mengambil ID Seller dari user yang login, atau fallback ke default seller.
-     */
     private function resolveCurrentSellerId(Request $request): string
     {
-        return $request->user()?->id ?? self::DEFAULT_SELLER_ID;
+        return $request->user()?->id;
     }
 
     public function index(Request $request, ListProductsQuery $query)
@@ -65,8 +61,7 @@ final class ProductController extends Controller
     public function store(StoreProductRequest $request, CreateProductUseCase $useCase)
     {
         $payload = $request->validated();
-
-        // Memasukkan seller_id otomatis (auth atau default) ke payload
+        
         $payload['seller_id'] = $this->resolveCurrentSellerId($request);
 
         try {
