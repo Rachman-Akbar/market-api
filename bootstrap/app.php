@@ -23,9 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Daftarkan semua Domain Service Provider di sini
         App\Domains\Identity\IdentityServiceProvider::class,
         App\Domains\Catalog\CatalogServiceProvider::class,
-        // App\Domains\Stores\Infrastructure\Providers\StoreServiceProvider::class,
-        // App\Domains\Cart\Infrastructure\Providers\CartServiceProvider::class,
-        // App\Domains\Ordering\Infrastructure\Providers\OrderingServiceProvider::class,
+        App\Domains\Seller\SellerServiceProvider::class,
+
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(HandleCors::class);

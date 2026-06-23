@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Seller\Stores\Application\Queries;
 
+use App\Domains\Seller\Stores\Domain\Entities\Store as StoreEntity;
 use App\Domains\Seller\Stores\Domain\Repositories\StoreRepositoryInterface;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
-final class ListProductByStoreSlugQuery
-{
+final class GetStoreByIdQuery{
+    
     private StoreRepositoryInterface $storeRepository;
 
     public function __construct(StoreRepositoryInterface $storeRepository)
@@ -16,11 +16,8 @@ final class ListProductByStoreSlugQuery
         $this->storeRepository = $storeRepository;
     }
 
-    /**
-     * Mengubah return type dari Collection menjadi LengthAwarePaginator
-     */
-    public function execute(string $slug, array $filters = []): LengthAwarePaginator
+    public function execute(int $id): ?StoreEntity
     {
-        return $this->storeRepository->listProductsByStoreSlug($slug, $filters);
+        return $this->storeRepository->findById($id);
     }
 }

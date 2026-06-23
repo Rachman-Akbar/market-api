@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Identity\Domain\Entities;
 
-use App\Models\SellerProfile;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -61,9 +60,16 @@ final class User extends Authenticatable
         )->withTimestamps();
     }
 
-    public function sellerProfile(): HasOne
+    /**
+     * Relasi langsung ke StoreModel tanpa perantara seller_profiles
+     */
+    public function store(): HasOne
     {
-        return $this->hasOne(SellerProfile::class);
+        return $this->hasOne(
+            \App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel::class,
+            'user_id',
+            'id'
+        );
     }
 
     // ─────────────────────────────

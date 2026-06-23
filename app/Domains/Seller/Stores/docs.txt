@@ -1,5 +1,30 @@
 API
+    GET|HEAD  api/v1/seller/stores
+    GET|HEAD  api/v1/seller/stores/slug/{slug}
+    GET|HEAD  api/v1/seller/stores/slug/{slug}/products
+    GET|HEAD  api/v1/seller/stores/{id}
+    PUT       api/v1/seller/stores/{id}
 
 JSON
+    {
+    "store_name": "Toko Buku Berkah",
+    "phone": "081234567890",
+    "city": "Surabaya",
+    "province": "Jawa Timur",
+    "address": "Jl. Raya Ahmad Yani No. 10"
+    }
+
+    Kasus A: Jika Diupdate oleh Seller (Hanya Bisa Mengubah Info Toko)
+    JSON
+        {
+        "store_name": "Toko Buku Berkah Banget",
+        "address": "Jl. Margonda Raya No. 45",
+        "logo": "logos/toko-berkah-new.png"
+        }
+    Kasus B: Jika Diupdate oleh Admin (Bisa Mengubah Status Aktif/Nonaktif)
+    JSON
+        {
+        "is_active": false
+        }
 
 DB

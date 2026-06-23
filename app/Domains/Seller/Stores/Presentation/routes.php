@@ -1,37 +1,26 @@
 <?php
 
-declare(strict_types=1);
-
+use App\Domains\Seller\Stores\Presentation\Http\Controllers\StoreController;
 use Illuminate\Support\Facades\Route;
-use App\Domains\Stores\Presentation\Http\Controllers\StoreController;
-use App\Domains\Stores\Presentation\Http\Controllers\SellerOnboardingController;
 
+// Endpoint Publik
+Route::prefix('stores')->group(function () {
+    Route::get('/', [StoreController::class, 'index']);
+    Route::get('slug/{slug}', [StoreController::class, 'showBySlug']);
+    Route::get('slug/{slug}/products', [StoreController::class, 'productsBySlug']);
+    Route::get('{id}', [StoreController::class, 'showById'])->where('id', '[0-9]+');
+});
 
-$storeRoutes = function (): void {
-    Route::get('/', [StoreController::class, 'index'])
-        ->name('index');
+// Endpoint Terproteksi
+Route::middleware(['auth:sanctum', 'ensure.verified'])->group(function () {
 
-    Route::get('/{slug}', [StoreController::class, 'showBySlug'])
-        ->where('slug', '[A-Za-z0-9\-]+')
-        ->name('show-by-slug');
+    // Menggunakan middleware EnsureActiveRole milikmu dengan parameter 'seller'
+    Route::middleware(['ensure.active.role:seller'])->group(function () {
+        Route::put('stores/{id}', [StoreController::class, 'updateStore']);
+    });
 
-    Route::get('/{slug}/products', [StoreController::class, 'productsBySlug'])
-        ->where('slug', '[A-Za-z0-9\-]+')
-        ->name('products-by-slug');
-};
-
-Route::prefix('stores')
-    ->name('stores.')
-    ->group($storeRoutes);
-
-/**
- * Temporary backward-compatible routes.
- * Hapus ini nanti kalau frontend sudah diganti dari /catalog/stores ke /stores.
- */
-Route::prefix('catalog/stores')
-    ->name('catalog.stores.')
-    ->group($storeRoutes);
-
-Route::middleware(['auth:sanctum'])->group(function () {
-    Route::post('/seller/onboarding', [SellerOnboardingController::class, 'store']);
+    // Jika ingin membuat endpoint khusus admin besok:
+    Route::middleware(['ensure.active.role:admin'])->prefix('admin')->group(function () {
+        // Route::put('stores/{id}/ban', [StoreController::class, 'banStore']);
+    });
 });

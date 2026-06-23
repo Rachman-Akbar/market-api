@@ -12,8 +12,10 @@ interface StoreRepositoryInterface
 {
     public function paginate(array $filters = [], int $perPage = 8): LengthAwarePaginator;
     public function findBySlug(string $slug): ?Store;
-    public function listProductsByStoreSlug(string $slug): Collection;
-    
+    public function listProductsByStoreSlug(string $slug, array $filters = []): LengthAwarePaginator;
+    public function findById(int $id): ?Store;
+
     // TAMBAHKAN INI UNTUK FUNGSI CREATE CRUD
     public function create(Store $store): Store;
+    public function update(Store $store): Store;
 }

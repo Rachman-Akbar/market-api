@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Domains\Identity\Features\Auth\Presentation\Http\Controllers\AuthController;
-
 use App\Domains\Identity\Infrastructure\Middleware\ValidateFirebaseToken;
 use App\Domains\Seller\Stores\Presentation\Http\Controllers\StoreController;
 use Illuminate\Support\Facades\Route;
@@ -24,8 +23,8 @@ Route::prefix('auth')
             Route::post('/logout-other-devices', [AuthController::class, 'logoutOtherDevices'])->name('logout-other-devices');
             Route::post('/logout-all-devices', [AuthController::class, 'logoutAllDevices'])->name('logout-all-devices');
             Route::delete('/account', [AuthController::class, 'deleteCurrentAccount'])->name('account.delete');
-            Route::post('/register-seller', [StoreController::class, 'registerStore']);
+            Route::post('/switch-role', [AuthController::class, 'switchRole'])->name('switch-role'); // <-- Tambahkan ini
+            // Ditambahkan middleware verifikasi email sebelum bisa mendaftar jadi seller
+            Route::post('/register-seller', [StoreController::class, 'registerStore'])->middleware('ensure.verified');
         });
     });
-
-    

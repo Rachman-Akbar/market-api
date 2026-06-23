@@ -11,9 +11,8 @@ use Illuminate\Support\Facades\Route;
 $domainRouteFiles = [
     app_path('Domains/Identity/routes.php'),
     app_path('Domains/Catalog/routes.php'),
-    // app_path('Domains/Stores/Presentation/routes.php'),
-    // app_path('Domains/Order/Presentation/routes.php'),
-    // app_path('Domains/Cart/Presentation/routes.php'),
+    app_path('Domains/Seller/routes.php'),
+
 ];
 
 Route::get('/', function () {

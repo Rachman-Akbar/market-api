@@ -10,7 +10,6 @@ use App\Domains\Seller\Stores\Infrastructure\Persistence\Mappers\StoreMapper;
 use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -68,30 +67,26 @@ final class EloquentStoreRepository implements StoreRepositoryInterface
             ->map(fn (StoreModel $model): StoreEntity => StoreMapper::toEntity($model));
     }
 
-    public function findById(int $id): ?StoreEntity
+public function findById(int $id): ?StoreEntity
     {
+        // Mencari data ke DB menggunakan Eloquent Model beserta relasi detailnya
         $model = StoreModel::query()
             ->with('detail')
             ->find($id);
 
+        // Jika model ditemukan, ubah menjadi Domain Entity menggunakan Mapper. Jika tidak, return null.
         return $model ? StoreMapper::toEntity($model) : null;
     }
 
-    public function findBySlug(string $slug): ?StoreEntity
-    {
-        $slug = trim($slug);
+public function findBySlug(string $slug): ?StoreEntity
+{
+    // Gunakan trim untuk menghindari spasi tak kasat mata dari URL
+    $model = StoreModel::query()
+        ->where('slug', trim($slug))
+        ->first();
 
-        if ($slug === '') {
-            return null;
-        }
-
-        $model = StoreModel::query()
-            ->with('detail')
-            ->where('slug', $slug)
-            ->first();
-
-        return $model ? StoreMapper::toEntity($model) : null;
-    }
+    return $model ? StoreMapper::toEntity($model) : null;
+}
 
     public function create(StoreEntity $store): StoreEntity
     {
@@ -102,50 +97,71 @@ final class EloquentStoreRepository implements StoreRepositoryInterface
         return StoreMapper::toEntity($model);
     }
 
-    public function listProductsByStoreSlug(string $slug): Collection
+    public function update(StoreEntity $store): StoreEntity
+    {
+        // Pastikan entity store memiliki method id() atau getId() sesuai rancanganmu
+        $model = StoreModel::query()->findOrFail($store->id());
+
+        $model->update([
+            'name'        => $store->name(),
+            'slug'        => $store->slug(),
+            'description' => $store->description(),
+            'logo'        => $store->logo(),
+            'is_active'   => $store->isActive() ? 1 : 0,
+        ]);
+
+        return StoreMapper::toEntity($model);
+    }
+
+    /**
+     * Mengambil produk berdasarkan Slug Toko (Berpaginasi & Menggunakan Left Join Variant)
+     */
+    public function listProductsByStoreSlug(string $slug, array $filters = []): LengthAwarePaginator
     {
         $slug = trim($slug);
+        $perPage = (int) ($filters['per_page'] ?? 12);
 
-        if ($slug === '') {
-            return collect();
-        }
-
+        // Cari store_id terlebih dahulu lewat slug
         $storeId = DB::table('stores')
             ->where('slug', $slug)
             ->value('id');
 
+        // Jika toko tidak ditemukan, kembalikan paginator kosong bawaan Laravel DB
         if (! $storeId) {
-            return collect();
+            return DB::table('products')->where('id', 0)->paginate($perPage);
         }
 
         return DB::table('products')
+            // JOIN ke product_variants untuk menarik data SKU, Price, dan Stock dari varian default (is_default = 1)
+            ->leftJoin('product_variants', function ($join) {
+                $join->on('product_variants.product_id', '=', 'products.id')
+                     ->where('product_variants.is_default', '=', 1);
+            })
+            ->where('products.store_id', $storeId)
+            ->where('products.is_active', 1)
+            ->where('products.status', 'published')
             ->select([
-                'id',
-                'store_id',
-                'primary_category_id',
-                'seller_id',
-                'name',
-                'slug',
-                'sku',
-                'description',
-                'short_description',
-                'brand',
-                'weight_gram',
-                'price',
-                'stock',
-                'thumbnail',
-                'status',
-                'is_featured',
-                'is_active',
-                'created_at',
-                'updated_at',
+                'products.id',
+                'products.store_id',
+                'products.primary_category_id',
+                'products.seller_id',
+                'products.name',
+                'products.slug',
+                'products.description',
+                'products.brand',
+                'products.thumbnail',
+                'products.status',
+                'products.created_at',
+                'products.updated_at',
+
+                // Data Varian dialiaskan agar seolah-olah milik tabel products demi kecocokan resource DTO lama
+                'product_variants.sku as sku',
+                'product_variants.price as price',
+                'product_variants.stock as stock',
             ])
-            ->where('store_id', $storeId)
-            ->where('is_active', true)
-            ->where('status', 'published')
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->get();
+            ->orderByDesc('products.created_at')
+            ->orderByDesc('products.id')
+            ->paginate($perPage);
     }
 
     private function applyStoreFilters(Builder $query, array $filters): void

@@ -39,4 +39,9 @@ interface UserRepositoryInterface
      * Memeriksa apakah user memiliki akses seller aktif berdasarkan keberadaan toko.
      */
     public function hasSellerAccess(User $user): bool;
+
+    /**
+     * Menghapus token yang sedang digunakan saat ini.
+     */
+    public function deleteCurrentToken(User $user): void;
 }

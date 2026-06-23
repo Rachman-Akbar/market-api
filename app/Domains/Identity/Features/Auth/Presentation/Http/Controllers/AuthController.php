@@ -129,6 +129,29 @@ final class AuthController extends Controller
             'deleted_tokens' => $deletedCount,
         ]);
     }
+
+/**
+     * Berpindah role pada device saat ini (Multi-Device Friendly)
+     */
+/**
+     * Berpindah role pada device saat ini (Multi-Device Friendly)
+     */
+    public function switchRole(Request $request, \App\Domains\Identity\Features\Auth\Application\UseCases\SwitchRoleUseCase $useCase): JsonResponse
+    {
+        $validated = $request->validate([
+            'role'        => ['required', 'string', 'in:buyer,seller,admin'],
+            'device_name' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $result = $useCase->execute(
+            user: $request->user(),
+            targetRole: $validated['role'],
+            deviceName: $validated['device_name'] ?? 'marketplace-web'
+        );
+
+        return response()->json($result);
+    }
+
 }
 
 

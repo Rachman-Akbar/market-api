@@ -118,6 +118,18 @@ public function delete(string $id): bool
         });
     }
 
+    public function deleteCurrentToken(User $user): void
+    {
+        $token = $user->currentAccessToken();
+
+        // Pastikan token adalah instance yang bisa dihapus dari database
+        if ($token instanceof \Laravel\Sanctum\PersonalAccessToken) {
+            $token->delete();
+        } elseif (method_exists($token, 'delete')) {
+            $token->delete();
+        }
+    }
+    
     // ─────────────────────────────
     // Auth & Firebase Logic
     // ─────────────────────────────
