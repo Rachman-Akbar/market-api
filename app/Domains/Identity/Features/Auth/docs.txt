@@ -25,6 +25,16 @@ JSON CREATE
         "device_name": "iPhone 15 Pro"
         }
 
+    Register Seller
+        {
+        "store_name": "Toko Berkah Elektronik",
+        "phone": "081234567890",
+        "city": "Sidoarjo",
+        "province": "Jawa Timur",
+        "address": "Jl. Raya Gedangan No. 12",
+        "device_name": "Mobile-App"
+        }
+
 DB
     User
         CREATE TABLE `users` (

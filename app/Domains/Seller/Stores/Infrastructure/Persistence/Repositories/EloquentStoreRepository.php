@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Stores\Infrastructure\Persistence\Repositories;
+namespace App\Domains\Seller\Stores\Infrastructure\Persistence\Repositories;
 
-use App\Domains\Stores\Domain\Entities\Store as StoreEntity;
-use App\Domains\Stores\Domain\Repositories\StoreRepositoryInterface;
-use App\Domains\Stores\Infrastructure\Persistence\Mappers\StoreMapper;
-use App\Domains\Stores\Infrastructure\Persistence\Models\StoreModel;
+use App\Domains\Seller\Stores\Domain\Entities\Store as StoreEntity;
+use App\Domains\Seller\Stores\Domain\Repositories\StoreRepositoryInterface;
+use App\Domains\Seller\Stores\Infrastructure\Persistence\Mappers\StoreMapper;
+use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\Paginator;

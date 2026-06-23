@@ -1,12 +1,11 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Identity\Features\Auth\Application\UseCases;
 
 use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Identity\Features\Auth\Application\DTOs\RegisterSellerDTO;
-use App\Domains\Identity\Features\Auth\Application\UseCases\IssueApiTokenUseCase;
-use App\Domains\Identity\Features\Auth\Application\UseCases\BuildAuthPayloadUseCase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -20,7 +19,6 @@ final readonly class RegisterSellerUseCase
 
     public function execute(string $userId, array $data, ?string $deviceName): array
     {
-        // Cari user terlebih dahulu
         $user = $this->userRepository->findById($userId);
         if (!$user) {
             throw new \RuntimeException("User tidak ditemukan.");
@@ -37,10 +35,10 @@ final readonly class RegisterSellerUseCase
                 address: $data['address'] ?? null
             );
 
-            // 2. Buat Toko di Database
+            // 2. Buat Toko di Database (Otomatis Aktif)
             $this->userRepository->registerStore($user->id, $dto);
 
-            // 3. Assign Role 'seller' ke tabel user_roles
+            // 3. Assign Role 'seller' ke user
             $this->userRepository->assignRoleByName($user, 'seller');
 
             // 4. Terbitkan token baru dengan active-role: seller

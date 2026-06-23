@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Domains\Stores\Application\UseCases;
+namespace App\Domains\Seller\Stores\Application\Queries;
 
-use App\Domains\Stores\Domain\Repositories\StoreRepositoryInterface;
+use App\Domains\Seller\Stores\Domain\Repositories\StoreRepositoryInterface;
 
-final class GetStoreUseCase
+final class GetStoreQuery
 {
     public function __construct(
         private StoreRepositoryInterface $repository

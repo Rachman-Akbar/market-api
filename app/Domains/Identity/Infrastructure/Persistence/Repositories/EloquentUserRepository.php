@@ -190,38 +190,6 @@ public function delete(string $id): bool
         });
     }
 
-    public function assignRoleByName(User $user, string $role): void
-    {
-        $roleName = strtolower(trim($role));
-        $roleId = DB::table('roles')->where('name', $roleName)->value('id');
-
-        if ($roleId === null) {
-            throw new RuntimeException("Role [{$roleName}] tidak ditemukan di database MySQL.");
-        }
-
-        DB::table('user_roles')->updateOrInsert(
-            ['user_id' => $user->id, 'role_id' => $roleId],
-            ['created_at' => now(), 'updated_at' => now()]
-        );
-    }
-
-    public function getActiveRoleFromCurrentToken(User $user): ?string
-    {
-        $token = $user->currentAccessToken();
-
-        if (!$token instanceof PersonalAccessToken) {
-            return null;
-        }
-
-        foreach ($token->abilities ?? [] as $ability) {
-            if (is_string($ability) && str_starts_with($ability, 'active-role:')) {
-                return str_replace('active-role:', '', $ability);
-            }
-        }
-
-        return null;
-    }
-
     public function resolveDefaultActiveRole(User $user): ?string
     {
         $roles = $user->roleNames();
@@ -231,22 +199,6 @@ public function delete(string $id): bool
         }
 
         return $roles[0] ?? null;
-    }
-
-    public function activateSellerProfile(User $user, int|string $storeId): void
-    {
-        DB::table('seller_profiles')->updateOrInsert(
-            ['user_id' => $user->id],
-            [
-                'store_id' => $storeId,
-                'status' => 'active',
-                'verified_at' => now(),
-                'suspended_at' => null,
-                'rejected_reason' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        );
     }
 
     public function hasSellerAccess(User $user): bool
@@ -269,31 +221,69 @@ public function delete(string $id): bool
 
     // Tambahkan di EloquentUserRepository.php
 
-public function registerStore(string $userId, RegisterSellerDTO $dto): int
-{
-    return DB::transaction(function () use ($userId, $dto): int {
-        // 1. Tambah data ke tabel stores
-        $storeId = DB::table('stores')->insertGetId([
-            'user_id'    => $userId,
-            'name'       => $dto->storeName,
-            'slug'       => $dto->slug,
-            'phone'      => $dto->phone,
-            'city'       => $dto->city,
-            'province'   => $dto->province,
-            'address'    => $dto->address,
-            'is_active'  => 1, // Otomatis aktif
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+public function assignRoleByName(User $user, string $role): void
+    {
+        $roleName = strtolower(trim($role));
+        $roleId = DB::table('roles')->where('name', $roleName)->value('id');
 
-        // 2. Tambah data default ke tabel store_details
-        DB::table('store_details')->insert([
-            'store_id'   => $storeId,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        if ($roleId === null) {
+            throw new \RuntimeException("Role [{$roleName}] tidak ditemukan di database.");
+        }
 
-        return $storeId;
-    });
-}
+        DB::table('user_roles')->updateOrInsert(
+            ['user_id' => $user->id, 'role_id' => $roleId],
+            ['created_at' => now(), 'updated_at' => now()]
+        );
+    }
+
+    public function registerStore(string $userId, RegisterSellerDTO $dto): int
+    {
+        return DB::transaction(function () use ($userId, $dto): int {
+            // 1. Tambah data ke tabel stores (is_active otomatis 1)
+            $storeId = DB::table('stores')->insertGetId([
+                'user_id'    => $userId,
+                'name'       => $dto->storeName,
+                'slug'       => $dto->slug,
+                'phone'      => $dto->phone,
+                'city'       => $dto->city,
+                'province'   => $dto->province,
+                'address'    => $dto->address,
+                'is_active'  => 1, 
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // 2. Tambah data default ke tabel store_details
+            DB::table('store_details')->insert([
+                'store_id'   => $storeId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return $storeId;
+        });
+    }
+
+    /**
+     * Cek apakah user memiliki akses seller berdasarkan role 
+     * dan keberadaan toko yang aktif.
+     */
+
+    public function getActiveRoleFromCurrentToken(User $user): ?string
+    {
+        $token = $user->currentAccessToken();
+
+        if (!$token instanceof PersonalAccessToken) {
+            return null;
+        }
+
+        foreach ($token->abilities ?? [] as $ability) {
+            if (is_string($ability) && str_starts_with($ability, 'active-role:')) {
+                return str_replace('active-role:', '', $ability);
+            }
+        }
+
+        return null;
+    }
+
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Stores\Application\DTOs;
+namespace App\Domains\Seller\Stores\Application\DTOs;
 
 final class StoreDetailData
 {
@@ -12,6 +12,9 @@ final class StoreDetailData
         public ?string $phone = null,
     ) {}
 
+    /**
+     * @param mixed $entity
+     */
     public static function fromEntity($entity): self
     {
         return new self(

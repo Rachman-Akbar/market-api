@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Stores\Application\DTOs;
+namespace App\Domains\Seller\Stores\Application\DTOs;
 
 final class StoreData
 {
@@ -15,6 +15,9 @@ final class StoreData
         public ?StoreDetailData $detail = null,
     ) {}
 
+    /**
+     * @param \App\Domains\Seller\Stores\Domain\Entities\Store $entity
+     */
     public static function fromEntity($entity): self
     {
         return new self(
@@ -25,7 +28,10 @@ final class StoreData
             description: $entity->description(),
             logo: $entity->logo(),
             isActive: $entity->isActive(),
-            detail: $entity->detail() ? StoreDetailData::fromEntity($entity->detail()) : null,
+            // Jalankan ini jika Entity Store kamu memiliki relasi method detail() ke StoreDetail Entity
+            detail: method_exists($entity, 'detail') && $entity->detail() 
+                ? StoreDetailData::fromEntity($entity->detail()) 
+                : null,
         );
     }
 }

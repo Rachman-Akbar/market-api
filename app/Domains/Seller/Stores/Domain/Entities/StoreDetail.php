@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Stores\Domain\Entities;
+namespace App\Domains\Seller\Stores\Domain\Entities;
 
 final class StoreDetail
 {

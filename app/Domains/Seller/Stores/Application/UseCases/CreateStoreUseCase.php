@@ -1,18 +1,46 @@
 <?php
 
-namespace App\Domains\Stores\Application\UseCases;
+declare(strict_types=1);
 
-use App\Domains\Stores\Domain\Repositories\StoreRepositoryInterface;
-use App\Domains\Stores\Application\DTOs\StoreData;
+namespace App\Domains\Seller\Stores\Application\UseCases;
 
-final class CreateStoreUseCase
+use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
+use App\Domains\Identity\Features\Auth\Application\DTOs\RegisterSellerDTO;
+use App\Domains\Seller\Stores\Application\DTOs\StoreData;
+use Illuminate\Support\Str;
+
+final readonly class CreateStoreUseCase
 {
     public function __construct(
-        private StoreRepositoryInterface $repository
+        // Inject UserRepositoryInterface karena fungsi registerStore ada di sana
+        private UserRepositoryInterface $userRepository
     ) {}
 
-    public function execute(StoreData $data)
+    public function execute(string $userId, array $data, ?string $deviceName): StoreData
     {
-        return $this->repository->create($data);
+        // 1. Bungkus data input ke dalam DTO yang diminta oleh UserRepository
+        $sellerDto = new RegisterSellerDTO(
+            storeName: $data['store_name'],
+            slug: Str::slug($data['store_name']),
+            phone: $data['phone'] ?? null,
+            city: $data['city'] ?? null,
+            province: $data['province'] ?? null,
+            address: $data['address'] ?? null
+        );
+
+        // 2. Jalankan pembuatan toko (mengembalikan ID integer berdasarkan kode kamu)
+        $storeId = $this->userRepository->registerStore($userId, $sellerDto);
+
+        // 3. Kembalikan dalam bentuk StoreData DTO murni ke Controller
+        return new StoreData(
+            id: $storeId,
+            userId: $userId,
+            name: $sellerDto->storeName,
+            slug: $sellerDto->slug,
+            description: $sellerDto->address,
+            logo: null,
+            isActive: true,
+            detail: null
+        );
     }
 }

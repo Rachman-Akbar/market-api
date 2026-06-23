@@ -1,48 +1,41 @@
 <?php
 
-namespace App\Domains\Stores\Infrastructure\Persistence\Mappers;
+declare(strict_types=1);
 
-use App\Domains\Stores\Domain\Entities\Store;
-use App\Domains\Stores\Domain\Entities\StoreDetail;
-use App\Domains\Stores\Infrastructure\Persistence\Models\StoreModel;
+namespace App\Domains\Seller\Stores\Infrastructure\Persistence\Mappers;
+
+use App\Domains\Seller\Stores\Domain\Entities\Store as StoreEntity;
+use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 
 final class StoreMapper
 {
-    public static function toEntity(StoreModel $model): Store
+    // Perbaiki urutan: public static function
+    public static function toEntity(StoreModel $model): StoreEntity
     {
-        $detail = null;
-
-        if ($model->relationLoaded('detail') && $model->detail) {
-            $detail = new StoreDetail(
-                id: $model->detail->id,
-                storeId: $model->detail->store_id,
-                description: $model->detail->description,
-                address: $model->detail->address,
-                phone: $model->detail->phone,
-            );
-        }
-
-        return new Store(
-            id: $model->id,
-            userId: $model->user_id,
-            name: $model->name,
-            slug: $model->slug,
+        return new StoreEntity(
+            id: (int) $model->id,
+            userId: (string) $model->user_id,
+            name: (string) $model->name,
+            slug: (string) $model->slug,
             description: $model->description,
             logo: $model->logo,
-            isActive: (bool) ($model->is_active ?? true),
-            detail: $detail,
+            isActive: (bool) $model->is_active,
+            createdAt: (string) $model->created_at,
+            updatedAt: (string) $model->updated_at
         );
     }
 
-    public static function toModel(Store $store): array
+    // Perbaiki urutan: public static function
+    public static function toModel(StoreEntity $entity): array
     {
         return [
-            'user_id' => $store->userId(),
-            'name' => $store->name(),
-            'slug' => $store->slug(),
-            'description' => $store->description(),
-            'logo' => $store->logo(),
-            'is_active' => $store->isActive(),
+            'id' => $entity->id(),
+            'user_id' => $entity->userId(),
+            'name' => $entity->name(),
+            'slug' => $entity->slug(),
+            'description' => $entity->description(),
+            'logo' => $entity->logo(),
+            'is_active' => $entity->isActive() ? 1 : 0,
         ];
     }
 }

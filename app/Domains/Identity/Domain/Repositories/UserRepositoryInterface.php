@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Identity\Domain\Repositories;
 
 use App\Domains\Identity\Domain\Entities\User;
+use App\Domains\Identity\Features\Auth\Application\DTOs\RegisterSellerDTO;
 use App\Domains\Identity\Features\Users\Application\DTOs\CreateUserDTO;
 use App\Domains\Identity\Features\Users\Application\DTOs\UpdateUserDTO;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -28,10 +29,14 @@ interface UserRepositoryInterface
     public function getActiveRoleFromCurrentToken(User $user): ?string;
     public function resolveDefaultActiveRole(User $user): ?string;
 
-    // --- External Domain Triggers ---Q
-    public function activateSellerProfile(User $user, int|string $storeId): void;
+    // --- Seller & Store Management (Cleaned) ---
+    /**
+     * Mendaftarkan toko baru untuk user dan mengembalikan ID toko.
+     */
+    public function registerStore(string $userId, RegisterSellerDTO $dto): int;
+
+    /**
+     * Memeriksa apakah user memiliki akses seller aktif berdasarkan keberadaan toko.
+     */
     public function hasSellerAccess(User $user): bool;
 }
-
-
-
