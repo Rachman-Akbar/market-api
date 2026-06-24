@@ -2,36 +2,30 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Cart\Infrastructure\Persistence\Mappers;
+namespace App\Domains\Order\Cart\Infrastructure\Persistence\Mappers;
 
-use App\Domains\Cart\Domain\Entities\Cart;
-use App\Domains\Cart\Domain\ValueObjects\CartStatus;
-use App\Domains\Cart\Infrastructure\Persistence\Models\CartModel;
+use App\Domains\Order\Cart\Domain\Entities\Cart;
+use App\Domains\Order\Cart\Domain\Entities\CartItem;
+use App\Domains\Order\Cart\Infrastructure\Persistence\Models\CartModel;
 
 final class CartMapper
 {
-    public function __construct(private readonly ?CartItemMapper $itemMapper = null)
+    public static function toDomain(CartModel $model): Cart
     {
-    }
+        $domainItems = [];
 
-    public function toDomain(CartModel $model): Cart
-    {
-        $mapper = $this->itemMapper ?? new CartItemMapper();
-
-        if (! $model->relationLoaded('items')) {
-            $model->load('items');
+        foreach ($model->items as $itemModel) {
+            $domainItems[] = new CartItem(
+                id: (int) $itemModel->id,
+                productVariantId: (int) $itemModel->product_variant_id,
+                quantity: (int) $itemModel->quantity
+            );
         }
-
-        $items = $model->items
-            ->map(static fn ($item) => $mapper->toDomain($item))
-            ->all();
 
         return new Cart(
             id: (int) $model->id,
             userId: (string) $model->user_id,
-            activeUserId: $model->active_user_id,
-            status: CartStatus::fromDatabase((string) $model->status),
-            items: $items,
+            items: $domainItems
         );
     }
 }

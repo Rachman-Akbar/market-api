@@ -2,25 +2,22 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Cart\Application\UseCases;
+namespace App\Domains\Order\Cart\Application\UseCases;
 
-use App\Domains\Cart\Application\DTOs\CartSummaryData;
-use App\Domains\Cart\Domain\Repositories\CartRepositoryInterface;
-use Illuminate\Support\Facades\DB;
+use App\Domains\Order\Cart\Application\DTOs\CartSummaryData;
+use App\Domains\Order\Cart\Domain\Repositories\CartRepositoryInterface;
 
-final readonly class ClearCartUseCase
+final class ClearCartUseCase
 {
-    public function __construct(private CartRepositoryInterface $carts)
-    {
+    public function __construct(
+        private readonly CartRepositoryInterface $cartRepository
+    ) {
     }
 
     public function execute(string $userId): CartSummaryData
     {
-        return DB::transaction(function () use ($userId): CartSummaryData {
-            $cart = $this->carts->getOrCreateActiveByUserId($userId, lock: true);
-            $cart->clear();
+        $this->cartRepository->delete($userId);
 
-            return CartSummaryData::fromCart($this->carts->save($cart));
-        }, 3);
+        return new CartSummaryData([], 0, 0);
     }
 }

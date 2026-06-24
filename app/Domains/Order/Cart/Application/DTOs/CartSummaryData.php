@@ -2,46 +2,37 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Cart\Application\DTOs;
+namespace App\Domains\Order\Cart\Application\DTOs;
 
-use App\Domains\Cart\Domain\Entities\Cart;
-use App\Domains\Cart\Domain\Entities\CartItem;
-
-final readonly class CartSummaryData
+final class CartSummaryData
 {
-    /** @param array<string, mixed> $payload */
-    public function __construct(private array $payload)
-    {
+    /**
+     * @param array<int, array{
+     * variant_id: int,
+     * name: string,
+     * sku: string,
+     * price: int,
+     * quantity: int,
+     * subtotal: int,
+     * attributes: array<string, string>
+     * }> $items
+     */
+    public function __construct(
+        public array $items,
+        public int $totalItems,
+        public int $totalPrice
+    ) {
     }
 
-    public static function fromCart(Cart $cart): self
-    {
-        return new self([
-            'id' => $cart->id(),
-            'user_id' => $cart->userId(),
-            'active_user_id' => $cart->activeUserId(),
-            'status' => $cart->status()->value,
-            'total_quantity' => $cart->totalQuantity(),
-            'subtotal' => $cart->subtotal()->value(),
-            'items' => array_map(
-                static fn (CartItem $item): array => [
-                    'id' => $item->id(),
-                    'cart_id' => $item->cartId(),
-                    'product_id' => $item->productId(),
-                    'quantity' => $item->quantity()->value(),
-                    'price_snapshot' => $item->priceSnapshot()->value(),
-                    'subtotal' => $item->subtotal()->value(),
-                    'product_name_snapshot' => $item->productNameSnapshot(),
-                    'product_image_snapshot' => $item->productImageSnapshot(),
-                ],
-                $cart->items(),
-            ),
-        ]);
-    }
-
-    /** @return array<string, mixed> */
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
-        return $this->payload;
+        return [
+            'items' => $this->items,
+            'total_items' => $this->totalItems,
+            'total_price' => $this->totalPrice,
+        ];
     }
 }

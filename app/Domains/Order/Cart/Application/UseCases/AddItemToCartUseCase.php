@@ -2,41 +2,45 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Cart\Application\UseCases;
+namespace App\Domains\Order\Cart\Application\UseCases;
 
-use App\Domains\Cart\Application\DTOs\AddCartItemData;
-use App\Domains\Cart\Application\DTOs\CartSummaryData;
-use App\Domains\Cart\Domain\Repositories\CartRepositoryInterface;
-use App\Domains\Cart\Domain\ValueObjects\Money;
-use App\Domains\Cart\Domain\ValueObjects\Quantity;
-use App\Domains\Cart\Infrastructure\Services\CartStockValidator;
-use Illuminate\Support\Facades\DB;
+use App\Domains\Order\Cart\Application\DTOs\AddCartItemData;
+use App\Domains\Order\Cart\Application\DTOs\CartSummaryData;
+use App\Domains\Order\Cart\Domain\Repositories\CartRepositoryInterface;
+// PASTIKAN BARIS INI SEPERTI DI BAWAH INI:
+use App\Domains\Order\Cart\Application\Readers\ProductForCartReaderInterface;
+use DomainException;
 
-final readonly class AddItemToCartUseCase
+final class AddItemToCartUseCase
 {
     public function __construct(
-        private CartRepositoryInterface $carts,
-        private CartStockValidator $stockValidator,
+        private CartRepositoryInterface $cartRepository,
+        private ProductForCartReaderInterface $productReader
     ) {
     }
 
     public function execute(AddCartItemData $data): CartSummaryData
     {
-        return DB::transaction(function () use ($data): CartSummaryData {
-            $cart = $this->carts->getOrCreateActiveByUserId($data->userId, lock: true);
+        
+        // 1. Ambil atau buat data keranjang belanja user
+        $cart = $this->cartRepository->findByUserId($data->userId);
+        if (!$cart) {
+            $cart = $this->cartRepository->createNewCart($data->userId);
+        }
 
-            $targetQuantity = $cart->currentQuantityForProduct($data->productId) + $data->quantity;
-            $product = $this->stockValidator->ensureProductAvailable($data->productId, $targetQuantity);
+        // 2. Cek stok varian produk dari Domain Produk (via Interface Reader)
+        $variantStock = $this->productReader->getVariantStock($data->productVariantId);
+        if ($variantStock === null) {
+            throw new DomainException("Varian produk tidak ditemukan.");
+        }
 
-            $cart->addItem(
-                productId: $data->productId,
-                quantity: Quantity::fromInt($data->quantity),
-                priceSnapshot: Money::fromInt((int) $product['price']),
-                productNameSnapshot: (string) $product['name'],
-                productImageSnapshot: $product['image'] ?? null,
-            );
+        // 3. Masukkan ke Domain Agregat Cart untuk diproses validasi internalnya
+        $cart->addItem($data->productVariantId, $data->quantity, $variantStock);
 
-            return CartSummaryData::fromCart($this->carts->save($cart));
-        }, 3);
+        // 4. Simpan perubahan ke database
+        $this->cartRepository->save($cart);
+
+        // 5. Kembalikan data kalkulasi terbaru
+        return $this->cartRepository->getSummary($cart->getUserId());
     }
 }

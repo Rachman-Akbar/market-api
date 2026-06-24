@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Domains\Identity\IdentityServiceProvider::class,
         App\Domains\Catalog\CatalogServiceProvider::class,
         App\Domains\Seller\SellerServiceProvider::class,
+        App\Domains\Order\OrderServiceProvider::class,
 
     ])
     ->withMiddleware(function (Middleware $middleware): void {

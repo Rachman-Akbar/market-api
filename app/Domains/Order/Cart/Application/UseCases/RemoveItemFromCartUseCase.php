@@ -2,25 +2,22 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Cart\Application\UseCases;
+namespace App\Domains\Order\Cart\Application\UseCases;
 
-use App\Domains\Cart\Application\DTOs\CartSummaryData;
-use App\Domains\Cart\Domain\Repositories\CartRepositoryInterface;
-use Illuminate\Support\Facades\DB;
+use App\Domains\Order\Cart\Application\DTOs\CartSummaryData;
+use App\Domains\Order\Cart\Domain\Repositories\CartRepositoryInterface;
 
-final readonly class RemoveItemFromCartUseCase
+final class RemoveItemFromCartUseCase
 {
-    public function __construct(private CartRepositoryInterface $carts)
-    {
+    public function __construct(
+        private CartRepositoryInterface $cartRepository
+    ) {
     }
 
-    public function execute(string $userId, int $productId): CartSummaryData
+    public function execute(string $userId, int $productVariantId): CartSummaryData
     {
-        return DB::transaction(function () use ($userId, $productId): CartSummaryData {
-            $cart = $this->carts->getOrCreateActiveByUserId($userId, lock: true);
-            $cart->removeItem($productId);
+        $this->cartRepository->removeItem($userId, $productVariantId);
 
-            return CartSummaryData::fromCart($this->carts->save($cart));
-        }, 3);
+        return $this->cartRepository->getSummary($userId);
     }
 }

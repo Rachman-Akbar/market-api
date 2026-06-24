@@ -2,15 +2,22 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Cart\Domain\Repositories;
+namespace App\Domains\Order\Cart\Domain\Repositories;
 
-use App\Domains\Cart\Domain\Entities\Cart;
+use App\Domains\Order\Cart\Domain\Entities\Cart;
+use App\Domains\Order\Cart\Application\DTOs\CartSummaryData;
 
 interface CartRepositoryInterface
 {
-    public function findActiveByUserId(string $userId, bool $lock = false): ?Cart;
-
-    public function getOrCreateActiveByUserId(string $userId, bool $lock = false): Cart;
-
-    public function save(Cart $cart): Cart;
+    public function findByUserId(string $userId): ?Cart;
+    
+    public function createNewCart(string $userId): Cart;
+    
+    public function save(Cart $cart): void;
+    
+    public function delete(string $userId): void;
+    
+    public function removeItem(string $userId, int $productVariantId): void;
+    
+    public function getSummary(string $userId): CartSummaryData;
 }

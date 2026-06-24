@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Domains\Cart\Presentation\Http\Controllers\CartController;
+use App\Domains\Order\Cart\Presentation\Http\Controllers\CartController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum'])

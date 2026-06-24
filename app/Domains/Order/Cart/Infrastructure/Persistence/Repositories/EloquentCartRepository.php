@@ -2,111 +2,127 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Cart\Infrastructure\Persistence\Repositories;
+namespace App\Domains\Order\Cart\Infrastructure\Persistence\Repositories;
 
-use App\Domains\Cart\Domain\Entities\Cart;
-use App\Domains\Cart\Domain\Entities\CartItem;
-use App\Domains\Cart\Domain\Repositories\CartRepositoryInterface;
-use App\Domains\Cart\Domain\ValueObjects\CartStatus;
-use App\Domains\Cart\Infrastructure\Persistence\Mappers\CartMapper;
-use App\Domains\Cart\Infrastructure\Persistence\Models\CartItemModel;
-use App\Domains\Cart\Infrastructure\Persistence\Models\CartModel;
+use App\Domains\Order\Cart\Application\DTOs\CartSummaryData;
+use App\Domains\Order\Cart\Domain\Entities\Cart;
 
-final readonly class EloquentCartRepository implements CartRepositoryInterface
+use App\Domains\Order\Cart\Domain\Repositories\CartRepositoryInterface;
+use App\Domains\Order\Cart\Application\Readers\ProductForCartReaderInterface;
+
+use App\Domains\Order\Cart\Infrastructure\Persistence\Mappers\CartMapper;
+use App\Domains\Order\Cart\Infrastructure\Persistence\Models\CartItemModel;
+use App\Domains\Order\Cart\Infrastructure\Persistence\Models\CartModel;
+use App\Domains\Order\Cart\Domain\ValueObjects\Money;
+use Illuminate\Support\Facades\DB;
+
+final class EloquentCartRepository implements CartRepositoryInterface
 {
-    public function __construct(private CartMapper $mapper)
-    {
+    public function __construct(
+        private readonly ProductForCartReaderInterface $productReader
+    ) {
     }
 
-    public function findActiveByUserId(string $userId, bool $lock = false): ?Cart
+    public function findByUserId(string $userId): ?Cart
     {
-        $query = CartModel::query()
-            ->where('user_id', $userId)
-            ->where('status', CartStatus::ACTIVE->value)
-            ->with('items')
-            ->latest('id');
+        $cartModel = CartModel::with(['items'])->where('user_id', $userId)->first();
 
-        if ($lock) {
-            $query->lockForUpdate();
+        if (!$cartModel) {
+            return null;
         }
 
-        $model = $query->first();
-
-        return $model ? $this->mapper->toDomain($model) : null;
+        return CartMapper::toDomain($cartModel);
     }
 
-    public function getOrCreateActiveByUserId(string $userId, bool $lock = false): Cart
+    public function createNewCart(string $userId): Cart
     {
-        $cart = $this->findActiveByUserId($userId, $lock);
+        $cartModel = CartModel::create(['user_id' => $userId]);
+        $cartModel->setRelation('items', collect());
 
-        if ($cart !== null) {
-            return $cart;
-        }
-
-        $model = CartModel::query()->create([
-            'user_id' => $userId,
-            'active_user_id' => $userId,
-            'status' => CartStatus::ACTIVE->value,
-        ]);
-
-        $model->load('items');
-
-        return $this->mapper->toDomain($model);
+        return CartMapper::toDomain($cartModel);
     }
 
-    public function save(Cart $cart): Cart
+    public function save(Cart $cart): void
     {
-        $model = $cart->id() !== null
-            ? CartModel::query()->lockForUpdate()->findOrFail($cart->id())
-            : new CartModel();
+        DB::transaction(function () use ($cart): void {
+            $cartModel = CartModel::firstOrCreate(['user_id' => $cart->getUserId()]);
 
-        $model->fill([
-            'user_id' => $cart->userId(),
-            'active_user_id' => $cart->status() === CartStatus::ACTIVE ? $cart->userId() : null,
-            'status' => $cart->status()->value,
-        ]);
-        $model->save();
+            $activeVariantIds = [];
 
-        $this->syncItems($model, $cart->items());
+            foreach ($cart->getItems() as $item) {
+                $activeVariantIds[] = $item->getProductVariantId();
 
-        $model->load('items');
+                CartItemModel::updateOrCreate(
+                    [
+                        'cart_id' => $cartModel->id,
+                        'product_variant_id' => $item->getProductVariantId(),
+                    ],
+                    [
+                        'quantity' => $item->getQuantity(),
+                    ]
+                );
+            }
 
-        return $this->mapper->toDomain($model);
-    }
-
-    /** @param CartItem[] $items */
-    private function syncItems(CartModel $cartModel, array $items): void
-    {
-        $productIds = array_map(
-            static fn (CartItem $item): int => $item->productId(),
-            $items,
-        );
-
-        if ($productIds === []) {
-            CartItemModel::query()
-                ->where('cart_id', $cartModel->id)
+            CartItemModel::where('cart_id', $cartModel->id)
+                ->whereNotIn('product_variant_id', $activeVariantIds)
                 ->delete();
-            return;
+        });
+    }
+
+    public function delete(string $userId): void
+    {
+        CartModel::where('user_id', $userId)->delete();
+    }
+
+    public function removeItem(string $userId, int $productVariantId): void
+    {
+        $cartModel = CartModel::where('user_id', $userId)->first();
+
+        if ($cartModel) {
+            CartItemModel::where('cart_id', $cartModel->id)
+                ->where('product_variant_id', $productVariantId)
+                ->delete();
+        }
+    }
+
+    public function getSummary(string $userId): CartSummaryData
+    {
+        $cartModel = CartModel::where('user_id', $userId)->first();
+
+        if (!$cartModel) {
+            return new CartSummaryData([], 0, 0);
         }
 
-        CartItemModel::query()
-            ->where('cart_id', $cartModel->id)
-            ->whereNotIn('product_id', $productIds)
-            ->delete();
+        $itemModels = CartItemModel::where('cart_id', $cartModel->id)->get();
 
-        foreach ($items as $item) {
-            CartItemModel::query()->updateOrCreate(
-                [
-                    'cart_id' => $cartModel->id,
-                    'product_id' => $item->productId(),
-                ],
-                [
-                    'quantity' => $item->quantity()->value(),
-                    'price_snapshot' => $item->priceSnapshot()->value(),
-                    'product_name_snapshot' => $item->productNameSnapshot(),
-                    'product_image_snapshot' => $item->productImageSnapshot(),
-                ],
-            );
+        $formattedItems = [];
+        $totalItems = 0;
+        $totalPrice = new Money(0);
+
+        foreach ($itemModels as $itemModel) {
+            $details = $this->productReader->getVariantDetails((int) $itemModel->product_variant_id);
+
+            if (!$details) {
+                continue;
+            }
+
+            $quantity = (int) $itemModel->quantity;
+            $subtotal = $details->getPrice()->multiply($quantity);
+
+            $totalItems += $quantity;
+            $totalPrice = $totalPrice->add($subtotal);
+
+            $formattedItems[] = [
+                'variant_id' => $details->getId(),
+                'name' => $details->getName(),
+                'sku' => $details->getSku(),
+                'price' => $details->getPrice()->getAmount(),
+                'quantity' => $quantity,
+                'subtotal' => $subtotal->getAmount(),
+                'attributes' => $details->getAttributes(),
+            ];
         }
+
+        return new CartSummaryData($formattedItems, $totalItems, $totalPrice->getAmount());
     }
 }

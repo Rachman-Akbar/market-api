@@ -2,32 +2,48 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Cart\Application\UseCases;
+namespace App\Domains\Order\Cart\Application\UseCases;
 
-use App\Domains\Cart\Application\DTOs\CartSummaryData;
-use App\Domains\Cart\Application\DTOs\UpdateCartItemData;
-use App\Domains\Cart\Domain\Repositories\CartRepositoryInterface;
-use App\Domains\Cart\Domain\ValueObjects\Quantity;
-use App\Domains\Cart\Infrastructure\Services\CartStockValidator;
-use Illuminate\Support\Facades\DB;
+use App\Domains\Order\Cart\Application\DTOs\UpdateCartItemData;
+use App\Domains\Order\Cart\Application\DTOs\CartSummaryData;
+use App\Domains\Order\Cart\Domain\Repositories\CartRepositoryInterface;
+use App\Domains\Order\Cart\Application\Readers\ProductForCartReaderInterface;
+use DomainException;
 
-final readonly class UpdateCartItemQuantityUseCase
+final class UpdateCartItemQuantityUseCase
 {
     public function __construct(
-        private CartRepositoryInterface $carts,
-        private CartStockValidator $stockValidator,
+        private CartRepositoryInterface $cartRepository,
+        private ProductForCartReaderInterface $productReader
     ) {
     }
 
     public function execute(UpdateCartItemData $data): CartSummaryData
     {
-        return DB::transaction(function () use ($data): CartSummaryData {
-            $cart = $this->carts->getOrCreateActiveByUserId($data->userId, lock: true);
+        $cart = $this->cartRepository->findByUserId($data->userId);
+        if (!$cart) {
+            throw new DomainException("Keranjang belanja tidak ditemukan.");
+        }
 
-            $this->stockValidator->ensureProductAvailable($data->productId, $data->quantity);
-            $cart->updateItemQuantity($data->productId, Quantity::fromInt($data->quantity));
+        $variantStock = $this->productReader->getVariantStock($data->productVariantId);
+        if ($variantStock === null) {
+            throw new DomainException("Varian produk tidak ditemukan.");
+        }
 
-            return CartSummaryData::fromCart($this->carts->save($cart));
-        }, 3);
+        if ($data->quantity > $variantStock) {
+            throw new DomainException("Stok tidak mencukupi untuk kuantitas yang diminta.");
+        }
+
+        // Cari item di dalam agregat dan ubah jumlahnya
+        foreach ($cart->getItems() as $item) {
+            if ($item->getProductVariantId() === $data->productVariantId) {
+                $item->changeQuantity($data->quantity);
+                break;
+            }
+        }
+
+        $this->cartRepository->save($cart);
+
+        return $this->cartRepository->getSummary($data->userId);
     }
 }

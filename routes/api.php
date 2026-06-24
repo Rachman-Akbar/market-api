@@ -12,6 +12,7 @@ $domainRouteFiles = [
     app_path('Domains/Identity/routes.php'),
     app_path('Domains/Catalog/routes.php'),
     app_path('Domains/Seller/routes.php'),
+    app_path('Domains/Order/routes.php'),
 
 ];
 

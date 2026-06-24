@@ -2,21 +2,20 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Cart\Application\UseCases;
+namespace App\Domains\Order\Cart\Application\UseCases;
 
-use App\Domains\Cart\Application\DTOs\CartSummaryData;
-use App\Domains\Cart\Domain\Repositories\CartRepositoryInterface;
+use App\Domains\Order\Cart\Application\DTOs\CartSummaryData;
+use App\Domains\Order\Cart\Domain\Repositories\CartRepositoryInterface;
 
-final readonly class GetCartUseCase
+final class GetCartUseCase
 {
-    public function __construct(private CartRepositoryInterface $carts)
-    {
+    public function __construct(
+        private CartRepositoryInterface $cartRepository
+    ) {
     }
 
     public function execute(string $userId): CartSummaryData
     {
-        $cart = $this->carts->getOrCreateActiveByUserId($userId);
-
-        return CartSummaryData::fromCart($cart);
+        return $this->cartRepository->getSummary($userId);
     }
 }

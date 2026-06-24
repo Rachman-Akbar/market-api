@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Cart\Presentation\Http\Controllers;
+namespace App\Domains\Order\Cart\Presentation\Http\Controllers;
 
-use App\Domains\Cart\Application\DTOs\AddCartItemData;
-use App\Domains\Cart\Application\DTOs\CartSummaryData;
-use App\Domains\Cart\Application\DTOs\UpdateCartItemData;
-use App\Domains\Cart\Application\UseCases\AddItemToCartUseCase;
-use App\Domains\Cart\Application\UseCases\ClearCartUseCase;
-use App\Domains\Cart\Application\UseCases\GetCartUseCase;
-use App\Domains\Cart\Application\UseCases\RemoveItemFromCartUseCase;
-use App\Domains\Cart\Application\UseCases\UpdateCartItemQuantityUseCase;
-use App\Domains\Cart\Presentation\Http\Requests\AddCartItemRequest;
-use App\Domains\Cart\Presentation\Http\Requests\UpdateCartItemRequest;
-use App\Domains\Cart\Presentation\Http\Resources\CartResource;
+use App\Domains\Order\Cart\Application\DTOs\AddCartItemData;
+use App\Domains\Order\Cart\Application\DTOs\CartSummaryData;
+use App\Domains\Order\Cart\Application\DTOs\UpdateCartItemData;
+use App\Domains\Order\Cart\Application\UseCases\AddItemToCartUseCase;
+use App\Domains\Order\Cart\Application\UseCases\ClearCartUseCase;
+use App\Domains\Order\Cart\Application\UseCases\GetCartUseCase;
+use App\Domains\Order\Cart\Application\UseCases\RemoveItemFromCartUseCase;
+use App\Domains\Order\Cart\Application\UseCases\UpdateCartItemQuantityUseCase;
+use App\Domains\Order\Cart\Presentation\Http\Requests\AddCartItemRequest;
+use App\Domains\Order\Cart\Presentation\Http\Requests\UpdateCartItemRequest;
+use App\Domains\Order\Cart\Presentation\Http\Resources\CartResource;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,28 +38,50 @@ final class CartController extends Controller
     }
 
     public function store(AddCartItemRequest $request): JsonResponse
-    {
-        return $this->respond(fn (): CartSummaryData => $this->addItem->execute(new AddCartItemData(
-            userId: $this->userId($request),
-            productId: (int) $request->validated('product_id'),
-            quantity: (int) $request->validated('quantity'),
-        )));
+{
+    return $this->respond(fn (): CartSummaryData => $this->handleBulkItems($request));
+}
+
+/**
+ * Memproses array items dari request satu per satu
+ */
+private function handleBulkItems(AddCartItemRequest $request): CartSummaryData
+{
+    $userId = $this->userId($request);
+    $items = $request->validated('items'); // Ambil array bertingkatnya
+
+    $lastSummary = null;
+
+    foreach ($items as $item) {
+        $lastSummary = $this->addItem->execute(new AddCartItemData(
+            userId: $userId,
+            productVariantId: (int) $item['product_variant_id'], // Membaca id dari dalam array (105, lalu 106)
+            quantity: (int) $item['quantity']
+        ));
     }
 
-    public function update(UpdateCartItemRequest $request, int|string $productId): JsonResponse
+    // Jika karena suatu alasan array kosong, ambil data cart kosong
+    if ($lastSummary === null) {
+        return $this->getCart->execute($userId);
+    }
+
+    return $lastSummary;
+}
+
+    public function update(UpdateCartItemRequest $request, int|string $productVariantId): JsonResponse
     {
         return $this->respond(fn (): CartSummaryData => $this->updateItem->execute(new UpdateCartItemData(
             userId: $this->userId($request),
-            productId: (int) $productId,
+            productVariantId: (int) $productVariantId,
             quantity: (int) $request->validated('quantity'),
         )));
     }
 
-    public function destroy(Request $request, int|string $productId): JsonResponse
+    public function destroy(Request $request, int|string $productVariantId): JsonResponse
     {
         return $this->respond(fn (): CartSummaryData => $this->removeItem->execute(
             userId: $this->userId($request),
-            productId: (int) $productId,
+            productVariantId: (int) $productVariantId,
         ));
     }
 
