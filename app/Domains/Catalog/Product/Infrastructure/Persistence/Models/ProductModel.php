@@ -7,6 +7,7 @@ namespace App\Domains\Catalog\Product\Infrastructure\Persistence\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
 use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class ProductModel extends Model
 {
@@ -60,4 +61,10 @@ final class ProductModel extends Model
     {
         return $this->hasMany(ProductAttributeValueModel::class, 'product_id');
     }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImageModel::class, 'product_id', 'id');
+    }
+
 }

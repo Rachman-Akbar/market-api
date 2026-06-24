@@ -11,19 +11,21 @@ use App\Domains\Catalog\Product\Domain\Entities\ProductVariant;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductVariantRepositoryInterface;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductAttributeValueRepositoryInterface;
+use App\Domains\Catalog\Product\Domain\Repositories\ProductImageRepositoryInterface;
 
 final class CreateProductUseCase
 {
     public function __construct(
         private readonly ProductRepositoryInterface $products,
         private readonly ProductVariantRepositoryInterface $variants,
-        private readonly ProductAttributeValueRepositoryInterface $attributeValues
+        private readonly ProductAttributeValueRepositoryInterface $attributeValues,
+        private readonly ProductImageRepositoryInterface $productImages
     ) {}
 
     public function execute(array $data): Product
     {
         return DB::transaction(function () use ($data) {
-            // 1. Resolve Store ID dari Seller ID secara otomatis di internal Use Case
+            // 1. Resolve Store ID dari Seller ID secara otomatis
             $sellerId = $data['seller_id'];
             $storeId = $this->resolveStoreIdBySellerId($sellerId);
 
@@ -34,6 +36,7 @@ final class CreateProductUseCase
             // 2. Resolve SKU jika user tidak mengisinya
             $sku = $this->resolveSku($data);
 
+            // 3. Simpan data utama Product
             $product = $this->products->save(new Product(
                 id: null,
                 storeId: $storeId,
@@ -49,6 +52,15 @@ final class CreateProductUseCase
                 categoryIds: array_map('intval', $data['category_ids'] ?? [])
             ));
 
+            // 4. Simpan Galeri Gambar (Product Images) jika ada
+            if (! empty($data['images'])) {
+                $this->productImages->replaceForProduct(
+                    productId: (int) $product->id(),
+                    images: $data['images']
+                );
+            }
+
+            // 5. Simpan Atribut/Spesifikasi Product
             if (! empty($data['attribute_values'])) {
                 $this->attributeValues->replaceForProduct(
                     productId: (int) $product->id(),
@@ -56,32 +68,47 @@ final class CreateProductUseCase
                 );
             }
 
-            foreach ($data['variants'] ?? [] as $variantData) {
-                $variant = $this->variants->save(new ProductVariant(
+            // 6. FIX: Tangani Pembuatan Varian (Mendukung Flat Payload & Multi-Variant)
+            if (empty($data['variants'])) {
+                // Jika request berbentuk flat, buatkan 1 varian default otomatis
+                $this->variants->save(new ProductVariant(
                     id: null,
                     productId: (int) $product->id(),
-                    sku: (string) ($variantData['sku'] ?? $sku), // fallback ke SKU utama jika varian kosong
-                    name: (string) $variantData['name'],
-                    price: (float) ($variantData['price'] ?? 0),
-                    stock: (int) ($variantData['stock'] ?? 0),
-                    isDefault: (bool) ($variantData['is_default'] ?? false)
+                    sku: $sku,
+                    name: (string) $data['name'],
+                    price: (float) ($data['price'] ?? 0),
+                    stock: (int) ($data['stock'] ?? 0),
+                    isDefault: true
                 ));
+            } else {
+                // Jika request membawa array variants eksplisit
+                foreach ($data['variants'] as $variantData) {
+                    $variant = $this->variants->save(new ProductVariant(
+                        id: null,
+                        productId: (int) $product->id(),
+                        sku: (string) ($variantData['sku'] ?? $sku),
+                        name: (string) $variantData['name'],
+                        price: (float) ($variantData['price'] ?? 0),
+                        stock: (int) ($variantData['stock'] ?? 0),
+                        isDefault: (bool) ($variantData['is_default'] ?? false)
+                    ));
 
-                if (! empty($variantData['values'])) {
-                    $this->variants->replaceValues(
-                        variantId: (int) $variant->id(),
-                        values: $variantData['values']
-                    );
+                    if (! empty($variantData['values'])) {
+                        $this->variants->replaceValues(
+                            variantId: (int) $variant->id(),
+                            values: $variantData['values']
+                        );
+                    }
                 }
             }
 
+            // PENTING: Pastikan di dalam method findById() repositori Anda sudah menerapkan ->with(['variants'])
             return $this->products->findById((int) $product->id());
         });
     }
 
     private function resolveStoreIdBySellerId(string $sellerId): ?int
     {
-        // Idealnya ini menggunakan StoreRepository, namun sementara dipisahkan di sini agar Controller bersih
         $storeId = DB::table('stores')->where('user_id', $sellerId)->value('id');
         return $storeId ? (int) $storeId : null;
     }

@@ -21,6 +21,7 @@ final class Product
         private readonly array $categoryIds = [],
         private readonly array $attributeValues = [],
         private readonly array $variants = [],
+        private readonly array $images = [],
         private readonly ?string $createdAt = null,
         private readonly ?string $updatedAt = null
     ) {}
@@ -93,6 +94,11 @@ final class Product
     public function variants(): array
     {
         return $this->variants;
+    }
+
+    public function images(): array
+    {
+        return $this->images;
     }
 
     public function createdAt(): ?string

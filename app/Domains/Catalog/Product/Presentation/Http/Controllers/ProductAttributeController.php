@@ -35,7 +35,9 @@ final class ProductAttributeController extends Controller
     {
         $attribute = $query->execute($id);
 
-        abort_if(! $attribute, 404, 'Product attribute not found.');
+        if (! $attribute) {
+            return response()->json(['message' => 'Product attribute not found.'], 404);
+        }
 
         return new ProductAttributeResource($attribute);
     }
@@ -51,8 +53,6 @@ final class ProductAttributeController extends Controller
     {
         $useCase->execute($id);
 
-        return response()->json([
-            'message' => 'Product attribute deleted',
-        ]);
+        return response()->json(['message' => 'Product attribute deleted successfully.']);
     }
 }

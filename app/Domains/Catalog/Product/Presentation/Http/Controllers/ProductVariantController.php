@@ -18,6 +18,21 @@ use App\Domains\Catalog\Product\Presentation\Http\Resources\ProductVariantResour
 
 final class ProductVariantController extends Controller
 {
+    // --- PUBLIC ROUTE ---
+    public function publicIndex(Request $request, int $productId, GetProductQuery $productQuery, ListProductVariantsQuery $query)
+    {
+        $product = $productQuery->execute($productId);
+        
+        if (! $product) {
+            return response()->json(['message' => 'Product not found.'], 404);
+        }
+
+        $variants = $query->execute($productId, $request->all());
+
+        return ProductVariantResource::collection($variants);
+    }
+
+    // --- PROTECTED ROUTES (SELLER ONLY) ---
     public function index(Request $request, int $productId, GetProductQuery $productQuery, ListProductVariantsQuery $query)
     {
         $this->assertSellerProduct($request, $productId, $productQuery);
@@ -42,8 +57,9 @@ final class ProductVariantController extends Controller
 
         $variant = $query->execute($variantId);
 
-        abort_if(! $variant, 404, 'Product variant not found.');
-        abort_if($variant->productId() !== $productId, 404, 'Product variant not found.');
+        if (! $variant || $variant->productId() !== $productId) {
+            return response()->json(['message' => 'Product variant not found.'], 404);
+        }
 
         return new ProductVariantResource($variant);
     }
@@ -54,8 +70,9 @@ final class ProductVariantController extends Controller
 
         $variant = $query->execute($variantId);
 
-        abort_if(! $variant, 404, 'Product variant not found.');
-        abort_if($variant->productId() !== $productId, 404, 'Product variant not found.');
+        if (! $variant || $variant->productId() !== $productId) {
+            return response()->json(['message' => 'Product variant not found.'], 404);
+        }
 
         $updated = $useCase->execute($variantId, $request->validated());
 
@@ -68,28 +85,25 @@ final class ProductVariantController extends Controller
 
         $variant = $query->execute($variantId);
 
-        abort_if(! $variant, 404, 'Product variant not found.');
-        abort_if($variant->productId() !== $productId, 404, 'Product variant not found.');
+        if (! $variant || $variant->productId() !== $productId) {
+            return response()->json(['message' => 'Product variant not found.'], 404);
+        }
 
         $useCase->execute($variantId);
 
-        return response()->json([
-            'message' => 'Product variant deleted',
-        ]);
+        return response()->json(['message' => 'Product variant deleted successfully.']);
     }
 
-private function assertSellerProduct(Request $request, int $productId, GetProductQuery $query): void
-{
-    $product = $query->execute($productId);
+    // --- HELPER METOD ---
+    private function assertSellerProduct(Request $request, int $productId, GetProductQuery $query): void
+    {
+        $product = $query->execute($productId);
+        
+        abort_if(! $product, 404, 'Product not found.');
 
-    abort_if(! $product, 404, 'Product not found.');
+        $user = $request->user();
+        abort_if(! $user, 401, 'Unauthenticated.');
 
-    // Menggunakan ID user login, JIKA null (tidak login) maka pakai ID default/dummy ini
-    $userId = $request->user()
-        ? (string) $request->user()->getAuthIdentifier()
-        : '7d140c91-2c01-431f-9c5b-f41c629b1a06';
-
-    abort_if($product->sellerId() !== $userId, 403, 'Forbidden.');
-}
-
+        abort_if($product->sellerId() !== (string) $user->getAuthIdentifier(), 403, 'Forbidden. This product does not belong to you.');
+    }
 }

@@ -23,6 +23,10 @@ final class ProductMapper
             ? $model->variants->map(fn ($item) => ProductVariantMapper::toEntity($item))->all()
             : [];
 
+        $images = $model->relationLoaded('images')
+            ? $model->images->map(fn ($item) => ProductImageMapper::toEntity($item))->all()
+            : [];
+
         return new Product(
             id: (int) $model->id,
             storeId: (int) $model->store_id,
@@ -38,6 +42,7 @@ final class ProductMapper
             categoryIds: $categoryIds,
             attributeValues: $attributeValues,
             variants: $variants,
+            images: $images,
             createdAt: $model->created_at?->toDateTimeString(),
             updatedAt: $model->updated_at?->toDateTimeString()
         );
@@ -61,3 +66,5 @@ final class ProductMapper
         return $model;
     }
 }
+
+

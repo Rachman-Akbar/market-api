@@ -1,311 +1,112 @@
 API
-    GET|HEAD  api/v1/catalog/products products.index › App\Domains\Catalog\Product\Presentation\Http\Control…
-    POST      api/v1/catalog/products products.store › App\Domains\Catalog\Product\Presentation\Http\Control…
-    GET|HEAD  api/v1/catalog/products/product-attributes products.product-attributes.index › App\Domains\Cat…
-    POST      api/v1/catalog/products/product-attributes products.product-attributes.store › App\Domains\Cat…
-    GET|HEAD  api/v1/catalog/products/product-attributes/{id} products.product-attributes.show › App\Domains…
-    PUT       api/v1/catalog/products/product-attributes/{id} products.product-attributes.update › App\Domai…
-    DELETE    api/v1/catalog/products/product-attributes/{id} products.product-attributes.destroy › App\Doma…
-    GET|HEAD  api/v1/catalog/products/slug/{slug} products.show-by-slug › App\Domains\Catalog\Product\Presen…
-    GET|HEAD  api/v1/catalog/products/{id} products.show › App\Domains\Catalog\Product\Presentation\Http\Con…
-    PUT       api/v1/catalog/products/{id} products.update › App\Domains\Catalog\Product\Presentation\Http\C…
-    DELETE    api/v1/catalog/products/{id} products.destroy › App\Domains\Catalog\Product\Presentation\Http\…
-    GET|HEAD  api/v1/catalog/products/{productId}/variants products.variants.index › App\Domains\Catalog\Pro…
-    POST      api/v1/catalog/products/{productId}/variants products.variants.store › App\Domains\Catalog\Pro…
-    GET|HEAD  api/v1/catalog/products/{productId}/variants/{variantId} products.variants.show › App\Domains\…
-    PUT       api/v1/catalog/products/{productId}/variants/{variantId} products.variants.update › App\Domain…
-    DELETE    api/v1/catalog/products/{productId}/variants/{variantId}
+    GET|HEAD  api/v1/catalog/products/attributes 
+    POST      api/v1/catalog/products/attributes 
+    GET|HEAD  api/v1/catalog/products/attributes/{id} 
+    PUT       api/v1/catalog/products/attributes/{id} 
+    DELETE    api/v1/catalog/products/attributes/{id} 
+    GET|HEAD  api/v1/catalog/products 
+    GET|HEAD  api/v1/catalog/products/slug/{slug} 
+    GET|HEAD  api/v1/catalog/products/{id} 
+    GET|HEAD  api/v1/catalog/products/{productId}/variants 
 
+    GET|HEAD  api/v1/catalog/seller/products seller.products.index › App\Domains\Catalog\Product\Presentatio…
+    POST      api/v1/catalog/seller/products seller.products.store › App\Domains\Catalog\Product\Presentatio…
+    PUT       api/v1/catalog/seller/products/{id} seller.products.update › App\Domains\Catalog\Product\Prese…
+    DELETE    api/v1/catalog/seller/products/{id} seller.products.destroy › App\Domains\Catalog\Product\Pres…
+    GET|HEAD  api/v1/catalog/seller/products/{productId}/variants seller.products.variants.index › App\Domai…
+    POST      api/v1/catalog/seller/products/{productId}/variants seller.products.variants.store › App\Domai…
+    GET|HEAD  api/v1/catalog/seller/products/{productId}/variants/{variantId} seller.products.variants.show …
+    PUT       api/v1/catalog/seller/products/{productId}/variants/{variantId} seller.products.variants.updat…
+    DELETE    api/v1/catalog/seller/products/{productId}/variants/{variantId} seller.products.variants.destr…
 
 JSON CREATE
-    {
-    "store_id": 27,
+   {
+    "name": "Sepatu Nike Air Max 2026 Premium",
     "primary_category_id": 69,
-    "category_ids": [69],
-    "name": "Sepatu Olahraga",
-    "slug": "sepatu-olahraga",
-    "description": "Sepatu olahraga ringan dan nyaman",
+    "description": "Sepatu running premium dengan bantalan udara maksimal untuk kenyamanan lari harian Anda.",
     "brand": "Nike",
-    "thumbnail": "products/sepatu.jpg",
+    "thumbnail": "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
     "status": "published",
     "is_active": true,
-    "attribute_values": [
+    "category_ids": [69],
+    "images": [
         {
-        "attribute_id": 1,
-        "values": ["M", "L", "XL"]
+        "url": "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+        "alt_text": "Nike Air Max Merah - Tampak Samping",
+        "is_primary": true,
+        "sort_order": 1
         },
         {
-        "attribute_id": 2,
-        "values": ["Putih", "Hitam"]
+        "url": "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa",
+        "alt_text": "Nike Air Max Merah - Tampak Atas",
+        "is_primary": false,
+        "sort_order": 2
+        }
+    ],
+    "attribute_values": [
+        {
+        "attribute_id": 3,
+        "value": "Mesh Premium & Rubber"
         }
     ],
     "variants": [
         {
-        "sku": "SPT-XL-PUTIH",
-        "name": "Sepatu Olahraga XL Putih",
-        "price": 250000,
-        "stock": 20,
+        "sku": "NIKE-hasbasbxdxbkj-RED-42",
+        "name": "Nike Air Max Red 42",
+        "price": 1850000,
+        "stock": 25,
         "is_default": true,
         "values": [
-            {
-            "attribute_id": 1,
-            "value": "XL"
-            },
-            {
-            "attribute_id": 2,
-            "value": "Putih"
-            }
+            { "attribute_id": 1, "value": "Merah" },
+            { "attribute_id": 2, "value": "42" }
+        ]
+        },
+        {
+        "sku": "NIKE-xbaxbaxbhxsb-RED-43",
+        "name": "Nike Air Max Red 43",
+        "price": 9090,
+        "stock": 16650000,
+        "is_default": false,
+        "values": [
+            { "attribute_id": 1, "value": "Merah" },
+            { "attribute_id": 2, "value": "43" }
         ]
         }
     ]
     }
 
-    Product dengan variant tunggal
+    Product
         {
-        "name": "Kaos Polos Cotton Combed 30s",
-        "slug": "kaos-polos-cotton-combed-30s",
-        "description": "Kaos polos premium bahan cotton combed 30s nyaman digunakan sehari-hari.",
-        "brand": "BasicWear",
+        "name": "Sepatu Adidas UltraBoost 2026",
         "primary_category_id": 12,
-        "category_ids": [12, 15],
+        "description": "Sepatu lari ternyaman dengan teknologi Boost terbaru untuk pengembalian energi maksimum.",
+        "brand": "Adidas",
+        "thumbnail": "https://images.unsplash.com/photo-1608231387042-66d1773070a5",
         "status": "published",
         "is_active": true,
-        "attribute_values": [
-            {
-            "attribute_id": 1,
-            "value": "Cotton"
-            }
-        ],
-        "variants": [
-            {
-            "sku": "KP-CC30S-BLK-S",
-            "name": "Kaos Polos Hitam - S",
-            "price": 45000,
-            "stock": 50,
-            "is_default": true,
-            "values": [
-                {
-                "attribute_id": 2,
-                "value": "S"
-                }
-            ]
-            },
-            {
-            "sku": "KP-CC30S-BLK-M",
-            "name": "Kaos Polos Hitam - M",
-            "price": 45000,
-            "stock": 100,
-            "is_default": false,
-            "values": [
-                {
-                "attribute_id": 2,
-                "value": "M"
-                }
-            ]
-            },
-            {
-            "sku": "KP-CC30S-BLK-L",
-            "name": "Kaos Polos Hitam - L",
-            "price": 50000,
-            "stock": 75,
-            "is_default": false,
-            "values": [
-                {
-                "attribute_id": 2,
-                "value": "L"
-                }
-            ]
-            }
-        ]
-        }
-
-        Product Multi Variant
-            {
-            "name": "Xphony X10 Pro",
-            "brand": "Xphony",
-            "primary_category_id": 5,
-            "category_ids": [5, 9],
-            "description": "Flagship smartphone dengan performa terbaik di kelasnya.",
-            "status": "published",
-            "is_active": true,
-            "attribute_values": [
-                {
-                "attribute_id": 5,
-                "value": "Android 16"
-                }
-            ],
-            "variants": [
-                {
-                "sku": "XP10P-BLK-128",
-                "name": "Xphony X10 Pro Space Black (8GB / 128GB)",
-                "price": 8999000,
-                "stock": 20,
-                "is_default": true,
-                "values": [
-                    {
-                    "attribute_id": 3,
-                    "value": "Space Black"
-                    },
-                    {
-                    "attribute_id": 4,
-                    "value": "128GB"
-                    }
-                ]
-                },
-                {
-                "sku": "XP10P-BLK-256",
-                "name": "Xphony X10 Pro Space Black (12GB / 256GB)",
-                "price": 9999000,
-                "stock": 15,
-                "is_default": false,
-                "values": [
-                    {
-                    "attribute_id": 3,
-                    "value": "Space Black"
-                    },
-                    {
-                    "attribute_id": 4,
-                    "value": "256GB"
-                    }
-                ]
-                },
-                {
-                "sku": "XP10P-SLV-256",
-                "name": "Xphony X10 Pro Satin Silver (12GB / 256GB)",
-                "price": 9999000,
-                "stock": 10,
-                "is_default": false,
-                "values": [
-                    {
-                    "attribute_id": 3,
-                    "value": "Satin Silver"
-                    },
-                    {
-                    "attribute_id": 4,
-                    "value": "256GB"
-                    }
-                ]
-                }
-            ]
-            }
-
-    Variant
-        {
-        "sku": "XP10P-SLV-128",
-        "name": "Xphony X10 Pro Satin Silver (8GB / 128GB)",
-        "price": 8999000,
-        "stock": 25,
-        "is_default": false,
-        "values": [
-            {
-            "attribute_id": 3,
-            "value": "Satin Silver"
-            },
-            {
-            "attribute_id": 4,
-            "value": "128GB"
-            }
-        ]
+        "category_ids": [12, 15]
         }
 
     Attribute
+        {
+        "name": "Bahan Material",
+        "code": "bahan_material",
+        "type": "text"
+        }
 
+    Variant
+        {
+        "sku": "ADI-UB26-BLK-42",
+        "name": "Adidas UltraBoost Black 42",
+        "price": 2500000,
+        "stock": 50,
+        "is_default": true,
+        "values": [
+            {
+            "attribute_id": 1, 
+            "value": "Hitam Core"
+            }
+        ]
+        }
 
 DB
-    CREATE TABLE `products` (
-    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-    `store_id` bigint unsigned NOT NULL,
-    `primary_category_id` bigint unsigned DEFAULT NULL,
-    `seller_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `slug` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-    `brand` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `thumbnail` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'published',
-    `is_active` tinyint(1) NOT NULL DEFAULT '1',
-    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `products_slug_unique` (`slug`),
-    KEY `fk_products_store` (`store_id`),
-    KEY `fk_products_category` (`primary_category_id`),
-    CONSTRAINT `fk_products_category` FOREIGN KEY (`primary_category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL,
-    CONSTRAINT `fk_products_store` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-
-    CREATE TABLE `product_attributes` (
-    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-    `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-    `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-    `type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'select',
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `attributes_slug_unique` (`slug`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-
-    CREATE TABLE `product_attribute_values` (
-    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-    `product_id` bigint unsigned NOT NULL,
-    `attribute_id` bigint unsigned NOT NULL,
-    `value` text COLLATE utf8mb4_unicode_ci NOT NULL,
-    PRIMARY KEY (`id`),
-    KEY `fk_pav_product` (`product_id`),
-    KEY `fk_pav_attribute` (`attribute_id`),
-    CONSTRAINT `fk_pav_attribute` FOREIGN KEY (`attribute_id`) REFERENCES `product_attributes` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_pav_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-
-    CREATE TABLE `product_categories` (
-    `product_id` bigint unsigned NOT NULL,
-    `category_id` bigint unsigned NOT NULL,
-    `is_primary` tinyint(1) NOT NULL DEFAULT '0',
-    PRIMARY KEY (`product_id`,`category_id`),
-    KEY `fk_pc_category` (`category_id`),
-    CONSTRAINT `fk_pc_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_pc_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-
-    CREATE TABLE `product_images` (
-    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-    `product_id` bigint unsigned NOT NULL,
-    `image_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `alt_text` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    `is_primary` tinyint(1) NOT NULL DEFAULT '0',
-    `sort_order` int NOT NULL DEFAULT '0',
-    `created_at` timestamp NULL DEFAULT NULL,
-    `updated_at` timestamp NULL DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    KEY `product_images_product_id_is_primary_index` (`product_id`,`is_primary`),
-    KEY `idx_product_images_sort_order` (`product_id`,`sort_order`),
-    CONSTRAINT `product_images_product_id_foreign` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-
-    CREATE TABLE `product_variants` (
-    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-    `product_id` bigint unsigned NOT NULL,
-    `sku` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `price` decimal(15,2) NOT NULL DEFAULT '0.00',
-    `stock` int NOT NULL DEFAULT '0',
-    `is_default` tinyint(1) NOT NULL DEFAULT '0',
-    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `variants_sku_unique` (`sku`),
-    KEY `fk_variants_product` (`product_id`),
-    CONSTRAINT `fk_variants_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-
-    CREATE TABLE `product_variant_values` (
-    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-    `variant_id` bigint unsigned NOT NULL,
-    `attribute_id` bigint unsigned NOT NULL,
-    `value` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-    PRIMARY KEY (`id`),
-    KEY `fk_pvv_variant` (`variant_id`),
-    KEY `fk_pvv_attribute` (`attribute_id`),
-    CONSTRAINT `fk_pvv_attribute` FOREIGN KEY (`attribute_id`) REFERENCES `product_attributes` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_pvv_variant` FOREIGN KEY (`variant_id`) REFERENCES `product_variants` (`id`) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-

@@ -64,11 +64,15 @@ final class EloquentProductRepository implements ProductRepositoryInterface
 
     public function findById(int $id): ?Product
     {
-        $model = ProductModel::query()
-            ->with($this->relations())
-            ->find($id);
-
-        return $model ? ProductMapper::toEntity($model) : null;
+        // Memuat semua relasi penting (variants, images, attributeValues) agar data tidak kosong
+        $model = ProductModel::with($this->relations())->find($id);
+        
+        if (! $model) {
+            return null;
+        }
+        
+        // FIX: Menggunakan ProductMapper untuk standarisasi konversi ke Domain Entity
+        return ProductMapper::toEntity($model);
     }
 
     public function findBySlug(string $slug): ?Product
@@ -265,6 +269,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             'store',
             'attributeValues.attribute',
             'variants.values.attribute',
+            'images',
         ];
     }
 

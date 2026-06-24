@@ -30,3 +30,4 @@ final class UpdateProductVariantRequest extends FormRequest
         ];
     }
 }
+
