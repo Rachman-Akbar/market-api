@@ -1,0 +1,23 @@
+API
+    GET|HEAD  api/v1/order/addresses addresses. › App\Domains\Order\Addresses\Presentation\Http\Controllers\…
+    POST      api/v1/order/addresses addresses. › App\Domains\Order\Addresses\Presentation\Http\Controllers\…
+    PUT       api/v1/order/addresses/{id} addresses. › App\Domains\Order\Addresses\Presentation\Http\Control…
+    DELETE    api/v1/order/addresses/{id} addresses. › App\Domains\Order\Addresses\Presentation\Http\Control…
+
+JSON
+    {
+    "label": "Rumah Utama",
+    "recipient_name": "John Doe",
+    "phone_number": "081234567890",
+    "full_address": "Jl. Merdeka No. 123, RT 01/RW 02, Kecamatan Kebayoran Baru",
+    "city": "Jakarta Selatan",
+    "postal_code": "12110",
+    "is_primary": true
+    }
+
+DB
+
+saat mau diberikan maps tracker
+ALTER TABLE `addresses`
+    ADD COLUMN `latitude` DECIMAL(10, 8) NULL AFTER `postal_code`,
+    ADD COLUMN `longitude` DECIMAL(11, 8) NULL AFTER `latitude`;

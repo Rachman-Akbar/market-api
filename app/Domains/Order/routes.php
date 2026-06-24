@@ -8,9 +8,6 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('order')->group(function () {
 
     Route::group([], app_path('Domains/Order/Cart/Presentation/routes.php'));
-    // Route::group([], app_path('Domains/Order/Category/Presentation/routes.php'));
-    // Route::group([], app_path('Domains/Order/Product/Presentation/routes.php'));
-    // Route::group([], app_path('Domains/Order/Banner/Presentation/routes.php'));
-    // Route::group([], app_path('Domains/Order/Promotion/Presentation/routes.php'));
+    Route::group([], app_path('Domains/Order/Addresses/Presentation/routes.php'));
 
 });

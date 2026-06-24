@@ -5,8 +5,8 @@ API
     POST      api/v1/identity/auth/logout-all-devices
     POST      api/v1/identity/auth/logout-other-devices
     GET|HEAD  api/v1/identity/auth/me
-    POST      api/v1/identity/auth/password-login 
-    POST      api/v1/identity/auth/password-register 
+    POST      api/v1/identity/auth/password-login
+    POST      api/v1/identity/auth/password-register
 
 JSON CREATE
     Register
@@ -20,8 +20,8 @@ JSON CREATE
 
     Login
         {
-        "email": "aris.wijaya@example.com",
-        "password": "SecurePassword123!",
+        "email": "akbarr@gmail.nmsahgshj",
+        "password": "12345678",
         "device_name": "iPhone 15 Pro"
         }
 
@@ -40,7 +40,7 @@ JSON CREATE
         "role": "seller",
         "device_name": "Laptop-Asus"
         }
-        
+
 DB
     User
         CREATE TABLE `users` (

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Order;
 
+use App\Domains\Order\Addresses\Domain\Repositories\AddressRepositoryInterface;
+use App\Domains\Order\Addresses\Infrastructure\Persistence\Repositories\EloquentAddressRepository;
 use App\Domains\Order\Cart\Application\Readers\ProductForCartReaderInterface;
 use App\Domains\Order\Cart\Infrastructure\Persistence\Readers\EloquentProductForCartReader;
 use App\Domains\Order\Cart\Domain\Repositories\CartRepositoryInterface;
@@ -17,6 +19,8 @@ class OrderServiceProvider extends ServiceProvider
         // Bind Interface ke Implementation secara global untuk Bounded Context Order
         $this->app->bind(CartRepositoryInterface::class, EloquentCartRepository::class);
         $this->app->bind(ProductForCartReaderInterface::class, EloquentProductForCartReader::class);
+
+        $this->app->bind(AddressRepositoryInterface::class, EloquentAddressRepository::class);
     }
 
     public function boot(): void
