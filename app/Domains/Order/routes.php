@@ -9,5 +9,6 @@ Route::prefix('order')->group(function () {
 
     Route::group([], app_path('Domains/Order/Cart/Presentation/routes.php'));
     Route::group([], app_path('Domains/Order/Addresses/Presentation/routes.php'));
+    Route::group([], app_path('Domains/Order/Wishlist/Presentation/routes.php'));
 
 });
