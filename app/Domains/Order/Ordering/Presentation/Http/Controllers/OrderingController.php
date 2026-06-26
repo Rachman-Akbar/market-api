@@ -25,7 +25,8 @@ class OrderingController extends Controller
             // Jalankan usecase
             $order = $this->createOrderUseCase->execute(
                 userId: $request->input('user_id'),
-                shippingAddress: $request->input('shipping_address')
+                shippingAddress: $request->input('shipping_address'),
+                cartItemIds: $request->input('cart_item_ids', []) // Tangkap array checkbox dari frontend
             );
 
             // Mapping items agar menampilkan properti di dalam array JSON

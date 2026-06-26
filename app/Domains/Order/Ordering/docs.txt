@@ -13,7 +13,13 @@ JSON
     }
 
     {
-    "shipping_address": "Ruko Grand Wijaya Blok H-12, Jl. Wijaya II, Kebayoran Baru, Jakarta Selatan, 12160"
+        "shipping_address": "Ruko Grand Wijaya Blok H-12, Jl. Wijaya II, Kebayoran Baru, Jakarta Selatan, 12160"
+    }
+
+    {
+        "user_id": "fe55a239-8462-4e8f-99e1-3755faa6507a",
+        "shipping_address": "Jl. Merdeka No. 17, Jakarta Pusat",
+        "cart_item_ids": [12, 15]
     }
 
 DB
