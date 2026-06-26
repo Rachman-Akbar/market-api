@@ -1,0 +1,53 @@
+API
+    POST      api/v1/order/orderings
+    GET|HEAD  api/v1/order/orderings/customers/{userId}
+    GET|HEAD  api/v1/order/orderings/stores/{storeId}
+    GET|HEAD  api/v1/order/orderings/{id}
+    POST      api/v1/order/orderings/{id}/cancel
+    PATCH     api/v1/order/orderings/{id}/status
+
+JSON
+    {
+        "address_id": 12,
+        "payment_method": "bank_transfer"
+    }
+
+    {
+    "shipping_address": "Ruko Grand Wijaya Blok H-12, Jl. Wijaya II, Kebayoran Baru, Jakarta Selatan, 12160"
+    }
+
+DB
+    CREATE TABLE `orders` (
+        `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        `order_number` VARCHAR(50) NOT NULL,
+        `user_id` VARCHAR(255) NOT NULL,
+        `total_amount` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+        `status` VARCHAR(50) NOT NULL DEFAULT 'pending',
+        `shipping_address` TEXT NOT NULL,
+        `created_at` TIMESTAMP NULL DEFAULT NULL,
+        `updated_at` TIMESTAMP NULL DEFAULT NULL,
+        UNIQUE KEY `orders_order_number_unique` (`order_number`),
+        INDEX `orders_user_id_index` (`user_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE `order_items` (
+        `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        `order_id` BIGINT UNSIGNED NOT NULL,
+        `product_id` BIGINT UNSIGNED NOT NULL,
+        `store_id` BIGINT UNSIGNED NOT NULL, -- Kolom store_id untuk identifikasi toko
+        `product_name` VARCHAR(255) NOT NULL,
+        `sku` VARCHAR(100) NOT NULL,
+        `price` DECIMAL(12, 2) NOT NULL,
+        `quantity` INT NOT NULL DEFAULT 1,
+        `created_at` TIMESTAMP NULL DEFAULT NULL,
+        `updated_at` TIMESTAMP NULL DEFAULT NULL,
+
+        -- Indexing untuk optimasi query berdasarkan toko dan produk
+        INDEX `order_items_store_id_index` (`store_id`),
+        INDEX `order_items_product_id_index` (`product_id`),
+
+        -- Foreign Key ke tabel orders
+        CONSTRAINT `order_items_order_id_foreign` FOREIGN KEY (`order_id`)
+            REFERENCES `orders` (`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

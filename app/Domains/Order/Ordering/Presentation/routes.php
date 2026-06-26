@@ -1,71 +1,19 @@
 <?php
 
-declare(strict_types=1);
-
-use App\Domains\Ordering\Presentation\Http\Controllers\CheckoutController;
-use App\Domains\Ordering\Presentation\Http\Controllers\CheckoutSessionController;
-use App\Domains\Ordering\Presentation\Http\Controllers\ManualTransferApprovalController;
-use App\Domains\Ordering\Presentation\Http\Controllers\MidtransCheckoutSessionPaymentController;
-use App\Domains\Ordering\Presentation\Http\Controllers\MidtransNotificationController;
-use App\Domains\Ordering\Presentation\Http\Controllers\OrderController;
-use App\Domains\Ordering\Presentation\Http\Controllers\OrderPaymentStatusController;
-use App\Http\Middleware\EnsureApiTokenIsValid;
+use App\Domains\Order\Ordering\Presentation\Http\Controllers\OrderingController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/midtrans/notifications', MidtransNotificationController::class)
-    ->name('midtrans.notifications');
+Route::prefix('orderings')->group(function () {
+    // 1. Checkout / Buat Order Baru
+    Route::post('/', [OrderingController::class, 'store']);
 
-Route::middleware(['auth:sanctum', EnsureApiTokenIsValid::class])->group(function (): void {
-    /*
-    |--------------------------------------------------------------------------
-    | COD Checkout
-    |--------------------------------------------------------------------------
-    | COD boleh langsung membuat order final.
-    */
-    Route::post('/checkout', [CheckoutController::class, 'store'])
-        ->name('checkout.store');
+    // 2. Rute Filter & Spesifik (Ditempatkan di atas)
+    // Menggunakan 'customer' agar cocok dengan fungsi getByCustomer
+    Route::get('customers/{userId}', [OrderingController::class, 'getByCustomer']);
+    Route::get('stores/{storeId}', [OrderingController::class, 'getByStore']);
 
-    /*
-    |--------------------------------------------------------------------------
-    | Checkout Sessions
-    |--------------------------------------------------------------------------
-    | Midtrans dan manual transfer tidak langsung membuat order final.
-    */
-    Route::prefix('checkout-sessions')
-        ->name('checkout-sessions.')
-        ->group(function (): void {
-            Route::post('/', [CheckoutSessionController::class, 'store'])
-                ->name('store');
-
-            Route::get('/{session}', [CheckoutSessionController::class, 'show'])
-                ->name('show');
-
-            Route::post('/{session}/pay/midtrans', [MidtransCheckoutSessionPaymentController::class, 'create'])
-                ->name('pay.midtrans');
-
-            Route::post('/{session}/cancel', [CheckoutSessionController::class, 'cancel'])
-                ->name('cancel');
-
-            Route::post('/{session}/approve-manual-transfer', [ManualTransferApprovalController::class, 'approve'])
-                ->name('approve-manual-transfer');
-        });
-
-    Route::prefix('orders')
-        ->name('orders.')
-        ->group(function (): void {
-            Route::get('/', [OrderController::class, 'index'])
-                ->name('index');
-
-            Route::get('/{order}', [OrderController::class, 'show'])
-                ->name('show');
-
-            Route::post('/{order}/cancel', [OrderController::class, 'cancel'])
-                ->name('cancel');
-
-            Route::patch('/{order}/status', [OrderController::class, 'updateStatus'])
-                ->name('update-status');
-
-                Route::get('/payment', [OrderPaymentStatusController::class, 'show'])
-    ->name('payment.show');
-        });
+    // 3. Rute Dinamis Detail / Action (Ditempatkan paling bawah)
+    Route::get('{id}', [OrderingController::class, 'show']);
+    Route::post('{id}/cancel', [OrderingController::class, 'cancel']);
+    Route::patch('{id}/status', [OrderingController::class, 'updateStatus']);
 });

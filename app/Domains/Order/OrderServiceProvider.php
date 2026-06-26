@@ -10,6 +10,8 @@ use App\Domains\Order\Cart\Application\Readers\ProductForCartReaderInterface;
 use App\Domains\Order\Cart\Infrastructure\Persistence\Readers\EloquentProductForCartReader;
 use App\Domains\Order\Cart\Domain\Repositories\CartRepositoryInterface;
 use App\Domains\Order\Cart\Infrastructure\Persistence\Repositories\EloquentCartRepository;
+use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
+use App\Domains\Order\Ordering\Infrastructure\Persistence\Repositories\EloquentOrderRepository;
 use App\Domains\Order\Wishlist\Domain\Repositories\WishlistRepositoryInterface;
 use App\Domains\Order\Wishlist\Infrastructure\Persistence\Repositories\EloquentWishlistRepository;
 use Illuminate\Support\ServiceProvider;
@@ -24,6 +26,8 @@ class OrderServiceProvider extends ServiceProvider
 
         $this->app->bind(AddressRepositoryInterface::class, EloquentAddressRepository::class);
         $this->app->bind(WishlistRepositoryInterface::class, EloquentWishlistRepository::class);
+
+        $this->app->bind(OrderRepositoryInterface::class, EloquentOrderRepository::class);
     }
 
     public function boot(): void

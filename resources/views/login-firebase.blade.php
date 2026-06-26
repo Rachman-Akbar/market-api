@@ -85,30 +85,33 @@
         });
 
         // Fungsi untuk menembak API Backend Laravel
-        async function sendTokenToBackend(token) {
-            const apiUrl = '/api/v1/identity/auth/firebase-login'; // Sesuaikan jika domain API berbeda
+// Fungsi yang sudah disesuaikan dengan kebutuhan Bearer Header Backend Anda
+async function sendTokenToBackend(token) {
+    const apiUrl = '/api/v1/identity/auth/firebase-login'; // Sesuaikan jika domain API berbeda
 
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        firebase_token: token, // Kirimkan ID Token ini ke backend
-                        device_name: "Browser Testing (Laravel Blade)"
-                    })
-                });
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                // Tambahkan token Firebase ke dalam Authorization Header di sini
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                // Tetap kirim device_name di body karena API membutuhkannya
+                device_name: "Browser Testing (Laravel Blade)"
+            })
+        });
 
-                const jsonResponse = await response.json();
-                showLog("Laravel Backend API Response", jsonResponse);
+        const jsonResponse = await response.json();
+        showLog("Laravel Backend API Response", jsonResponse);
 
-            } catch (error) {
-                console.error(error);
-                showLog("Backend API Network Error", { message: error.message });
-            }
-        }
+    } catch (error) {
+        console.error(error);
+        showLog("Backend API Network Error", { message: error.message });
+    }
+}
     </script>
 </body>
 </html>

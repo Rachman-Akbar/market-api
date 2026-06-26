@@ -9,15 +9,11 @@ JSON
     {
         "items": [
             {
-                "product_variant_id": 1,
-                "name": "Sepatu Olahraga XL Putih",
-                "sku": "SPT-XL-PUTIH",
+                "product_variant_id": 105,
                 "quantity": 2
             },
             {
-                "product_variant_id": 3,
-                "name": "Kaos Polos Hitam - M",
-                "sku": "KP-CC30S-BLK-M",
+                "product_variant_id": 106,
                 "quantity": 3
             }
         ]
