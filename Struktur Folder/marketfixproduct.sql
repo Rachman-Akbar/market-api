@@ -22,62 +22,45 @@ USE `kishamarket`;
 -- Dumping structure for table kishamarket.addresses
 CREATE TABLE IF NOT EXISTS `addresses` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `user_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `label` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `lat` decimal(10,7) DEFAULT NULL,
-  `lng` decimal(10,7) DEFAULT NULL,
+  `user_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `store_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `label` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `recipient_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `phone_number` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `full_address` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `city` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `postal_code` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_primary` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `addresses_user_id_index` (`user_id`),
-  CONSTRAINT `addresses_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `addresses_store_id_index` (`store_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.addresses: ~3 rows (approximately)
-INSERT IGNORE INTO `addresses` (`id`, `user_id`, `label`, `address`, `lat`, `lng`, `created_at`, `updated_at`) VALUES
-	(1, '019da96b-08e3-7005-9c1b-8a17feb799ac', 'Alamat Utama', 'Jl. Marketplace No. 1, Jakarta', -6.2000000, 106.8166000, '2026-04-19 22:44:24', '2026-04-19 22:44:24'),
-	(2, '019da96b-0adb-72a5-ab39-a74b473b66ff', 'Alamat Utama', 'Jl. Marketplace No. 2, Jakarta', -6.1990000, 106.8176000, '2026-04-19 22:44:24', '2026-04-19 22:44:24'),
-	(3, '019da96b-0ce0-701d-97e0-2bf4d98ce6bb', 'Alamat Utama', 'Jl. Marketplace No. 3, Jakarta', -6.1980000, 106.8186000, '2026-04-19 22:44:24', '2026-04-19 22:44:24');
+-- Dumping data for table kishamarket.addresses: ~2 rows (approximately)
+INSERT IGNORE INTO `addresses` (`id`, `user_id`, `store_id`, `label`, `recipient_name`, `phone_number`, `full_address`, `city`, `postal_code`, `is_primary`, `created_at`, `updated_at`) VALUES
+	(2, 'fe55a239-8462-4e8f-99e1-3755faa6507a', NULL, 'Rumah Utama', 'John Doe', '081234567890', 'Jl. Merdeka No. 123, RT 01/RW 02, Kecamatan Kebayoran Baru', 'Jakarta Selatan', '12110', 0, '2026-06-24 00:51:46', '2026-06-24 01:28:51'),
+	(3, 'fe55a239-8462-4e8f-99e1-3755faa6507a', NULL, 'Rumah Utama', 'John Doe', '081234567890', 'Jl. Merdeka No. 123, RT 01/RW 02, Kecamatan Kebayoran Baru', 'Jakarta Selatan', '12110', 1, '2026-06-24 01:28:51', '2026-06-24 01:28:51'),
+	(4, NULL, '31', 'Rumah Utama', 'sxbmasbnvxb Doe', '081234567890', 'Jl. Merdeka No. 123, RT 01/RW 02, Kecamatan Kebayoran Baru', 'Jakarta Selatan', '12110', 1, '2026-06-24 01:34:25', '2026-06-24 01:34:25');
 
 -- Dumping structure for table kishamarket.banners
 CREATE TABLE IF NOT EXISTS `banners` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `title` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `subtitle` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `image_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `mobile_image_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `link_type` enum('product','category','store','catalog_group','custom') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'custom',
-  `link_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `product_id` bigint unsigned DEFAULT NULL,
-  `category_id` bigint unsigned DEFAULT NULL,
-  `store_id` bigint unsigned DEFAULT NULL,
-  `catalog_group_id` bigint unsigned DEFAULT NULL,
+  `store_id` bigint unsigned NOT NULL,
+  `image_url` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `sort_order` int NOT NULL DEFAULT '0',
-  `starts_at` datetime DEFAULT NULL,
-  `ends_at` datetime DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_banners_active_sort` (`is_active`,`sort_order`),
-  KEY `idx_banners_product_id` (`product_id`),
-  KEY `idx_banners_category_id` (`category_id`),
-  KEY `idx_banners_store_id` (`store_id`),
-  KEY `idx_banners_catalog_group_id` (`catalog_group_id`),
-  CONSTRAINT `fk_banners_catalog_group` FOREIGN KEY (`catalog_group_id`) REFERENCES `catalog_groups` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_banners_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_banners_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_banners_store` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `idx_shop_banners_store` (`store_id`,`is_active`,`sort_order`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.banners: ~5 rows (approximately)
-INSERT IGNORE INTO `banners` (`id`, `title`, `subtitle`, `image_url`, `mobile_image_url`, `link_type`, `link_url`, `product_id`, `category_id`, `store_id`, `catalog_group_id`, `sort_order`, `starts_at`, `ends_at`, `is_active`, `created_at`, `updated_at`) VALUES
-	(1, 'Belanja Elektronik Pilihan', 'Koleksi gadget dan device untuk produktivitas harian.', 'https://picsum.photos/seed/banner-electronics/1600/700', 'https://picsum.photos/seed/banner-electronics-mobile/900/1200', 'catalog_group', '/catalog-groups/electronics', NULL, NULL, NULL, 2, 1, '2026-04-23 03:34:25', NULL, 1, '2026-04-23 03:34:25', '2026-04-23 03:34:25'),
-	(2, 'Fashion & Beauty Picks', 'Pilihan produk yang lebih visual untuk tampilan homepage buyer.', 'https://picsum.photos/seed/banner-fashion/1600/700', 'https://picsum.photos/seed/banner-fashion-mobile/900/1200', 'catalog_group', '/catalog-groups/fashion-beauty', NULL, NULL, NULL, 3, 2, '2026-04-23 03:34:25', NULL, 1, '2026-04-23 03:34:25', '2026-04-23 03:34:25'),
-	(3, 'Promo Toko Terbaik', 'Temukan toko dengan produk dan visual yang lebih rapi.', 'https://picsum.photos/seed/banner-store/1600/700', 'https://picsum.photos/seed/banner-store-mobile/900/1200', 'store', '/stores/seller-1-store', NULL, NULL, 1, NULL, 3, '2026-04-23 03:34:25', NULL, 1, '2026-04-23 03:34:25', '2026-04-23 03:34:25'),
-	(4, 'Produk Featured Minggu Ini', 'Produk unggulan yang cocok untuk section recommended.', 'https://picsum.photos/seed/banner-product/1600/700', 'https://picsum.photos/seed/banner-product-mobile/900/1200', 'product', '/products/marketplace-product-1', 1, NULL, NULL, NULL, 4, '2026-04-23 03:34:25', NULL, 1, '2026-04-23 03:34:25', '2026-04-23 03:34:25'),
-	(5, 'Kategori Home Living', 'Perlengkapan rumah dan dekorasi yang enak dipandang.', 'https://picsum.photos/seed/banner-home/1600/700', 'https://picsum.photos/seed/banner-home-mobile/900/1200', 'category', '/categories/home-living', NULL, 4, NULL, NULL, 5, '2026-04-23 03:34:25', NULL, 1, '2026-04-23 03:34:25', '2026-04-23 03:34:25');
+-- Dumping data for table kishamarket.banners: ~1 rows (approximately)
+INSERT IGNORE INTO `banners` (`id`, `store_id`, `image_url`, `sort_order`, `is_active`, `created_at`, `updated_at`) VALUES
+	(1, 27, 'https://cdn.marketplace.com/stores/store-1/dekorasi-banner-1.jpg', 1, 1, '2026-06-21 20:34:35', '2026-06-21 20:34:35'),
+	(3, 27, 'https://cdn.marketplace.com/stores/store-1/dekorasi-banner-1.jpg', 1, 1, '2026-06-22 23:47:31', '2026-06-22 23:47:31');
 
 -- Dumping structure for table kishamarket.cache
 CREATE TABLE IF NOT EXISTS `cache` (
@@ -88,15 +71,7 @@ CREATE TABLE IF NOT EXISTS `cache` (
   KEY `cache_expiration_index` (`expiration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.cache: ~7 rows (approximately)
-INSERT IGNORE INTO `cache` (`key`, `value`, `expiration`) VALUES
-	('laravel-cache-catalog_groups_active_v5', 'a:10:{i:0;a:7:{s:2:"id";i:6;s:4:"name";s:7:"Belanja";s:4:"slug";s:7:"belanja";s:11:"description";s:40:"Kategori utama untuk produk marketplace.";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:39:{i:0;a:7:{s:2:"id";i:70;s:9:"parent_id";i:60;s:4:"name";s:19:"aksesoris handphone";s:4:"slug";s:19:"aksesoris-handphone";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:1;a:7:{s:2:"id";i:66;s:9:"parent_id";i:59;s:4:"name";s:16:"aksesoris kamera";s:4:"slug";s:16:"aksesoris-kamera";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:2;a:7:{s:2:"id";i:59;s:9:"parent_id";N;s:4:"name";s:31:"audio kamera elektronik lainnya";s:4:"slug";s:31:"audio-kamera-elektronik-lainnya";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:3;a:7:{s:2:"id";i:74;s:9:"parent_id";i:62;s:4:"name";s:5:"dapur";s:4:"slug";s:5:"dapur";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:4;a:7:{s:2:"id";i:75;s:9:"parent_id";i:62;s:4:"name";s:14:"dekorasi rumah";s:4:"slug";s:14:"dekorasi-rumah";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:5;a:7:{s:2:"id";i:60;s:9:"parent_id";N;s:4:"name";s:16:"handphone tablet";s:4:"slug";s:16:"handphone-tablet";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:6;a:7:{s:2:"id";i:67;s:9:"parent_id";i:59;s:4:"name";s:14:"kamera digital";s:4:"slug";s:14:"kamera-digital";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:7;a:7:{s:2:"id";i:72;s:9:"parent_id";i:61;s:4:"name";s:17:"komponen komputer";s:4:"slug";s:17:"komponen-komputer";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:8;a:7:{s:2:"id";i:61;s:9:"parent_id";N;s:4:"name";s:15:"komputer laptop";s:4:"slug";s:15:"komputer-laptop";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:9;a:7:{s:2:"id";i:73;s:9:"parent_id";i:61;s:4:"name";s:6:"laptop";s:4:"slug";s:6:"laptop";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:10;a:7:{s:2:"id";i:68;s:9:"parent_id";i:59;s:4:"name";s:15:"lighting studio";s:4:"slug";s:15:"lighting-studio";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:11;a:7:{s:2:"id";i:69;s:9:"parent_id";i:59;s:4:"name";s:12:"media player";s:4:"slug";s:12:"media-player";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:12;a:7:{s:2:"id";i:62;s:9:"parent_id";N;s:4:"name";s:12:"rumah tangga";s:4:"slug";s:12:"rumah-tangga";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:13;a:7:{s:2:"id";i:71;s:9:"parent_id";i:60;s:4:"name";s:10:"smartphone";s:4:"slug";s:10:"smartphone";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:14;a:7:{s:2:"id";i:13;s:9:"parent_id";i:67;s:4:"name";s:13:"Action Camera";s:4:"slug";s:13:"action-camera";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:1;}i:15;a:7:{s:2:"id";i:30;s:9:"parent_id";i:74;s:4:"name";s:10:"Alat Masak";s:4:"slug";s:10:"alat-masak";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:1;}i:16;a:7:{s:2:"id";i:24;s:9:"parent_id";i:71;s:4:"name";s:13:"Android Phone";s:4:"slug";s:13:"android-phone";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:1;}i:17;a:7:{s:2:"id";i:9;s:9:"parent_id";i:66;s:4:"name";s:24:"Baterai & Charger Kamera";s:4:"slug";s:22:"baterai-charger-kamera";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:1;}i:18;a:7:{s:2:"id";i:17;s:9:"parent_id";i:69;s:4:"name";s:14:"Blu Ray Player";s:4:"slug";s:14:"blu-ray-player";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:1;}i:19;a:7:{s:2:"id";i:22;s:9:"parent_id";i:70;s:4:"name";s:14:"Case Handphone";s:4:"slug";s:14:"case-handphone";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:1;}i:20;a:7:{s:2:"id";i:32;s:9:"parent_id";i:75;s:4:"name";s:14:"Lampu Dekorasi";s:4:"slug";s:14:"lampu-dekorasi";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:1;}i:21;a:7:{s:2:"id";i:26;s:9:"parent_id";i:73;s:4:"name";s:13:"Laptop Gaming";s:4:"slug";s:13:"laptop-gaming";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:1;}i:22;a:7:{s:2:"id";i:28;s:9:"parent_id";i:72;s:4:"name";s:3:"RAM";s:4:"slug";s:3:"ram";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:1;}i:23;a:7:{s:2:"id";i:20;s:9:"parent_id";i:68;s:4:"name";s:10:"Ring Light";s:4:"slug";s:10:"ring-light";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:1;}i:24;a:7:{s:2:"id";i:10;s:9:"parent_id";i:66;s:4:"name";s:11:"Case Kamera";s:4:"slug";s:11:"case-kamera";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:2;}i:25;a:7:{s:2:"id";i:23;s:9:"parent_id";i:70;s:4:"name";s:17:"Charger Handphone";s:4:"slug";s:17:"charger-handphone";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:2;}i:26;a:7:{s:2:"id";i:18;s:9:"parent_id";i:69;s:4:"name";s:10:"DVD Player";s:4:"slug";s:10:"dvd-player";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:2;}i:27;a:7:{s:2:"id";i:25;s:9:"parent_id";i:71;s:4:"name";s:6:"iPhone";s:4:"slug";s:6:"iphone";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:2;}i:28;a:7:{s:2:"id";i:14;s:9:"parent_id";i:67;s:4:"name";s:10:"Kamera 360";s:4:"slug";s:10:"kamera-360";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:2;}i:29;a:7:{s:2:"id";i:33;s:9:"parent_id";i:75;s:4:"name";s:6:"Karpet";s:4:"slug";s:6:"karpet";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:2;}i:30;a:7:{s:2:"id";i:27;s:9:"parent_id";i:73;s:4:"name";s:12:"Laptop Kerja";s:4:"slug";s:12:"laptop-kerja";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:2;}i:31;a:7:{s:2:"id";i:31;s:9:"parent_id";i:74;s:4:"name";s:15:"Peralatan Makan";s:4:"slug";s:15:"peralatan-makan";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:2;}i:32;a:7:{s:2:"id";i:29;s:9:"parent_id";i:72;s:4:"name";s:3:"SSD";s:4:"slug";s:3:"ssd";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:2;}i:33;a:7:{s:2:"id";i:21;s:9:"parent_id";i:68;s:4:"name";s:6:"Tripod";s:4:"slug";s:6:"tripod";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:2;}i:34;a:7:{s:2:"id";i:11;s:9:"parent_id";i:66;s:4:"name";s:21:"Cleaning Tools Kamera";s:4:"slug";s:21:"cleaning-tools-kamera";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:3;}i:35;a:7:{s:2:"id";i:15;s:9:"parent_id";i:67;s:4:"name";s:11:"Kamera DSLR";s:4:"slug";s:11:"kamera-dslr";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:3;}i:36;a:7:{s:2:"id";i:19;s:9:"parent_id";i:69;s:4:"name";s:16:"MP3 & MP4 Player";s:4:"slug";s:14:"mp3-mp4-player";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:3;}i:37;a:7:{s:2:"id";i:12;s:9:"parent_id";i:66;s:4:"name";s:18:"Memory Card Kamera";s:4:"slug";s:18:"memory-card-kamera";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:4;}i:38;a:7:{s:2:"id";i:16;s:9:"parent_id";i:67;s:4:"name";s:17:"Mirrorless Camera";s:4:"slug";s:17:"mirrorless-camera";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:4;}}}i:1;a:7:{s:2:"id";i:2;s:4:"name";s:11:"Electronics";s:4:"slug";s:11:"electronics";s:11:"description";s:61:"Gadget, aksesoris, perangkat kerja, dan kebutuhan elektronik.";s:9:"image_url";s:52:"https://picsum.photos/seed/group-electronics/600/600";s:15:"cover_image_url";s:59:"https://picsum.photos/seed/group-electronics-cover/1600/700";s:10:"categories";a:1:{i:0;a:7:{s:2:"id";i:2;s:9:"parent_id";N;s:4:"name";s:11:"Electronics";s:4:"slug";s:11:"electronics";s:9:"image_url";s:55:"https://picsum.photos/seed/category-electronics/600/600";s:8:"icon_url";N;s:10:"sort_order";i:2;}}}i:2;a:7:{s:2:"id";i:3;s:4:"name";s:16:"Fashion & Beauty";s:4:"slug";s:14:"fashion-beauty";s:11:"description";s:50:"Produk fashion, sepatu, style, dan perawatan diri.";s:9:"image_url";s:48:"https://picsum.photos/seed/group-fashion/600/600";s:15:"cover_image_url";s:55:"https://picsum.photos/seed/group-fashion-cover/1600/700";s:10:"categories";a:2:{i:0;a:7:{s:2:"id";i:3;s:9:"parent_id";N;s:4:"name";s:7:"Fashion";s:4:"slug";s:7:"fashion";s:9:"image_url";s:51:"https://picsum.photos/seed/category-fashion/600/600";s:8:"icon_url";N;s:10:"sort_order";i:3;}i:1;a:7:{s:2:"id";i:5;s:9:"parent_id";N;s:4:"name";s:6:"Beauty";s:4:"slug";s:6:"beauty";s:9:"image_url";s:50:"https://picsum.photos/seed/category-beauty/600/600";s:8:"icon_url";N;s:10:"sort_order";i:5;}}}i:3;a:7:{s:2:"id";i:7;s:4:"name";s:8:"Featured";s:4:"slug";s:8:"featured";s:11:"description";s:33:"Kategori pilihan dan rekomendasi.";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}i:4;a:7:{s:2:"id";i:1;s:4:"name";s:15:"Food & Beverage";s:4:"slug";s:13:"food-beverage";s:11:"description";s:62:"Produk makanan, snack, minuman, dan kebutuhan konsumsi harian.";s:9:"image_url";s:45:"https://picsum.photos/seed/group-food/600/600";s:15:"cover_image_url";s:52:"https://picsum.photos/seed/group-food-cover/1600/700";s:10:"categories";a:1:{i:0;a:7:{s:2:"id";i:1;s:9:"parent_id";N;s:4:"name";s:4:"Food";s:4:"slug";s:4:"food";s:9:"image_url";s:48:"https://picsum.photos/seed/category-food/600/600";s:8:"icon_url";N;s:10:"sort_order";i:1;}}}i:5;a:7:{s:2:"id";i:4;s:4:"name";s:11:"Home Living";s:4:"slug";s:11:"home-living";s:11:"description";s:51:"Rumah tangga, dekorasi, dan kebutuhan living space.";s:9:"image_url";s:45:"https://picsum.photos/seed/group-home/600/600";s:15:"cover_image_url";s:52:"https://picsum.photos/seed/group-home-cover/1600/700";s:10:"categories";a:2:{i:0;a:7:{s:2:"id";i:4;s:9:"parent_id";N;s:4:"name";s:13:"Home & Living";s:4:"slug";s:11:"home-living";s:9:"image_url";s:48:"https://picsum.photos/seed/category-home/600/600";s:8:"icon_url";N;s:10:"sort_order";i:4;}i:1;a:7:{s:2:"id";i:8;s:9:"parent_id";N;s:4:"name";s:6:"Garden";s:4:"slug";s:6:"garden";s:9:"image_url";s:50:"https://picsum.photos/seed/category-garden/600/600";s:8:"icon_url";N;s:10:"sort_order";i:8;}}}i:6;a:7:{s:2:"id";i:8;s:4:"name";s:16:"Kebutuhan Harian";s:4:"slug";s:16:"kebutuhan-harian";s:11:"description";s:24:"Produk kebutuhan harian.";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}i:7;a:7:{s:2:"id";i:5;s:4:"name";s:14:"Sports & Hobby";s:4:"slug";s:12:"sports-hobby";s:11:"description";s:43:"Olahraga, buku, hobi, dan aktivitas santai.";s:9:"image_url";s:46:"https://picsum.photos/seed/group-hobby/600/600";s:15:"cover_image_url";s:53:"https://picsum.photos/seed/group-hobby-cover/1600/700";s:10:"categories";a:2:{i:0;a:7:{s:2:"id";i:6;s:9:"parent_id";N;s:4:"name";s:6:"Sports";s:4:"slug";s:6:"sports";s:9:"image_url";s:50:"https://picsum.photos/seed/category-sports/600/600";s:8:"icon_url";N;s:10:"sort_order";i:6;}i:1;a:7:{s:2:"id";i:7;s:9:"parent_id";N;s:4:"name";s:5:"Books";s:4:"slug";s:5:"books";s:9:"image_url";s:49:"https://picsum.photos/seed/category-books/600/600";s:8:"icon_url";N;s:10:"sort_order";i:7;}}}i:8;a:7:{s:2:"id";i:9;s:4:"name";s:16:"Tagihan & Top Up";s:4:"slug";s:14:"tagihan-top-up";s:11:"description";s:38:"Pembayaran tagihan dan top up digital.";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}i:9;a:7:{s:2:"id";i:10;s:4:"name";s:22:"Travel & Entertainment";s:4:"slug";s:20:"travel-entertainment";s:11:"description";s:26:"Produk travel dan hiburan.";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}}', 1779505251),
-	('laravel-cache-category_menu_tree_all_v1', 'a:12:{i:0;a:9:{s:2:"id";i:59;s:9:"parent_id";N;s:16:"catalog_group_id";i:6;s:4:"name";s:31:"audio kamera elektronik lainnya";s:4:"slug";s:31:"audio-kamera-elektronik-lainnya";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:8:"children";a:4:{i:0;a:7:{s:2:"id";i:66;s:9:"parent_id";i:59;s:4:"name";s:16:"aksesoris kamera";s:4:"slug";s:16:"aksesoris-kamera";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:1;a:7:{s:2:"id";i:67;s:9:"parent_id";i:59;s:4:"name";s:14:"kamera digital";s:4:"slug";s:14:"kamera-digital";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:2;a:7:{s:2:"id";i:68;s:9:"parent_id";i:59;s:4:"name";s:15:"lighting studio";s:4:"slug";s:15:"lighting-studio";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:3;a:7:{s:2:"id";i:69;s:9:"parent_id";i:59;s:4:"name";s:12:"media player";s:4:"slug";s:12:"media-player";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}}}i:1;a:9:{s:2:"id";i:60;s:9:"parent_id";N;s:16:"catalog_group_id";i:6;s:4:"name";s:16:"handphone tablet";s:4:"slug";s:16:"handphone-tablet";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:8:"children";a:2:{i:0;a:7:{s:2:"id";i:70;s:9:"parent_id";i:60;s:4:"name";s:19:"aksesoris handphone";s:4:"slug";s:19:"aksesoris-handphone";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:1;a:7:{s:2:"id";i:71;s:9:"parent_id";i:60;s:4:"name";s:10:"smartphone";s:4:"slug";s:10:"smartphone";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}}}i:2;a:9:{s:2:"id";i:61;s:9:"parent_id";N;s:16:"catalog_group_id";i:6;s:4:"name";s:15:"komputer laptop";s:4:"slug";s:15:"komputer-laptop";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:8:"children";a:2:{i:0;a:7:{s:2:"id";i:72;s:9:"parent_id";i:61;s:4:"name";s:17:"komponen komputer";s:4:"slug";s:17:"komponen-komputer";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:1;a:7:{s:2:"id";i:73;s:9:"parent_id";i:61;s:4:"name";s:6:"laptop";s:4:"slug";s:6:"laptop";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}}}i:3;a:9:{s:2:"id";i:62;s:9:"parent_id";N;s:16:"catalog_group_id";i:6;s:4:"name";s:12:"rumah tangga";s:4:"slug";s:12:"rumah-tangga";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:8:"children";a:2:{i:0;a:7:{s:2:"id";i:74;s:9:"parent_id";i:62;s:4:"name";s:5:"dapur";s:4:"slug";s:5:"dapur";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:1;a:7:{s:2:"id";i:75;s:9:"parent_id";i:62;s:4:"name";s:14:"dekorasi rumah";s:4:"slug";s:14:"dekorasi-rumah";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}}}i:4;a:9:{s:2:"id";i:1;s:9:"parent_id";N;s:16:"catalog_group_id";i:1;s:4:"name";s:4:"Food";s:4:"slug";s:4:"food";s:9:"image_url";s:48:"https://picsum.photos/seed/category-food/600/600";s:8:"icon_url";N;s:10:"sort_order";i:1;s:8:"children";a:0:{}}i:5;a:9:{s:2:"id";i:2;s:9:"parent_id";N;s:16:"catalog_group_id";i:2;s:4:"name";s:11:"Electronics";s:4:"slug";s:11:"electronics";s:9:"image_url";s:55:"https://picsum.photos/seed/category-electronics/600/600";s:8:"icon_url";N;s:10:"sort_order";i:2;s:8:"children";a:0:{}}i:6;a:9:{s:2:"id";i:3;s:9:"parent_id";N;s:16:"catalog_group_id";i:3;s:4:"name";s:7:"Fashion";s:4:"slug";s:7:"fashion";s:9:"image_url";s:51:"https://picsum.photos/seed/category-fashion/600/600";s:8:"icon_url";N;s:10:"sort_order";i:3;s:8:"children";a:0:{}}i:7;a:9:{s:2:"id";i:4;s:9:"parent_id";N;s:16:"catalog_group_id";i:4;s:4:"name";s:13:"Home & Living";s:4:"slug";s:11:"home-living";s:9:"image_url";s:48:"https://picsum.photos/seed/category-home/600/600";s:8:"icon_url";N;s:10:"sort_order";i:4;s:8:"children";a:0:{}}i:8;a:9:{s:2:"id";i:5;s:9:"parent_id";N;s:16:"catalog_group_id";i:3;s:4:"name";s:6:"Beauty";s:4:"slug";s:6:"beauty";s:9:"image_url";s:50:"https://picsum.photos/seed/category-beauty/600/600";s:8:"icon_url";N;s:10:"sort_order";i:5;s:8:"children";a:0:{}}i:9;a:9:{s:2:"id";i:6;s:9:"parent_id";N;s:16:"catalog_group_id";i:5;s:4:"name";s:6:"Sports";s:4:"slug";s:6:"sports";s:9:"image_url";s:50:"https://picsum.photos/seed/category-sports/600/600";s:8:"icon_url";N;s:10:"sort_order";i:6;s:8:"children";a:0:{}}i:10;a:9:{s:2:"id";i:7;s:9:"parent_id";N;s:16:"catalog_group_id";i:5;s:4:"name";s:5:"Books";s:4:"slug";s:5:"books";s:9:"image_url";s:49:"https://picsum.photos/seed/category-books/600/600";s:8:"icon_url";N;s:10:"sort_order";i:7;s:8:"children";a:0:{}}i:11;a:9:{s:2:"id";i:8;s:9:"parent_id";N;s:16:"catalog_group_id";i:4;s:4:"name";s:6:"Garden";s:4:"slug";s:6:"garden";s:9:"image_url";s:50:"https://picsum.photos/seed/category-garden/600/600";s:8:"icon_url";N;s:10:"sort_order";i:8;s:8:"children";a:0:{}}}', 1779505158),
-	('marketapi-cache-auth_payload_019e43cc-03f2-7366-9a07-4b3a5ad07058', 'a:4:{s:4:"user";a:4:{s:2:"id";s:36:"019e43cc-03f2-7366-9a07-4b3a5ad07058";s:4:"name";s:9:"qsgqwgsjh";s:5:"email";s:14:"aki9@gmail.com";s:6:"avatar";N;}s:5:"roles";a:0:{}s:11:"active_role";s:5:"buyer";s:5:"store";N;}', 1779636026),
-	('marketapi-cache-auth_payload_019e6ed3-6536-70bd-a1dc-e778032c2fa0', 'a:4:{s:4:"user";a:5:{s:2:"id";s:36:"019e6ed3-6536-70bd-a1dc-e778032c2fa0";s:4:"name";s:17:"Pengepakan Barang";s:5:"email";s:18:"ehdbwjhb@gmail.com";s:6:"avatar";N;s:12:"firebase_uid";N;}s:5:"roles";a:1:{i:0;s:5:"buyer";}s:11:"active_role";s:5:"buyer";s:5:"store";N;}', 1779976108),
-	('marketapi-cache-catalog_group_slug_electronics', 'a:8:{s:2:"id";i:2;s:4:"name";s:11:"Electronics";s:4:"slug";s:11:"electronics";s:11:"description";s:61:"Gadget, aksesoris, perangkat kerja, dan kebutuhan elektronik.";s:9:"image_url";s:52:"https://picsum.photos/seed/group-electronics/600/600";s:15:"cover_image_url";s:59:"https://picsum.photos/seed/group-electronics-cover/1600/700";s:9:"is_active";b:1;s:10:"categories";a:1:{i:0;a:16:{s:2:"id";i:2;s:16:"catalog_group_id";i:2;s:9:"parent_id";N;s:4:"name";s:11:"Electronics";s:4:"slug";s:11:"electronics";s:9:"full_slug";s:11:"electronics";s:11:"description";s:61:"Laptop, gadget, dan aksesoris elektronik untuk produktivitas.";s:9:"image_url";s:55:"https://picsum.photos/seed/category-electronics/600/600";s:8:"icon_url";N;s:15:"cover_image_url";s:62:"https://picsum.photos/seed/category-electronics-cover/1200/600";s:5:"level";i:1;s:10:"sort_order";i:2;s:14:"products_count";i:0;s:9:"is_active";b:1;s:18:"is_visible_in_menu";b:1;s:8:"children";a:0:{}}}}', 1779593900),
-	('marketapi-cache-catalog_groups_active_v5', 'a:10:{i:0;a:7:{s:2:"id";i:6;s:4:"name";s:7:"Belanja";s:4:"slug";s:7:"belanja";s:11:"description";s:40:"Kategori utama untuk produk marketplace.";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}i:1;a:7:{s:2:"id";i:2;s:4:"name";s:11:"Electronics";s:4:"slug";s:11:"electronics";s:11:"description";s:61:"Gadget, aksesoris, perangkat kerja, dan kebutuhan elektronik.";s:9:"image_url";s:52:"https://picsum.photos/seed/group-electronics/600/600";s:15:"cover_image_url";s:59:"https://picsum.photos/seed/group-electronics-cover/1600/700";s:10:"categories";a:0:{}}i:2;a:7:{s:2:"id";i:3;s:4:"name";s:16:"Fashion & Beauty";s:4:"slug";s:14:"fashion-beauty";s:11:"description";s:50:"Produk fashion, sepatu, style, dan perawatan diri.";s:9:"image_url";s:48:"https://picsum.photos/seed/group-fashion/600/600";s:15:"cover_image_url";s:55:"https://picsum.photos/seed/group-fashion-cover/1600/700";s:10:"categories";a:0:{}}i:3;a:7:{s:2:"id";i:7;s:4:"name";s:8:"Featured";s:4:"slug";s:8:"featured";s:11:"description";s:33:"Kategori pilihan dan rekomendasi.";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}i:4;a:7:{s:2:"id";i:1;s:4:"name";s:15:"Food & Beverage";s:4:"slug";s:13:"food-beverage";s:11:"description";s:62:"Produk makanan, snack, minuman, dan kebutuhan konsumsi harian.";s:9:"image_url";s:45:"https://picsum.photos/seed/group-food/600/600";s:15:"cover_image_url";s:52:"https://picsum.photos/seed/group-food-cover/1600/700";s:10:"categories";a:10:{i:0;a:7:{s:2:"id";i:3;s:9:"parent_id";i:1;s:4:"name";s:14:"Aksesoris Pria";s:4:"slug";s:14:"aksesoris-pria";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:1;a:7:{s:2:"id";i:9;s:9:"parent_id";i:3;s:4:"name";s:12:"Gesper Kulit";s:4:"slug";s:12:"gesper-kulit";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:2;a:7:{s:2:"id";i:8;s:9:"parent_id";i:3;s:4:"name";s:17:"Jam Tangan Analog";s:4:"slug";s:17:"jam-tangan-analog";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:3;a:7:{s:2:"id";i:7;s:9:"parent_id";i:3;s:4:"name";s:14:"Kacamata Hitam";s:4:"slug";s:14:"kacamata-hitam";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:4;a:7:{s:2:"id";i:1;s:9:"parent_id";N;s:4:"name";s:21:"Pakaian & Sepatu Pria";s:4:"slug";s:19:"pakaian-sepatu-pria";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:5;a:7:{s:2:"id";i:4;s:9:"parent_id";i:2;s:4:"name";s:13:"Sepatu Futsal";s:4:"slug";s:13:"sepatu-futsal";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:6;a:7:{s:2:"id";i:6;s:9:"parent_id";i:2;s:4:"name";s:15:"Sepatu Pantofel";s:4:"slug";s:15:"sepatu-pantofel";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:7;a:7:{s:2:"id";i:2;s:9:"parent_id";i:1;s:4:"name";s:11:"Sepatu Pria";s:4:"slug";s:11:"sepatu-pria";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:8;a:7:{s:2:"id";i:5;s:9:"parent_id";i:2;s:4:"name";s:15:"Sepatu Sneakers";s:4:"slug";s:15:"sepatu-sneakers";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}i:9;a:7:{s:2:"id";i:10;s:9:"parent_id";i:3;s:4:"name";s:13:"Topi Snapback";s:4:"slug";s:13:"topi-snapback";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;}}}i:5;a:7:{s:2:"id";i:4;s:4:"name";s:11:"Home Living";s:4:"slug";s:11:"home-living";s:11:"description";s:51:"Rumah tangga, dekorasi, dan kebutuhan living space.";s:9:"image_url";s:45:"https://picsum.photos/seed/group-home/600/600";s:15:"cover_image_url";s:52:"https://picsum.photos/seed/group-home-cover/1600/700";s:10:"categories";a:0:{}}i:6;a:7:{s:2:"id";i:8;s:4:"name";s:16:"Kebutuhan Harian";s:4:"slug";s:16:"kebutuhan-harian";s:11:"description";s:24:"Produk kebutuhan harian.";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}i:7;a:7:{s:2:"id";i:5;s:4:"name";s:14:"Sports & Hobby";s:4:"slug";s:12:"sports-hobby";s:11:"description";s:43:"Olahraga, buku, hobi, dan aktivitas santai.";s:9:"image_url";s:46:"https://picsum.photos/seed/group-hobby/600/600";s:15:"cover_image_url";s:53:"https://picsum.photos/seed/group-hobby-cover/1600/700";s:10:"categories";a:0:{}}i:8;a:7:{s:2:"id";i:9;s:4:"name";s:16:"Tagihan & Top Up";s:4:"slug";s:14:"tagihan-top-up";s:11:"description";s:38:"Pembayaran tagihan dan top up digital.";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}i:9;a:7:{s:2:"id";i:10;s:4:"name";s:22:"Travel & Entertainment";s:4:"slug";s:20:"travel-entertainment";s:11:"description";s:26:"Produk travel dan hiburan.";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}}', 1780554087),
-	('marketapi-cache-header_menu_v1', 'a:10:{i:0;a:6:{s:2:"id";i:6;s:4:"name";s:7:"Belanja";s:4:"slug";s:7:"belanja";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}i:1;a:6:{s:2:"id";i:2;s:4:"name";s:11:"Electronics";s:4:"slug";s:11:"electronics";s:9:"image_url";s:52:"https://picsum.photos/seed/group-electronics/600/600";s:15:"cover_image_url";s:59:"https://picsum.photos/seed/group-electronics-cover/1600/700";s:10:"categories";a:0:{}}i:2;a:6:{s:2:"id";i:3;s:4:"name";s:16:"Fashion & Beauty";s:4:"slug";s:14:"fashion-beauty";s:9:"image_url";s:48:"https://picsum.photos/seed/group-fashion/600/600";s:15:"cover_image_url";s:55:"https://picsum.photos/seed/group-fashion-cover/1600/700";s:10:"categories";a:0:{}}i:3;a:6:{s:2:"id";i:7;s:4:"name";s:8:"Featured";s:4:"slug";s:8:"featured";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}i:4;a:6:{s:2:"id";i:1;s:4:"name";s:15:"Food & Beverage";s:4:"slug";s:13:"food-beverage";s:9:"image_url";s:45:"https://picsum.photos/seed/group-food/600/600";s:15:"cover_image_url";s:52:"https://picsum.photos/seed/group-food-cover/1600/700";s:10:"categories";a:1:{i:0;a:11:{s:2:"id";i:1;s:16:"catalog_group_id";i:1;s:9:"parent_id";N;s:4:"name";s:21:"Pakaian & Sepatu Pria";s:4:"slug";s:19:"pakaian-sepatu-pria";s:9:"full_slug";s:27:"fashion/pakaian-sepatu-pria";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:5:"level";i:1;s:8:"children";a:2:{i:0;a:11:{s:2:"id";i:3;s:16:"catalog_group_id";i:1;s:9:"parent_id";i:1;s:4:"name";s:14:"Aksesoris Pria";s:4:"slug";s:14:"aksesoris-pria";s:9:"full_slug";s:42:"fashion/pakaian-sepatu-pria/aksesoris-pria";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:5:"level";i:2;s:8:"children";a:4:{i:0;a:11:{s:2:"id";i:9;s:16:"catalog_group_id";i:1;s:9:"parent_id";i:3;s:4:"name";s:12:"Gesper Kulit";s:4:"slug";s:12:"gesper-kulit";s:9:"full_slug";s:55:"fashion/pakaian-sepatu-pria/aksesoris-pria/gesper-kulit";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:5:"level";i:3;s:8:"children";a:0:{}}i:1;a:11:{s:2:"id";i:8;s:16:"catalog_group_id";i:1;s:9:"parent_id";i:3;s:4:"name";s:17:"Jam Tangan Analog";s:4:"slug";s:17:"jam-tangan-analog";s:9:"full_slug";s:60:"fashion/pakaian-sepatu-pria/aksesoris-pria/jam-tangan-analog";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:5:"level";i:3;s:8:"children";a:0:{}}i:2;a:11:{s:2:"id";i:7;s:16:"catalog_group_id";i:1;s:9:"parent_id";i:3;s:4:"name";s:14:"Kacamata Hitam";s:4:"slug";s:14:"kacamata-hitam";s:9:"full_slug";s:57:"fashion/pakaian-sepatu-pria/aksesoris-pria/kacamata-hitam";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:5:"level";i:3;s:8:"children";a:0:{}}i:3;a:11:{s:2:"id";i:10;s:16:"catalog_group_id";i:1;s:9:"parent_id";i:3;s:4:"name";s:13:"Topi Snapback";s:4:"slug";s:13:"topi-snapback";s:9:"full_slug";s:56:"fashion/pakaian-sepatu-pria/aksesoris-pria/topi-snapback";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:5:"level";i:3;s:8:"children";a:0:{}}}}i:1;a:11:{s:2:"id";i:2;s:16:"catalog_group_id";i:1;s:9:"parent_id";i:1;s:4:"name";s:11:"Sepatu Pria";s:4:"slug";s:11:"sepatu-pria";s:9:"full_slug";s:39:"fashion/pakaian-sepatu-pria/sepatu-pria";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:5:"level";i:2;s:8:"children";a:3:{i:0;a:11:{s:2:"id";i:4;s:16:"catalog_group_id";i:1;s:9:"parent_id";i:2;s:4:"name";s:13:"Sepatu Futsal";s:4:"slug";s:13:"sepatu-futsal";s:9:"full_slug";s:53:"fashion/pakaian-sepatu-pria/sepatu-pria/sepatu-futsal";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:5:"level";i:3;s:8:"children";a:0:{}}i:1;a:11:{s:2:"id";i:6;s:16:"catalog_group_id";i:1;s:9:"parent_id";i:2;s:4:"name";s:15:"Sepatu Pantofel";s:4:"slug";s:15:"sepatu-pantofel";s:9:"full_slug";s:55:"fashion/pakaian-sepatu-pria/sepatu-pria/sepatu-pantofel";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:5:"level";i:3;s:8:"children";a:0:{}}i:2;a:11:{s:2:"id";i:5;s:16:"catalog_group_id";i:1;s:9:"parent_id";i:2;s:4:"name";s:15:"Sepatu Sneakers";s:4:"slug";s:15:"sepatu-sneakers";s:9:"full_slug";s:55:"fashion/pakaian-sepatu-pria/sepatu-pria/sepatu-sneakers";s:9:"image_url";N;s:8:"icon_url";N;s:10:"sort_order";i:0;s:5:"level";i:3;s:8:"children";a:0:{}}}}}}}}i:5;a:6:{s:2:"id";i:4;s:4:"name";s:11:"Home Living";s:4:"slug";s:11:"home-living";s:9:"image_url";s:45:"https://picsum.photos/seed/group-home/600/600";s:15:"cover_image_url";s:52:"https://picsum.photos/seed/group-home-cover/1600/700";s:10:"categories";a:0:{}}i:6;a:6:{s:2:"id";i:8;s:4:"name";s:16:"Kebutuhan Harian";s:4:"slug";s:16:"kebutuhan-harian";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}i:7;a:6:{s:2:"id";i:5;s:4:"name";s:14:"Sports & Hobby";s:4:"slug";s:12:"sports-hobby";s:9:"image_url";s:46:"https://picsum.photos/seed/group-hobby/600/600";s:15:"cover_image_url";s:53:"https://picsum.photos/seed/group-hobby-cover/1600/700";s:10:"categories";a:0:{}}i:8;a:6:{s:2:"id";i:9;s:4:"name";s:16:"Tagihan & Top Up";s:4:"slug";s:14:"tagihan-top-up";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}i:9;a:6:{s:2:"id";i:10;s:4:"name";s:22:"Travel & Entertainment";s:4:"slug";s:20:"travel-entertainment";s:9:"image_url";N;s:15:"cover_image_url";N;s:10:"categories";a:0:{}}}', 1780552919);
+-- Dumping data for table kishamarket.cache: ~0 rows (approximately)
 
 -- Dumping structure for table kishamarket.cache_locks
 CREATE TABLE IF NOT EXISTS `cache_locks` (
@@ -112,207 +87,81 @@ CREATE TABLE IF NOT EXISTS `cache_locks` (
 -- Dumping structure for table kishamarket.carts
 CREATE TABLE IF NOT EXISTS `carts` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `user_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `active_user_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+  `user_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `carts_user_id_status_index` (`user_id`,`status`),
-  KEY `carts_active_user_id_foreign` (`active_user_id`),
-  KEY `carts_deleted_at_index` (`deleted_at`),
-  CONSTRAINT `carts_active_user_id_foreign` FOREIGN KEY (`active_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `carts_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE KEY `carts_user_id_unique` (`user_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.carts: ~0 rows (approximately)
-INSERT IGNORE INTO `carts` (`id`, `user_id`, `active_user_id`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES
-	(30, '019e6ee0-f99c-7010-b38f-e5cc6f24829d', '019e6ee0-f99c-7010-b38f-e5cc6f24829d', 'active', '2026-05-28 06:58:33', '2026-05-28 06:58:33', NULL);
+-- Dumping data for table kishamarket.carts: ~2 rows (approximately)
+INSERT IGNORE INTO `carts` (`id`, `user_id`, `created_at`, `updated_at`) VALUES
+	(2, 'fe55a239-8462-4e8f-99e1-3755faa6507a', '2026-06-26 01:17:14', '2026-06-26 01:17:14'),
+	(3, '32394b22-956f-4161-a45c-da7ded058428', '2026-06-28 19:15:37', '2026-06-28 19:15:37');
 
 -- Dumping structure for table kishamarket.cart_items
 CREATE TABLE IF NOT EXISTS `cart_items` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `cart_id` bigint unsigned NOT NULL,
-  `product_id` bigint unsigned NOT NULL,
-  `quantity` int unsigned NOT NULL,
-  `price_snapshot` bigint unsigned NOT NULL,
-  `product_name_snapshot` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `product_image_snapshot` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `product_variant_id` bigint unsigned NOT NULL,
+  `quantity` int NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `cart_items_cart_id_product_id_unique` (`cart_id`,`product_id`),
-  KEY `cart_items_product_id_index` (`product_id`),
-  KEY `cart_items_deleted_at_index` (`deleted_at`),
-  CONSTRAINT `cart_items_cart_id_foreign` FOREIGN KEY (`cart_id`) REFERENCES `carts` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `cart_items_product_id_foreign` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE KEY `cart_items_cart_id_variant_id_unique` (`cart_id`,`product_variant_id`),
+  KEY `cart_items_variant_id_index` (`product_variant_id`),
+  CONSTRAINT `cart_items_cart_id_foreign` FOREIGN KEY (`cart_id`) REFERENCES `carts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.cart_items: ~1 rows (approximately)
-INSERT IGNORE INTO `cart_items` (`id`, `cart_id`, `product_id`, `quantity`, `price_snapshot`, `product_name_snapshot`, `product_image_snapshot`, `created_at`, `updated_at`, `deleted_at`) VALUES
-	(27, 30, 24, 1, 768, 'Marketplace Product 24', NULL, '2026-05-28 08:11:04', '2026-05-28 08:11:04', NULL),
-	(28, 30, 23, 1, 1809, 'Marketplace Product 23', NULL, '2026-05-31 22:14:31', '2026-05-31 22:14:31', NULL);
+-- Dumping data for table kishamarket.cart_items: ~3 rows (approximately)
+INSERT IGNORE INTO `cart_items` (`id`, `cart_id`, `product_variant_id`, `quantity`, `created_at`, `updated_at`) VALUES
+	(15, 2, 106, 3, '2026-06-28 19:11:04', '2026-06-28 19:11:04'),
+	(16, 3, 105, 2, '2026-06-28 19:15:37', '2026-06-28 19:15:37');
 
 -- Dumping structure for table kishamarket.catalog_groups
 CREATE TABLE IF NOT EXISTS `catalog_groups` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `image_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `cover_image_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sort_order` int NOT NULL DEFAULT '0',
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `catalog_groups_slug_unique` (`slug`),
-  KEY `idx_catalog_groups_is_active_sort_order` (`is_active`,`sort_order`)
-) ENGINE=InnoDB AUTO_INCREMENT=62 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE KEY `catalog_groups_slug_unique` (`slug`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.catalog_groups: ~10 rows (approximately)
-INSERT IGNORE INTO `catalog_groups` (`id`, `name`, `slug`, `description`, `image_url`, `cover_image_url`, `sort_order`, `is_active`, `created_at`, `updated_at`) VALUES
-	(1, 'Food & Beverage', 'food-beverage', 'Produk makanan, snack, minuman, dan kebutuhan konsumsi harian.', 'https://picsum.photos/seed/group-food/600/600', 'https://picsum.photos/seed/group-food-cover/1600/700', 1, 1, '2026-04-23 03:34:24', '2026-04-23 03:35:15'),
-	(2, 'Electronics', 'electronics', 'Gadget, aksesoris, perangkat kerja, dan kebutuhan elektronik.', 'https://picsum.photos/seed/group-electronics/600/600', 'https://picsum.photos/seed/group-electronics-cover/1600/700', 2, 1, '2026-04-23 03:34:24', '2026-04-23 03:35:15'),
-	(3, 'Fashion & Beauty', 'fashion-beauty', 'Produk fashion, sepatu, style, dan perawatan diri.', 'https://picsum.photos/seed/group-fashion/600/600', 'https://picsum.photos/seed/group-fashion-cover/1600/700', 3, 1, '2026-04-23 03:34:24', '2026-04-23 03:35:15'),
-	(4, 'Home Living', 'home-living', 'Rumah tangga, dekorasi, dan kebutuhan living space.', 'https://picsum.photos/seed/group-home/600/600', 'https://picsum.photos/seed/group-home-cover/1600/700', 4, 1, '2026-04-23 03:34:24', '2026-04-23 03:35:15'),
-	(5, 'Sports & Hobby', 'sports-hobby', 'Olahraga, buku, hobi, dan aktivitas santai.', 'https://picsum.photos/seed/group-hobby/600/600', 'https://picsum.photos/seed/group-hobby-cover/1600/700', 5, 1, '2026-04-23 03:34:24', '2026-04-23 03:35:15'),
-	(6, 'Belanja', 'belanja', 'Kategori utama untuk produk marketplace.', NULL, NULL, 1, 1, '2026-05-06 07:22:58', '2026-05-06 07:23:06'),
-	(7, 'Featured', 'featured', 'Kategori pilihan dan rekomendasi.', NULL, NULL, 2, 1, '2026-05-06 07:22:58', '2026-05-06 07:23:06'),
-	(8, 'Kebutuhan Harian', 'kebutuhan-harian', 'Produk kebutuhan harian.', NULL, NULL, 3, 1, '2026-05-06 07:22:58', '2026-05-06 07:23:06'),
-	(9, 'Tagihan & Top Up', 'tagihan-top-up', 'Pembayaran tagihan dan top up digital.', NULL, NULL, 4, 1, '2026-05-06 07:22:58', '2026-05-06 07:23:06'),
-	(10, 'Travel & Entertainment', 'travel-entertainment', 'Produk travel dan hiburan.', NULL, NULL, 5, 1, '2026-05-06 07:22:58', '2026-05-06 07:23:06');
+-- Dumping data for table kishamarket.catalog_groups: ~3 rows (approximately)
+INSERT IGNORE INTO `catalog_groups` (`id`, `name`, `slug`, `is_active`, `created_at`, `updated_at`) VALUES
+	(3, 'Gadget & Elek', 'gadget-elektronik-updated', 1, '2026-06-05 07:25:43', '2026-06-05 07:31:51'),
+	(8, 'hjkjhkjh &', 'hjhjk', 1, '2026-06-15 23:00:24', '2026-06-15 23:00:24');
 
 -- Dumping structure for table kishamarket.categories
 CREATE TABLE IF NOT EXISTS `categories` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `catalog_group_id` bigint unsigned DEFAULT NULL,
+  `catalog_group_id` bigint unsigned NOT NULL,
   `parent_id` bigint unsigned DEFAULT NULL,
-  `level` tinyint unsigned NOT NULL DEFAULT '1',
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `full_slug` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `image_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `icon_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `cover_image_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `level` int NOT NULL DEFAULT '1',
   `sort_order` int NOT NULL DEFAULT '0',
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `is_visible_in_menu` tinyint(1) NOT NULL DEFAULT '1',
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `full_slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `image_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `icon_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_categories_parent_slug` (`parent_id`,`slug`),
-  UNIQUE KEY `uk_categories_full_slug` (`full_slug`),
-  KEY `idx_categories_menu_tree` (`catalog_group_id`,`parent_id`,`is_active`,`is_visible_in_menu`,`sort_order`),
-  KEY `idx_categories_level` (`level`),
-  CONSTRAINT `fk_categories_catalog_group` FOREIGN KEY (`catalog_group_id`) REFERENCES `catalog_groups` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_categories_parent` FOREIGN KEY (`parent_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `fk_categories_catalog_group` (`catalog_group_id`),
+  KEY `fk_categories_parent` (`parent_id`),
+  CONSTRAINT `fk_categories_catalog_group` FOREIGN KEY (`catalog_group_id`) REFERENCES `catalog_groups` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_categories_parent` FOREIGN KEY (`parent_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=73 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.categories: ~25 rows (approximately)
-INSERT IGNORE INTO `categories` (`id`, `catalog_group_id`, `parent_id`, `level`, `name`, `slug`, `full_slug`, `description`, `image_url`, `icon_url`, `cover_image_url`, `sort_order`, `is_active`, `is_visible_in_menu`, `created_at`, `updated_at`) VALUES
-	(1, 1, NULL, 1, 'Pakaian & Sepatu Pria', 'pakaian-sepatu-pria', 'fashion/pakaian-sepatu-pria', NULL, NULL, NULL, NULL, 0, 1, 1, NULL, NULL),
-	(2, 1, 1, 2, 'Sepatu Pria', 'sepatu-pria', 'fashion/pakaian-sepatu-pria/sepatu-pria', NULL, NULL, NULL, NULL, 0, 1, 1, NULL, NULL),
-	(3, 1, 1, 2, 'Aksesoris Pria', 'aksesoris-pria', 'fashion/pakaian-sepatu-pria/aksesoris-pria', NULL, NULL, NULL, NULL, 0, 1, 1, NULL, NULL),
-	(4, 1, 2, 3, 'Sepatu Futsal', 'sepatu-futsal', 'fashion/pakaian-sepatu-pria/sepatu-pria/sepatu-futsal', NULL, NULL, NULL, NULL, 0, 1, 1, NULL, NULL),
-	(5, 1, 2, 3, 'Sepatu Sneakers', 'sepatu-sneakers', 'fashion/pakaian-sepatu-pria/sepatu-pria/sepatu-sneakers', NULL, NULL, NULL, NULL, 0, 1, 1, NULL, NULL),
-	(6, 1, 2, 3, 'Sepatu Pantofel', 'sepatu-pantofel', 'fashion/pakaian-sepatu-pria/sepatu-pria/sepatu-pantofel', NULL, NULL, NULL, NULL, 0, 1, 1, NULL, NULL),
-	(7, 1, 3, 3, 'Kacamata Hitam', 'kacamata-hitam', 'fashion/pakaian-sepatu-pria/aksesoris-pria/kacamata-hitam', NULL, NULL, NULL, NULL, 0, 1, 1, NULL, NULL),
-	(8, 1, 3, 3, 'Jam Tangan Analog', 'jam-tangan-analog', 'fashion/pakaian-sepatu-pria/aksesoris-pria/jam-tangan-analog', NULL, NULL, NULL, NULL, 0, 1, 1, NULL, NULL),
-	(9, 1, 3, 3, 'Gesper Kulit', 'gesper-kulit', 'fashion/pakaian-sepatu-pria/aksesoris-pria/gesper-kulit', NULL, NULL, NULL, NULL, 0, 1, 1, NULL, NULL),
-	(10, 1, 3, 3, 'Topi Snapback', 'topi-snapback', 'fashion/pakaian-sepatu-pria/aksesoris-pria/topi-snapback', NULL, NULL, NULL, NULL, 0, 1, 1, NULL, NULL);
-
--- Dumping structure for table kishamarket.category_attributes
-CREATE TABLE IF NOT EXISTS `category_attributes` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `category_id` bigint unsigned NOT NULL,
-  `attribute_id` bigint unsigned NOT NULL,
-  `is_required` tinyint(1) DEFAULT '0',
-  `is_variant` tinyint(1) DEFAULT '0',
-  `sort_order` int DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_category_attribute` (`category_id`,`attribute_id`),
-  KEY `fk_category_attribute_attribute` (`attribute_id`),
-  CONSTRAINT `fk_category_attribute_attribute` FOREIGN KEY (`attribute_id`) REFERENCES `product_attributes` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_category_attribute_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Dumping data for table kishamarket.category_attributes: ~0 rows (approximately)
-
--- Dumping structure for table kishamarket.checkout_sessions
-CREATE TABLE IF NOT EXISTS `checkout_sessions` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `session_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `user_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` enum('draft','pending_payment','waiting_manual_verification','paid','cancelled','expired','failed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
-  `payment_gateway` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `payment_method` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `midtrans_order_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `midtrans_transaction_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `midtrans_snap_token` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `midtrans_redirect_url` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `midtrans_payment_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `midtrans_transaction_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `midtrans_fraud_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `midtrans_payload` json DEFAULT NULL,
-  `payment_instructions` json DEFAULT NULL,
-  `manual_transfer_payload` json DEFAULT NULL,
-  `manual_transfer_proof_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `manual_verified_by` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `manual_verified_at` timestamp NULL DEFAULT NULL,
-  `currency` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'IDR',
-  `subtotal` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `shipping_cost` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `discount_total` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `tax_total` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `grand_total` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `cart_snapshot` json NOT NULL,
-  `shipping_address` json NOT NULL,
-  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `created_order_id` bigint unsigned DEFAULT NULL,
-  `paid_at` timestamp NULL DEFAULT NULL,
-  `expires_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `checkout_sessions_session_number_unique` (`session_number`),
-  UNIQUE KEY `checkout_sessions_midtrans_order_id_unique` (`midtrans_order_id`),
-  KEY `checkout_sessions_user_id_index` (`user_id`),
-  KEY `checkout_sessions_status_index` (`status`),
-  KEY `checkout_sessions_created_order_id_index` (`created_order_id`),
-  KEY `checkout_sessions_manual_verified_by_index` (`manual_verified_by`),
-  CONSTRAINT `checkout_sessions_created_order_id_foreign` FOREIGN KEY (`created_order_id`) REFERENCES `orders` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `checkout_sessions_manual_verified_by_foreign` FOREIGN KEY (`manual_verified_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `checkout_sessions_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table kishamarket.checkout_sessions: ~0 rows (approximately)
-
--- Dumping structure for table kishamarket.checkout_session_items
-CREATE TABLE IF NOT EXISTS `checkout_session_items` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `checkout_session_id` bigint unsigned NOT NULL,
-  `product_id` bigint unsigned NOT NULL,
-  `product_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `sku` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `quantity` int unsigned NOT NULL,
-  `currency` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'IDR',
-  `unit_price` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `subtotal` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `checkout_session_items_session_id_index` (`checkout_session_id`),
-  KEY `checkout_session_items_product_id_index` (`product_id`),
-  CONSTRAINT `checkout_session_items_session_id_foreign` FOREIGN KEY (`checkout_session_id`) REFERENCES `checkout_sessions` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table kishamarket.checkout_session_items: ~0 rows (approximately)
+-- Dumping data for table kishamarket.categories: ~1 rows (approximately)
+INSERT IGNORE INTO `categories` (`id`, `catalog_group_id`, `parent_id`, `level`, `sort_order`, `is_active`, `is_visible_in_menu`, `name`, `slug`, `full_slug`, `image_url`, `icon_url`, `created_at`, `updated_at`) VALUES
+	(69, 3, NULL, 1, 1, 1, 1, 'ensk', 'ensk', 'ensk', NULL, NULL, '2026-06-15 23:44:39', '2026-06-16 00:26:41'),
+	(72, 3, NULL, 1, 1, 1, 1, 'ensk', 'enaHZahsk', 'enaHZahsk', 'https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile', 'https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile', '2026-06-24 19:33:42', '2026-06-24 19:33:42');
 
 -- Dumping structure for table kishamarket.failed_jobs
 CREATE TABLE IF NOT EXISTS `failed_jobs` (
@@ -361,32 +210,6 @@ CREATE TABLE IF NOT EXISTS `job_batches` (
 
 -- Dumping data for table kishamarket.job_batches: ~0 rows (approximately)
 
--- Dumping structure for table kishamarket.midtrans_notifications
-CREATE TABLE IF NOT EXISTS `midtrans_notifications` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `payment_attempt_id` bigint unsigned DEFAULT NULL,
-  `checkout_session_id` bigint unsigned DEFAULT NULL,
-  `order_id` bigint unsigned DEFAULT NULL,
-  `gateway_order_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `gateway_transaction_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `transaction_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `signature_key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `payload_hash` char(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `payload` json NOT NULL,
-  `received_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `midtrans_notifications_payload_hash_unique` (`payload_hash`),
-  KEY `midtrans_notifications_gateway_order_id_index` (`gateway_order_id`),
-  KEY `midtrans_notifications_order_id_index` (`order_id`),
-  KEY `midtrans_notifications_payment_attempt_id_foreign` (`payment_attempt_id`),
-  KEY `midtrans_notifications_checkout_session_id_index` (`checkout_session_id`),
-  CONSTRAINT `midtrans_notifications_checkout_session_id_foreign` FOREIGN KEY (`checkout_session_id`) REFERENCES `checkout_sessions` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `midtrans_notifications_order_id_foreign` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `midtrans_notifications_payment_attempt_id_foreign` FOREIGN KEY (`payment_attempt_id`) REFERENCES `payment_attempts` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table kishamarket.midtrans_notifications: ~0 rows (approximately)
-
 -- Dumping structure for table kishamarket.migrations
 CREATE TABLE IF NOT EXISTS `migrations` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
@@ -395,94 +218,68 @@ CREATE TABLE IF NOT EXISTS `migrations` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.migrations: ~10 rows (approximately)
+-- Dumping data for table kishamarket.migrations: ~0 rows (approximately)
 
 -- Dumping structure for table kishamarket.orders
 CREATE TABLE IF NOT EXISTS `orders` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `order_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `midtrans_order_id` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `source_cart_id` bigint unsigned DEFAULT NULL,
-  `source_cart_item_ids` json DEFAULT NULL,
-  `status` enum('pending','confirmed','processing','shipped','delivered','cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `payment_status` enum('unpaid','pending','paid','failed','expired','refunded','cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'unpaid',
-  `currency` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'IDR',
-  `subtotal` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `shipping_cost` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `discount_total` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `tax_total` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `grand_total` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `shipping_address` json NOT NULL,
-  `payment_method` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `payment_gateway` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `midtrans_transaction_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `midtrans_snap_token` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `midtrans_redirect_url` text COLLATE utf8mb4_unicode_ci,
-  `midtrans_payment_type` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `midtrans_transaction_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `midtrans_fraud_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `midtrans_payload` json DEFAULT NULL,
-  `payment_instructions` json DEFAULT NULL,
-  `payment_failed_reason` text COLLATE utf8mb4_unicode_ci,
-  `paid_at` timestamp NULL DEFAULT NULL,
-  `payment_expires_at` timestamp NULL DEFAULT NULL,
-  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `order_number` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `total_amount` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `status` enum('pending','processing','shipped','delivered','cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `shipping_address` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `order_number` (`order_number`),
-  UNIQUE KEY `orders_midtrans_order_id_unique` (`midtrans_order_id`),
-  KEY `orders_user_id_index` (`user_id`),
-  KEY `orders_order_number_index` (`order_number`),
-  KEY `orders_status_index` (`status`),
-  KEY `orders_payment_status_index` (`payment_status`),
-  KEY `orders_created_at_index` (`created_at`),
-  KEY `orders_source_cart_id_index` (`source_cart_id`),
-  KEY `orders_payment_status_expires_index` (`payment_status`,`payment_expires_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE KEY `orders_order_number_unique` (`order_number`),
+  KEY `orders_user_id_index` (`user_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.orders: ~0 rows (approximately)
+-- Dumping data for table kishamarket.orders: ~4 rows (approximately)
+INSERT IGNORE INTO `orders` (`id`, `order_number`, `user_id`, `total_amount`, `status`, `shipping_address`, `created_at`, `updated_at`) VALUES
+	(4, 'ORD-20260626-5B879A93', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 1500000.00, 'pending', 'Ruko Grand Wijaya Blok H-12, Jl. Wijaya II, Kebayoran Baru, Jakarta Selatan, 12160', '2026-06-26 01:38:47', '2026-06-26 01:38:47'),
+	(5, 'ORD-20260626-1B8B52C7', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 500000.00, 'pending', 'Alamat Default User, Jl. Merdeka No. 17, Jakarta Pusat', '2026-06-26 01:40:13', '2026-06-26 01:40:13'),
+	(6, 'ORD-20260626-1BA3B567', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 500000.00, 'processing', 'Jl. Merdeka No. 123, RT 01/RW 02, Kecamatan Kebayoran Baru', '2026-06-26 02:02:32', '2026-06-26 02:16:25'),
+	(7, 'ORD-20260626-9D5AB6AD', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 500000.00, 'cancelled', 'Jl. Merdeka No. 123, RT 01/RW 02, Kecamatan Kebayoran Baru', '2026-06-26 02:09:53', '2026-06-26 02:10:06'),
+	(8, 'ORD-20260626-4859D2C0', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 200000.00, 'pending', 'Jl. Merdeka No. 17, Jakarta Pusat', '2026-06-26 02:29:19', '2026-06-26 02:29:19'),
+	(9, 'ORD-20260629-54C075F1', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 1300000.00, 'pending', 'Jl. Merdeka No. 17, Jakarta Pusat', '2026-06-28 19:10:12', '2026-06-28 19:10:12'),
+	(10, 'ORD-20260629-97056C72', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 200000.00, 'pending', 'Jl. Merdeka No. 17, Jakarta Pusat', '2026-06-28 19:11:12', '2026-06-28 19:11:12'),
+	(11, 'ORD-20260629-E4017233', '32394b22-956f-4161-a45c-da7ded058428', 300000.00, 'pending', 'Jl. Merdeka No. 17, Jakarta Pusat', '2026-06-28 19:16:34', '2026-06-28 19:16:34');
 
 -- Dumping structure for table kishamarket.order_items
 CREATE TABLE IF NOT EXISTS `order_items` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `order_id` bigint unsigned NOT NULL,
   `product_id` bigint unsigned NOT NULL,
-  `product_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `sku` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `quantity` int unsigned NOT NULL,
-  `currency` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'IDR',
-  `unit_price` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `subtotal` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `store_id` bigint unsigned NOT NULL,
+  `product_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sku` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `price` decimal(12,2) NOT NULL,
+  `quantity` int NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `order_items_order_id_index` (`order_id`),
+  KEY `order_items_store_id_index` (`store_id`),
   KEY `order_items_product_id_index` (`product_id`),
+  KEY `order_items_order_id_foreign` (`order_id`),
   CONSTRAINT `order_items_order_id_foreign` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.order_items: ~0 rows (approximately)
-
--- Dumping structure for table kishamarket.order_status_histories
-CREATE TABLE IF NOT EXISTS `order_status_histories` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `order_id` bigint unsigned NOT NULL,
-  `from_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `to_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `changed_by` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `order_status_histories_order_id_index` (`order_id`),
-  KEY `order_status_histories_changed_by_index` (`changed_by`),
-  KEY `order_status_histories_created_at_index` (`created_at`),
-  CONSTRAINT `order_status_histories_order_id_foreign` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table kishamarket.order_status_histories: ~0 rows (approximately)
+-- Dumping data for table kishamarket.order_items: ~8 rows (approximately)
+INSERT IGNORE INTO `order_items` (`id`, `order_id`, `product_id`, `store_id`, `product_name`, `sku`, `price`, `quantity`, `created_at`, `updated_at`) VALUES
+	(1, 4, 105, 20, 'Produk Varian ID 105', 'SKU-VAR-105', 100000.00, 12, '2026-06-26 01:38:47', '2026-06-26 01:38:47'),
+	(2, 4, 106, 20, 'Produk Varian ID 106', 'SKU-VAR-106', 100000.00, 3, '2026-06-26 01:38:47', '2026-06-26 01:38:47'),
+	(3, 5, 105, 20, 'Produk Varian ID 105', 'SKU-VAR-105', 100000.00, 2, '2026-06-26 01:40:13', '2026-06-26 01:40:13'),
+	(4, 5, 106, 20, 'Produk Varian ID 106', 'SKU-VAR-106', 100000.00, 3, '2026-06-26 01:40:13', '2026-06-26 01:40:13'),
+	(5, 6, 105, 20, 'Produk Varian ID 105', 'SKU-VAR-105', 100000.00, 2, '2026-06-26 02:02:32', '2026-06-26 02:02:32'),
+	(6, 6, 106, 20, 'Produk Varian ID 106', 'SKU-VAR-106', 100000.00, 3, '2026-06-26 02:02:32', '2026-06-26 02:02:32'),
+	(7, 7, 105, 20, 'Produk Varian ID 105', 'SKU-VAR-105', 100000.00, 2, '2026-06-26 02:09:53', '2026-06-26 02:09:53'),
+	(8, 7, 106, 20, 'Produk Varian ID 106', 'SKU-VAR-106', 100000.00, 3, '2026-06-26 02:09:53', '2026-06-26 02:09:53'),
+	(9, 8, 105, 20, 'Produk Varian ID 105', 'SKU-VAR-105', 100000.00, 2, '2026-06-26 02:29:19', '2026-06-26 02:29:19'),
+	(10, 9, 105, 20, 'Produk Varian ID 105', 'SKU-VAR-105', 100000.00, 4, '2026-06-28 19:10:12', '2026-06-28 19:10:12'),
+	(11, 9, 106, 20, 'Produk Varian ID 106', 'SKU-VAR-106', 100000.00, 9, '2026-06-28 19:10:12', '2026-06-28 19:10:12'),
+	(12, 10, 105, 20, 'Produk Varian ID 105', 'SKU-VAR-105', 100000.00, 2, '2026-06-28 19:11:12', '2026-06-28 19:11:12'),
+	(13, 11, 106, 20, 'Produk Varian ID 106', 'SKU-VAR-106', 100000.00, 3, '2026-06-28 19:16:34', '2026-06-28 19:16:34');
 
 -- Dumping structure for table kishamarket.password_reset_tokens
 CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
@@ -493,49 +290,6 @@ CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Dumping data for table kishamarket.password_reset_tokens: ~0 rows (approximately)
-
--- Dumping structure for table kishamarket.payment_attempts
-CREATE TABLE IF NOT EXISTS `payment_attempts` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `order_id` bigint unsigned DEFAULT NULL,
-  `checkout_session_id` bigint unsigned DEFAULT NULL,
-  `attempt_no` int unsigned NOT NULL,
-  `gateway` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'midtrans',
-  `gateway_order_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `gateway_transaction_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `snap_token` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `redirect_url` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `status` enum('initiated','pending','paid','failed','expired','cancelled','refunded') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'initiated',
-  `payment_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `transaction_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `fraud_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `failure_reason` text COLLATE utf8mb4_unicode_ci,
-  `provider_response_code` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `provider_response_message` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `currency` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'IDR',
-  `gross_amount` bigint unsigned NOT NULL,
-  `request_payload` json DEFAULT NULL,
-  `response_payload` json DEFAULT NULL,
-  `latest_notification_payload` json DEFAULT NULL,
-  `payment_instructions` json DEFAULT NULL,
-  `paid_at` timestamp NULL DEFAULT NULL,
-  `expired_at` timestamp NULL DEFAULT NULL,
-  `expires_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `payment_attempts_gateway_gateway_order_id_unique` (`gateway`,`gateway_order_id`),
-  UNIQUE KEY `payment_attempts_order_attempt_no_unique` (`order_id`,`attempt_no`),
-  KEY `payment_attempts_order_id_index` (`order_id`),
-  KEY `payment_attempts_status_index` (`status`),
-  KEY `payment_attempts_gateway_transaction_id_index` (`gateway_transaction_id`),
-  KEY `payment_attempts_gateway_status_expires_index` (`gateway`,`status`,`expires_at`),
-  KEY `payment_attempts_checkout_session_id_foreign` (`checkout_session_id`),
-  CONSTRAINT `payment_attempts_checkout_session_id_foreign` FOREIGN KEY (`checkout_session_id`) REFERENCES `checkout_sessions` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `payment_attempts_order_id_foreign` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table kishamarket.payment_attempts: ~0 rows (approximately)
 
 -- Dumping structure for table kishamarket.personal_access_tokens
 CREATE TABLE IF NOT EXISTS `personal_access_tokens` (
@@ -553,9 +307,9 @@ CREATE TABLE IF NOT EXISTS `personal_access_tokens` (
   UNIQUE KEY `personal_access_tokens_token_unique` (`token`),
   KEY `personal_access_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`),
   KEY `personal_access_tokens_expires_at_index` (`expires_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=104 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=148 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.personal_access_tokens: ~53 rows (approximately)
+-- Dumping data for table kishamarket.personal_access_tokens: ~82 rows (approximately)
 INSERT IGNORE INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `name`, `token`, `abilities`, `last_used_at`, `expires_at`, `created_at`, `updated_at`) VALUES
 	(46, 'App\\Models\\User', '019e3a7b-ccaa-7334-a726-d66f38315f04', 'marketplace-api-pe7fibsc', '76a3876982ed7ea034a835e13f54c7db8b42ef5260899b5d90ac2bca159fd67e', '["access-api","active-role:buyer"]', '2026-05-18 02:51:05', NULL, '2026-05-18 02:47:32', '2026-05-18 02:51:05'),
 	(47, 'App\\Models\\User', '019e3a7f-1f49-73ce-a168-79600626b230', 'marketplace-api-341lmyky', 'd372e3b3d9b2228cd8c3d8c00e937e05ea047cc1396120e220a3604aa44723a2', '["access-api","active-role:buyer"]', NULL, NULL, '2026-05-18 02:51:10', '2026-05-18 02:51:10'),
@@ -609,510 +363,271 @@ INSERT IGNORE INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_
 	(100, 'App\\Models\\User', '019e6ee0-f99c-7010-b38f-e5cc6f24829d', 'marketplace-web', 'ca73f31f11b4b8cba775ccb6d8865997a276e09cef6b327e2fa01849f1eaca81', '["*"]', NULL, NULL, '2026-05-31 23:36:11', '2026-05-31 23:36:11'),
 	(101, 'App\\Models\\User', '019e6ee0-f99c-7010-b38f-e5cc6f24829d', 'marketplace-web', '74e147d3d6e2297dd3c3ec66515e8154e29f76e65eeeb3a1482823d665125199', '["*"]', '2026-05-31 23:50:06', NULL, '2026-05-31 23:46:51', '2026-05-31 23:50:06'),
 	(102, 'App\\Models\\User', '019e6ee0-f99c-7010-b38f-e5cc6f24829d', 'marketplace-web', 'e9e8d759f0ed88ca9bb6bc8b8ced0b57d127672f1f7e07db72e2d3f6c2f9f174', '["*"]', NULL, NULL, '2026-05-31 23:51:02', '2026-05-31 23:51:02'),
-	(103, 'App\\Models\\User', '019e6ee0-f99c-7010-b38f-e5cc6f24829d', 'marketplace-web', 'f44da723b3a43d3a69fa9ab2ec2a85b5340dfeb992a8d2401b7ebd2397881b77', '["*"]', '2026-06-01 00:02:41', NULL, '2026-06-01 00:02:21', '2026-06-01 00:02:41');
+	(103, 'App\\Models\\User', '019e6ee0-f99c-7010-b38f-e5cc6f24829d', 'marketplace-web', 'f44da723b3a43d3a69fa9ab2ec2a85b5340dfeb992a8d2401b7ebd2397881b77', '["*"]', '2026-06-01 00:02:41', NULL, '2026-06-01 00:02:21', '2026-06-01 00:02:41'),
+	(104, 'App\\Domains\\Identity\\Domain\\Entities\\User', '18a454f4-995e-44cc-ab74-662c6b67e9b6', 'thunder-client', '7a6fa9b58eed710752b5f1f41baa558d06f2237be9d187e3d5956081961747fd', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-11 06:27:58', '2026-06-11 06:27:58'),
+	(105, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fd9ff9aa-4358-4873-b088-29d7c47d8798', 'marketplace-web', '274be5f6d964630442e717edecc6acd986d4dcbaa835d64bac802c1159ecb13d', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-11 06:31:02', '2026-06-11 06:31:02'),
+	(106, 'App\\Domains\\Identity\\Domain\\Entities\\User', '712e352f-038d-4570-beae-83f4c2dad26b', 'marketplace-web', '8fa9b0662a0ec7e515fd468e646bc0571724e5687ec9b399ab3ab4c62fa175b7', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-11 06:32:31', '2026-06-11 06:32:31'),
+	(107, 'App\\Domains\\Identity\\Domain\\Entities\\User', '712e352f-038d-4570-beae-83f4c2dad26b', 'marketplace-web', '9479640c60512ffb7e295222c9d6ca9aec93b5b647a2060f3a1d6f11a92cff22', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-11 06:33:00', '2026-06-11 06:33:00'),
+	(108, 'App\\Domains\\Identity\\Domain\\Entities\\User', '4ca37b1b-c936-47ae-9167-4b3b38a062ea', 'marketplace-web', '3b5624f30a08e68c0c48922900390725010c1f1e1ae0f1b9b181eae794e3e301', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-11 06:37:54', '2026-06-11 06:37:54'),
+	(109, 'App\\Domains\\Identity\\Domain\\Entities\\User', '4ca37b1b-c936-47ae-9167-4b3b38a062ea', 'marketplace-web', '3396de502b5143f6454e88756723526f6870f4ef4c3a4e903ce3741550ef9cbe', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-12 08:05:16', '2026-06-12 08:05:16'),
+	(110, 'App\\Domains\\Identity\\Domain\\Entities\\User', '5ba4a4cc-395e-4604-a56e-7ae3193226e6', 'marketplace-web', '34a897adf08ec616c3fa6fbbfddde5793917f5af6c675827557ff78e0558d69f', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-16 00:27:57', '2026-06-16 00:27:57'),
+	(111, 'App\\Domains\\Identity\\Domain\\Entities\\User', '5ba4a4cc-395e-4604-a56e-7ae3193226e6', 'marketplace-web', 'c90794abd8fdbe0815cf931cfaee776f6739ea972c382de97012374c16302686', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-21 21:06:36', '2026-06-21 21:06:36'),
+	(116, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'marketplace-web', '585d12bafee71e10a297193a6fa71819aed473fa13b68828acf9bbb2e41acf2f', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-22 01:24:07', '2026-06-22 01:24:07'),
+	(117, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'marketplace-web', 'f41675a06878277701c48edcbae33c24e3974557c0c2cb012ef2524d1c7ec4ac', '["access-api","active-role:buyer"]', '2026-06-22 18:18:16', NULL, '2026-06-22 01:25:36', '2026-06-22 18:18:16'),
+	(118, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'iPhone 15 Pro', 'f5a589bc27c17257a385c9b861e60dd678d158dcf68cc3535d81db723e30fac5', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-22 20:20:42', '2026-06-22 20:20:42'),
+	(119, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'marketplace-web', '06da021b10349c4af066f51f9396f666842840cd8ab54659b10483a28312a07a', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-22 20:21:16', '2026-06-22 20:21:16'),
+	(120, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'marketplace-web', '631ac5de8f8efd28449fe04aa0c54e51b618bf349034eec214f53c9a8897e169', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-22 20:25:22', '2026-06-22 20:25:22'),
+	(121, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'marketplace-web', '04df70e10d64ce43b2e332d2a18bfdb800cf9b52050fbd31255dc7de2f5fbe08', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-22 20:26:24', '2026-06-22 20:26:24'),
+	(122, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'marketplace-web', '535fea5a7faa53f5e9710b635dd760e375099c37f2dc585852c0a814584eb187', '["access-api","active-role:buyer"]', '2026-06-22 20:43:16', NULL, '2026-06-22 20:35:15', '2026-06-22 20:43:16'),
+	(123, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'marketplace-web', 'a42dea4398acc3c7cf9ddb0da7fc9835b230c673873ddddfd895176d50e908d2', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-22 20:43:36', '2026-06-22 20:43:36'),
+	(125, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'Laptop-Asus', '4db58272d74635eefce5076972c2b52856a4ba0a58cbfc0f99c215f8359d12dd', '["access-api","active-role:seller"]', '2026-06-22 23:51:31', NULL, '2026-06-22 21:07:58', '2026-06-22 23:51:31'),
+	(126, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'iPhone 15 Pro', '61b3c8005a62bdd7c8bfcc4340660801de3afc94eaa75d9b7ad58f46ff1f6a35', '["access-api","active-role:buyer"]', '2026-06-24 02:31:33', NULL, '2026-06-23 18:28:52', '2026-06-24 02:31:33'),
+	(128, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'Laptop-Asus', 'e642120f3278131e418f1de16fde309077749de737dece6a17d80ee986b7629e', '["access-api","active-role:seller"]', '2026-06-23 21:44:56', NULL, '2026-06-23 21:07:22', '2026-06-23 21:44:56'),
+	(130, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'Laptop-Asus', '34124e88fcb79367a342632cae1edaa20ba55dbd60840c84275dbee4ef36d031', '["access-api","active-role:seller"]', '2026-06-23 23:43:06', NULL, '2026-06-23 21:46:06', '2026-06-23 23:43:06'),
+	(131, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'iPhone 15 Pro', '49824c3ac239fb536ff176ee1e7a04c4148a4ba16de0500c92ee9dd829904999', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-24 00:38:52', '2026-06-24 00:38:52'),
+	(132, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'iPhone 15 Pro', 'a106e8ab8be1569311b8cfa59ed698309415d21bfc7b5d30a2b3b2715d6ee3c1', '["access-api","active-role:buyer"]', '2026-06-24 01:28:51', NULL, '2026-06-24 00:44:02', '2026-06-24 01:28:51'),
+	(134, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'Laptop-Asus', 'a0b6477229557ec3fee88a5bb9c170eba04071e4865317523735297931ac5a61', '["access-api","active-role:seller"]', '2026-06-24 01:34:25', NULL, '2026-06-24 01:34:01', '2026-06-24 01:34:25'),
+	(135, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'iPhone 15 Pro', 'ba107e5436e59a444efa6a22845819192d25ebfdbc398523cd3e0d4465039916', '["access-api","active-role:buyer"]', '2026-06-24 19:24:39', NULL, '2026-06-24 18:18:23', '2026-06-24 19:24:39'),
+	(138, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'marketplace-web', '364af15d5edd1096c5d360d00a6cfaad0cb7c9408f8584ac3673713045d1f148', '["access-api","active-role:seller"]', NULL, NULL, '2026-06-24 19:31:00', '2026-06-24 19:31:00'),
+	(139, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'iPhone 15 Pro', '7d09dd5f1f8b4f4dcd780f60aefc56562ef92fd8f3c088a08a6beb9bca678837', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-24 19:31:27', '2026-06-24 19:31:27'),
+	(141, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'marketplace-web', '4e99d2bf5cf1bb4e4ce65c264c0706cb15e83925a8fe1dea8945bb660cadd507', '["access-api","active-role:admin"]', '2026-06-24 19:33:41', NULL, '2026-06-24 19:33:11', '2026-06-24 19:33:41'),
+	(142, 'App\\Domains\\Identity\\Domain\\Entities\\User', '45e1e9f7-a60c-448e-bee5-9d7a7db1e7de', 'Browser Testing (Laravel Blade)', 'b5d11f4a8f8b54a1a539ef8042e328eec424db9649219dba8cfa0c94619b959e', '["access-api","active-role:buyer"]', NULL, NULL, '2026-06-24 19:37:09', '2026-06-24 19:37:09'),
+	(143, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'iPhone 15 Pro', '5eea3358c0ea5e45bc0f6bdadde411c9fb882a42e91320bb505192b074d7536e', '["access-api","active-role:buyer"]', '2026-06-26 02:25:55', NULL, '2026-06-26 01:14:51', '2026-06-26 02:25:55'),
+	(144, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'iPhone 15 Pro', '042005ac64652ae6d99687fdc28a8bf6387cef0f8a824d0cfbf4600ad50e8ce8', '["access-api","active-role:buyer"]', '2026-06-28 19:12:04', NULL, '2026-06-28 19:08:20', '2026-06-28 19:12:04'),
+	(146, 'App\\Domains\\Identity\\Domain\\Entities\\User', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'Laptop-Asus', '0350c20da54271bfd72f7f35fd5a8a3eeeb74a2798ae98c7f64e97e6bae0aed4', '["access-api","active-role:admin"]', '2026-06-28 19:14:25', NULL, '2026-06-28 19:14:10', '2026-06-28 19:14:25'),
+	(147, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'iPhone 15 Pro', '15a450ae032871df2a7dea4d034fa6ffc2b2c842f4b58e2dfb237404a4af0745', '["access-api","active-role:buyer"]', '2026-06-28 19:16:34', NULL, '2026-06-28 19:15:24', '2026-06-28 19:16:34');
 
 -- Dumping structure for table kishamarket.products
 CREATE TABLE IF NOT EXISTS `products` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `store_id` bigint unsigned DEFAULT NULL,
+  `store_id` bigint unsigned NOT NULL,
   `primary_category_id` bigint unsigned DEFAULT NULL,
   `seller_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `slug` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `sku` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `short_description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `brand` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `weight_gram` int unsigned DEFAULT NULL,
-  `price` decimal(14,2) NOT NULL,
-  `stock` int unsigned NOT NULL DEFAULT '0',
   `thumbnail` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
-  `is_featured` tinyint(1) NOT NULL DEFAULT '0',
+  `status` enum('draft','published','archived') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'published',
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `products_slug_unique` (`slug`),
-  UNIQUE KEY `uk_products_sku` (`sku`),
-  KEY `products_seller_id_status_index` (`seller_id`,`status`),
-  KEY `idx_products_is_active_featured` (`is_active`,`is_featured`),
-  KEY `idx_products_status_created_id` (`status`,`created_at`,`id`),
-  KEY `idx_products_primary_category_status` (`primary_category_id`,`status`),
-  KEY `idx_products_store_status_created_id` (`store_id`,`status`,`created_at`,`id`),
-  CONSTRAINT `products_category_id_foreign` FOREIGN KEY (`primary_category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `products_seller_id_foreign` FOREIGN KEY (`seller_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `products_store_id_foreign` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `fk_products_store` (`store_id`),
+  KEY `fk_products_category` (`primary_category_id`),
+  CONSTRAINT `fk_products_category` FOREIGN KEY (`primary_category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_products_store` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.products: ~26 rows (approximately)
-INSERT IGNORE INTO `products` (`id`, `store_id`, `primary_category_id`, `seller_id`, `name`, `slug`, `sku`, `description`, `short_description`, `brand`, `weight_gram`, `price`, `stock`, `thumbnail`, `status`, `is_featured`, `is_active`, `created_at`, `updated_at`) VALUES
-	(1, 1, 4, 'user-uuid-001', 'Sepatu Futsal Nike Mercurial Pro', 'sepatu-futsal-nike-mercurial-pro', 'NK-MRC-001', NULL, NULL, NULL, NULL, 1200000.00, 50, NULL, 'published', 0, 1, NULL, NULL),
-	(2, 1, 4, 'user-uuid-001', 'Sepatu Futsal Adidas Predator Edge', 'sepatu-futsal-adidas-predator-edge', 'AD-PRD-002', NULL, NULL, NULL, NULL, 1500000.00, 40, NULL, 'published', 0, 1, NULL, NULL),
-	(3, 1, 5, 'user-uuid-001', 'Sepatu Sneakers Compass Gazelle', 'sepatu-sneakers-compass-gazelle', 'CP-GZL-003', NULL, NULL, NULL, NULL, 458000.00, 100, NULL, 'published', 0, 1, NULL, NULL),
-	(4, 1, 5, 'user-uuid-002', 'Sepatu Sneakers Ventela Public Black', 'sepatu-sneakers-ventela-public-black', 'VT-PUB-004', NULL, NULL, NULL, NULL, 350000.00, 80, NULL, 'published', 0, 1, NULL, NULL),
-	(5, 1, 6, 'user-uuid-002', 'Sepatu Pantofel Kulit Buccheri', 'sepatu-pantofel-kulit-buccheri', 'BC-PTF-005', NULL, NULL, NULL, NULL, 850000.00, 30, NULL, 'published', 0, 1, NULL, NULL),
-	(6, 1, 7, 'user-uuid-003', 'Kacamata Hitam Rayban Aviator Classic', 'kacamata-hitam-rayban-aviator-classic', 'RB-AVT-006', NULL, NULL, NULL, NULL, 2500000.00, 15, NULL, 'published', 0, 1, NULL, NULL),
-	(7, 1, 8, 'user-uuid-003', 'Jam Tangan Casio Edifice Chronograph', 'jam-tangan-casio-edifice-chronograph', 'CS-EDF-007', NULL, NULL, NULL, NULL, 1850000.00, 20, NULL, 'published', 0, 1, NULL, NULL),
-	(8, 1, 8, 'user-uuid-003', 'Jam Tangan Seiko 5 Sports Automatic', 'jam-tangan-seiko-5-sports-automatic', 'SK-SKX-008', NULL, NULL, NULL, NULL, 3200000.00, 10, NULL, 'published', 0, 1, NULL, NULL),
-	(9, 1, 9, 'user-uuid-004', 'Gesper Kulit Levi’s Original Belt', 'gesper-kulit-levis-original-belt', 'LV-BLT-009', NULL, NULL, NULL, NULL, 450000.00, 60, NULL, 'published', 0, 1, NULL, NULL),
-	(10, 1, 10, 'user-uuid-004', 'Topi Snapback New Era 9FORTY NY', 'topi-snapback-new-era-9forty-ny', 'NE-NY-010', NULL, NULL, NULL, NULL, 499000.00, 25, NULL, 'published', 0, 1, NULL, NULL);
+-- Dumping data for table kishamarket.products: ~10 rows (approximately)
+INSERT IGNORE INTO `products` (`id`, `store_id`, `primary_category_id`, `seller_id`, `name`, `slug`, `description`, `brand`, `thumbnail`, `status`, `is_active`, `created_at`, `updated_at`) VALUES
+	(10, 1, 69, 'UUID-SELLER-001', 'Sepatu Olahraga Running Pro', 'sepatu-olahraga-running-pro', 'Sepatu lari sangat nyaman', 'Nikefit', 'sepatu-pro.jpg', 'published', 1, '2026-06-24 02:45:05', '2026-06-24 02:45:05'),
+	(11, 1, 69, 'UUID-SELLER-001', 'Kaos Polos Cotton Combed 30s', 'kaos-polos-cotton-combed-30s', 'Kaos adem cocok untuk harian', 'KishaWear', 'kaos-30s.jpg', 'published', 1, '2026-06-24 02:45:05', '2026-06-24 02:45:05'),
+	(12, 2, 69, 'UUID-SELLER-002', 'Kemeja Flanel Premium', 'kemeja-flanel-premium', 'Kemeja flanel motif kotak-kotak', 'FlannelCo', 'flanel.jpg', 'published', 1, '2026-06-24 02:45:05', '2026-06-24 02:45:05'),
+	(13, 2, 69, 'UUID-SELLER-002', 'Jaket Bomber Waterproof', 'jaket-bomber-waterproof', 'Jaket tahan angin dan air', 'WindBreaker', 'bomber.jpg', 'published', 1, '2026-06-24 02:45:05', '2026-06-24 02:45:05'),
+	(14, 3, 69, 'UUID-SELLER-003', 'Celana Chino Slimfit', 'celana-chino-slimfit', 'Celana chino bahan melar', 'ChinoID', 'chino.jpg', 'published', 1, '2026-06-24 02:45:05', '2026-06-24 02:45:05'),
+	(16, 31, 69, 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'Sepatu Running Nike Air Max 2026', 'sepatu-running-nike-air-max-2026', 'Sepatu running premium dengan bantalan udara maksimal untuk kenyamanan lari harian Anda.', 'Nike', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff', 'published', 1, '2026-06-23 21:14:10', '2026-06-23 21:14:10'),
+	(20, 31, 69, 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'Nike Air Max 2026 - Ultra Light', 'sepatu-dkjkfbefjkfj-nike-air-max-2026', 'Deskripsi baru yang sudah diperbarui.', 'Nike Promo', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff', 'published', 1, '2026-06-23 21:17:42', '2026-06-23 21:24:07'),
+	(21, 31, 69, 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'Sepatu Running Nike Air Max', 'nike-air-max-stealth-2026-edisi-spesial', 'Sepatu running nyaman dan trendy.', 'Nike original', NULL, 'published', 1, '2026-06-23 21:53:36', '2026-06-25 01:13:45'),
+	(22, 31, 69, 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'Sepatu Running Nike Air Max', 'sepatu-running-nike-air-max', 'Sepatu running nyaman dan trendy.', NULL, NULL, 'published', 1, '2026-06-23 21:57:25', '2026-06-25 01:13:48'),
+	(25, 31, 69, 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'Sepatu dkdhbdghdhdjwgdjqhjkfbefjkfj Nike Air Max 2026', 'sepatu-dkdhbdghdhdjwgdjqhjkfbefjkfj-nike-air-max-2026', 'dfwkjbwfbkjfwbkjw running premium dengan bantalan udara maksimal untuk kenyamanan lari harian Anda.', 'Nike', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff', 'published', 1, '2026-06-23 22:45:45', '2026-06-23 22:45:45');
 
 -- Dumping structure for table kishamarket.product_attributes
 CREATE TABLE IF NOT EXISTS `product_attributes` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) NOT NULL,
-  `slug` varchar(100) NOT NULL,
-  `type` enum('text','number','select','multiselect','boolean') DEFAULT 'text',
-  `is_active` tinyint(1) DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'select',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `slug` (`slug`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  UNIQUE KEY `attributes_slug_unique` (`slug`)
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.product_attributes: ~0 rows (approximately)
-INSERT IGNORE INTO `product_attributes` (`id`, `name`, `slug`, `type`, `is_active`, `created_at`, `updated_at`) VALUES
-	(1, 'Ukuran', 'ukuran', 'select', 1, NULL, NULL),
-	(2, 'Warna', 'warna', 'select', 1, NULL, NULL),
-	(3, 'Bahan', 'bahan', 'text', 1, NULL, NULL);
+-- Dumping data for table kishamarket.product_attributes: ~6 rows (approximately)
+INSERT IGNORE INTO `product_attributes` (`id`, `name`, `slug`, `type`) VALUES
+	(1, 'Warna', 'warna', 'select'),
+	(2, 'Ukuran', 'ukuran', 'select'),
+	(3, 'Bahan', 'bahan', 'text'),
+	(4, 'Garansi', 'garansi', 'text'),
+	(5, 'Kapasitas', 'kapasitas', 'select'),
+	(8, 's Sepatu', 'ukuran-sepatu', 'select');
 
 -- Dumping structure for table kishamarket.product_attribute_values
 CREATE TABLE IF NOT EXISTS `product_attribute_values` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `product_id` bigint unsigned NOT NULL,
   `attribute_id` bigint unsigned NOT NULL,
-  `value` varchar(255) NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
+  `value` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_pav_product` (`product_id`),
   KEY `fk_pav_attribute` (`attribute_id`),
   CONSTRAINT `fk_pav_attribute` FOREIGN KEY (`attribute_id`) REFERENCES `product_attributes` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_pav_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.product_attribute_values: ~0 rows (approximately)
-INSERT IGNORE INTO `product_attribute_values` (`id`, `product_id`, `attribute_id`, `value`, `created_at`, `updated_at`) VALUES
-	(1, 1, 3, 'Kulit Kangguru Sintetis', NULL, NULL),
-	(2, 2, 3, 'Rajutan (Primeknit) & Karet', NULL, NULL),
-	(3, 3, 3, 'Kanvas 12oz', NULL, NULL),
-	(4, 4, 3, 'Kanvas', NULL, NULL),
-	(5, 5, 3, 'Kulit Sapi Asli', NULL, NULL),
-	(6, 6, 3, 'Gelas Mineral & Logam', NULL, NULL),
-	(7, 7, 3, 'Stainless Steel', NULL, NULL),
-	(8, 8, 3, 'Stainless Steel', NULL, NULL),
-	(9, 9, 3, 'Kulit Domba', NULL, NULL),
-	(10, 10, 3, 'Katun Twill', NULL, NULL);
+-- Dumping data for table kishamarket.product_attribute_values: ~8 rows (approximately)
+INSERT IGNORE INTO `product_attribute_values` (`id`, `product_id`, `attribute_id`, `value`) VALUES
+	(11, 10, 3, 'Mesh Premium & Rubber'),
+	(12, 11, 3, '100% Cotton Combed'),
+	(13, 12, 4, '6 Bulan Toko'),
+	(14, 13, 3, 'Taslan Despo Premium'),
+	(15, 14, 4, 'Tidak Ada Garansi'),
+	(16, 16, 3, 'Mesh Premium & Rubber'),
+	(19, 20, 3, 'Mesh Premium & Rubber'),
+	(21, 25, 3, 'Mesh Premium & Rubber');
 
 -- Dumping structure for table kishamarket.product_categories
 CREATE TABLE IF NOT EXISTS `product_categories` (
   `product_id` bigint unsigned NOT NULL,
   `category_id` bigint unsigned NOT NULL,
   `is_primary` tinyint(1) NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  UNIQUE KEY `uq_product_category` (`product_id`,`category_id`),
-  KEY `idx_product_categories_category_product` (`category_id`,`product_id`),
-  KEY `idx_product_categories_is_primary` (`product_id`,`is_primary`),
+  PRIMARY KEY (`product_id`,`category_id`),
+  KEY `fk_pc_category` (`category_id`),
   CONSTRAINT `fk_pc_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_pc_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.product_categories: ~37 rows (approximately)
-INSERT IGNORE INTO `product_categories` (`product_id`, `category_id`, `is_primary`, `created_at`, `updated_at`) VALUES
-	(1, 2, 0, NULL, NULL),
-	(1, 4, 1, NULL, NULL),
-	(1, 11, 0, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(1, 21, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(2, 2, 0, NULL, NULL),
-	(2, 4, 1, NULL, NULL),
-	(2, 11, 0, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(2, 22, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(3, 2, 0, NULL, NULL),
-	(3, 5, 1, NULL, NULL),
-	(3, 12, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(4, 2, 0, NULL, NULL),
-	(4, 5, 1, NULL, NULL),
-	(4, 13, 0, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(4, 23, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(5, 2, 0, NULL, NULL),
-	(5, 6, 1, NULL, NULL),
-	(5, 15, 0, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(5, 24, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(6, 3, 0, NULL, NULL),
-	(6, 7, 1, NULL, NULL),
-	(6, 16, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(7, 3, 0, NULL, NULL),
-	(7, 8, 1, NULL, NULL),
-	(7, 17, 0, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(7, 25, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(8, 3, 0, NULL, NULL),
-	(8, 8, 1, NULL, NULL),
-	(8, 18, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(9, 3, 0, NULL, NULL),
-	(9, 9, 1, NULL, NULL),
-	(9, 19, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(10, 3, 0, NULL, NULL),
-	(10, 10, 1, NULL, NULL),
-	(10, 20, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(11, 11, 0, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(11, 21, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(12, 12, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(13, 13, 0, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(13, 23, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(14, 14, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(15, 15, 0, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(15, 24, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(16, 16, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(17, 17, 0, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(17, 25, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(18, 18, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(19, 19, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(20, 20, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(21, 11, 0, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(21, 21, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(22, 11, 0, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(22, 22, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(23, 13, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(24, 15, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(25, 17, 1, '2026-05-24 10:15:48', '2026-05-24 10:15:48'),
-	(25, 25, 0, '2026-05-24 10:15:48', '2026-05-24 10:15:48');
+-- Dumping data for table kishamarket.product_categories: ~9 rows (approximately)
+INSERT IGNORE INTO `product_categories` (`product_id`, `category_id`, `is_primary`) VALUES
+	(10, 69, 1),
+	(11, 69, 1),
+	(12, 69, 1),
+	(13, 69, 1),
+	(14, 69, 1),
+	(16, 69, 1),
+	(20, 69, 1),
+	(25, 69, 1);
 
 -- Dumping structure for table kishamarket.product_images
 CREATE TABLE IF NOT EXISTS `product_images` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `product_id` bigint unsigned NOT NULL,
-  `image_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `alt_text` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_primary` tinyint(1) NOT NULL DEFAULT '0',
   `sort_order` int NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `product_images_product_id_is_primary_index` (`product_id`,`is_primary`),
   KEY `idx_product_images_sort_order` (`product_id`,`sort_order`),
   CONSTRAINT `product_images_product_id_foreign` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=89 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=43 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.product_images: ~78 rows (approximately)
-INSERT IGNORE INTO `product_images` (`id`, `product_id`, `image_url`, `url`, `alt_text`, `is_primary`, `sort_order`, `created_at`, `updated_at`) VALUES
-	(1, 1, 'https://picsum.photos/seed/1_1/900/900', 'https://picsum.photos/seed/1_1/900/900', 'Marketplace Product 1 image', 1, 1, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(2, 1, 'https://picsum.photos/seed/1_2/900/900', 'https://picsum.photos/seed/1_2/900/900', 'Marketplace Product 1 image', 0, 2, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(3, 1, 'https://picsum.photos/seed/1_3/900/900', 'https://picsum.photos/seed/1_3/900/900', 'Marketplace Product 1 image', 0, 3, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(4, 2, 'https://picsum.photos/seed/2_1/900/900', 'https://picsum.photos/seed/2_1/900/900', 'Marketplace Product 2 image', 1, 1, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(5, 2, 'https://picsum.photos/seed/2_2/900/900', 'https://picsum.photos/seed/2_2/900/900', 'Marketplace Product 2 image', 0, 2, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(6, 2, 'https://picsum.photos/seed/2_3/900/900', 'https://picsum.photos/seed/2_3/900/900', 'Marketplace Product 2 image', 0, 3, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(7, 3, 'https://picsum.photos/seed/3_1/900/900', 'https://picsum.photos/seed/3_1/900/900', 'Marketplace Product 3 image', 1, 1, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(8, 3, 'https://picsum.photos/seed/3_2/900/900', 'https://picsum.photos/seed/3_2/900/900', 'Marketplace Product 3 image', 0, 2, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(9, 3, 'https://picsum.photos/seed/3_3/900/900', 'https://picsum.photos/seed/3_3/900/900', 'Marketplace Product 3 image', 0, 3, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(10, 4, 'https://picsum.photos/seed/4_1/900/900', 'https://picsum.photos/seed/4_1/900/900', 'Marketplace Product 4 image', 1, 1, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(11, 4, 'https://picsum.photos/seed/4_2/900/900', 'https://picsum.photos/seed/4_2/900/900', 'Marketplace Product 4 image', 0, 2, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(12, 4, 'https://picsum.photos/seed/4_3/900/900', 'https://picsum.photos/seed/4_3/900/900', 'Marketplace Product 4 image', 0, 3, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(13, 5, 'https://picsum.photos/seed/5_1/900/900', 'https://picsum.photos/seed/5_1/900/900', 'Marketplace Product 5 image', 1, 1, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(14, 5, 'https://picsum.photos/seed/5_2/900/900', 'https://picsum.photos/seed/5_2/900/900', 'Marketplace Product 5 image', 0, 2, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(15, 5, 'https://picsum.photos/seed/5_3/900/900', 'https://picsum.photos/seed/5_3/900/900', 'Marketplace Product 5 image', 0, 3, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(16, 6, 'https://picsum.photos/seed/6_1/900/900', 'https://picsum.photos/seed/6_1/900/900', 'Marketplace Product 6 image', 1, 1, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(17, 6, 'https://picsum.photos/seed/6_2/900/900', 'https://picsum.photos/seed/6_2/900/900', 'Marketplace Product 6 image', 0, 2, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(18, 6, 'https://picsum.photos/seed/6_3/900/900', 'https://picsum.photos/seed/6_3/900/900', 'Marketplace Product 6 image', 0, 3, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(19, 7, 'https://picsum.photos/seed/7_1/900/900', 'https://picsum.photos/seed/7_1/900/900', 'Marketplace Product 7 image', 1, 1, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(20, 7, 'https://picsum.photos/seed/7_2/900/900', 'https://picsum.photos/seed/7_2/900/900', 'Marketplace Product 7 image', 0, 2, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(21, 7, 'https://picsum.photos/seed/7_3/900/900', 'https://picsum.photos/seed/7_3/900/900', 'Marketplace Product 7 image', 0, 3, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(22, 8, 'https://picsum.photos/seed/8_1/900/900', 'https://picsum.photos/seed/8_1/900/900', 'Marketplace Product 8 image', 1, 1, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(23, 8, 'https://picsum.photos/seed/8_2/900/900', 'https://picsum.photos/seed/8_2/900/900', 'Marketplace Product 8 image', 0, 2, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(24, 8, 'https://picsum.photos/seed/8_3/900/900', 'https://picsum.photos/seed/8_3/900/900', 'Marketplace Product 8 image', 0, 3, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(25, 9, 'https://picsum.photos/seed/9_1/900/900', 'https://picsum.photos/seed/9_1/900/900', 'Marketplace Product 9 image', 1, 1, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(26, 9, 'https://picsum.photos/seed/9_2/900/900', 'https://picsum.photos/seed/9_2/900/900', 'Marketplace Product 9 image', 0, 2, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(27, 9, 'https://picsum.photos/seed/9_3/900/900', 'https://picsum.photos/seed/9_3/900/900', 'Marketplace Product 9 image', 0, 3, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(28, 10, 'https://picsum.photos/seed/10_1/900/900', 'https://picsum.photos/seed/10_1/900/900', 'Marketplace Product 10 image', 1, 1, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(29, 10, 'https://picsum.photos/seed/10_2/900/900', 'https://picsum.photos/seed/10_2/900/900', 'Marketplace Product 10 image', 0, 2, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(30, 10, 'https://picsum.photos/seed/10_3/900/900', 'https://picsum.photos/seed/10_3/900/900', 'Marketplace Product 10 image', 0, 3, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(31, 11, 'https://picsum.photos/seed/11_1/900/900', 'https://picsum.photos/seed/11_1/900/900', 'Marketplace Product 11 image', 1, 1, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(32, 11, 'https://picsum.photos/seed/11_2/900/900', 'https://picsum.photos/seed/11_2/900/900', 'Marketplace Product 11 image', 0, 2, '2026-04-19 22:44:22', '2026-04-19 22:44:22'),
-	(33, 11, 'https://picsum.photos/seed/11_3/900/900', 'https://picsum.photos/seed/11_3/900/900', 'Marketplace Product 11 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(34, 12, 'https://picsum.photos/seed/12_1/900/900', 'https://picsum.photos/seed/12_1/900/900', 'Marketplace Product 12 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(35, 12, 'https://picsum.photos/seed/12_2/900/900', 'https://picsum.photos/seed/12_2/900/900', 'Marketplace Product 12 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(36, 12, 'https://picsum.photos/seed/12_3/900/900', 'https://picsum.photos/seed/12_3/900/900', 'Marketplace Product 12 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(37, 13, 'https://picsum.photos/seed/13_1/900/900', 'https://picsum.photos/seed/13_1/900/900', 'Marketplace Product 13 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(38, 13, 'https://picsum.photos/seed/13_2/900/900', 'https://picsum.photos/seed/13_2/900/900', 'Marketplace Product 13 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(39, 13, 'https://picsum.photos/seed/13_3/900/900', 'https://picsum.photos/seed/13_3/900/900', 'Marketplace Product 13 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(40, 14, 'https://picsum.photos/seed/14_1/900/900', 'https://picsum.photos/seed/14_1/900/900', 'Marketplace Product 14 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(41, 14, 'https://picsum.photos/seed/14_2/900/900', 'https://picsum.photos/seed/14_2/900/900', 'Marketplace Product 14 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(42, 14, 'https://picsum.photos/seed/14_3/900/900', 'https://picsum.photos/seed/14_3/900/900', 'Marketplace Product 14 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(43, 15, 'https://picsum.photos/seed/15_1/900/900', 'https://picsum.photos/seed/15_1/900/900', 'Marketplace Product 15 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(44, 15, 'https://picsum.photos/seed/15_2/900/900', 'https://picsum.photos/seed/15_2/900/900', 'Marketplace Product 15 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(45, 15, 'https://picsum.photos/seed/15_3/900/900', 'https://picsum.photos/seed/15_3/900/900', 'Marketplace Product 15 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(46, 16, 'https://picsum.photos/seed/16_1/900/900', 'https://picsum.photos/seed/16_1/900/900', 'Marketplace Product 16 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(47, 16, 'https://picsum.photos/seed/16_2/900/900', 'https://picsum.photos/seed/16_2/900/900', 'Marketplace Product 16 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(48, 16, 'https://picsum.photos/seed/16_3/900/900', 'https://picsum.photos/seed/16_3/900/900', 'Marketplace Product 16 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(49, 17, 'https://picsum.photos/seed/17_1/900/900', 'https://picsum.photos/seed/17_1/900/900', 'Marketplace Product 17 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(50, 17, 'https://picsum.photos/seed/17_2/900/900', 'https://picsum.photos/seed/17_2/900/900', 'Marketplace Product 17 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(51, 17, 'https://picsum.photos/seed/17_3/900/900', 'https://picsum.photos/seed/17_3/900/900', 'Marketplace Product 17 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(52, 18, 'https://picsum.photos/seed/18_1/900/900', 'https://picsum.photos/seed/18_1/900/900', 'Marketplace Product 18 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(53, 18, 'https://picsum.photos/seed/18_2/900/900', 'https://picsum.photos/seed/18_2/900/900', 'Marketplace Product 18 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(54, 18, 'https://picsum.photos/seed/18_3/900/900', 'https://picsum.photos/seed/18_3/900/900', 'Marketplace Product 18 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(55, 19, 'https://picsum.photos/seed/19_1/900/900', 'https://picsum.photos/seed/19_1/900/900', 'Marketplace Product 19 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(56, 19, 'https://picsum.photos/seed/19_2/900/900', 'https://picsum.photos/seed/19_2/900/900', 'Marketplace Product 19 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(57, 19, 'https://picsum.photos/seed/19_3/900/900', 'https://picsum.photos/seed/19_3/900/900', 'Marketplace Product 19 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(58, 20, 'https://picsum.photos/seed/20_1/900/900', 'https://picsum.photos/seed/20_1/900/900', 'Marketplace Product 20 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(59, 20, 'https://picsum.photos/seed/20_2/900/900', 'https://picsum.photos/seed/20_2/900/900', 'Marketplace Product 20 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(60, 20, 'https://picsum.photos/seed/20_3/900/900', 'https://picsum.photos/seed/20_3/900/900', 'Marketplace Product 20 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(61, 21, 'https://picsum.photos/seed/21_1/900/900', 'https://picsum.photos/seed/21_1/900/900', 'Marketplace Product 21 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(62, 21, 'https://picsum.photos/seed/21_2/900/900', 'https://picsum.photos/seed/21_2/900/900', 'Marketplace Product 21 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(63, 21, 'https://picsum.photos/seed/21_3/900/900', 'https://picsum.photos/seed/21_3/900/900', 'Marketplace Product 21 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(64, 22, 'https://picsum.photos/seed/22_1/900/900', 'https://picsum.photos/seed/22_1/900/900', 'Marketplace Product 22 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(65, 22, 'https://picsum.photos/seed/22_2/900/900', 'https://picsum.photos/seed/22_2/900/900', 'Marketplace Product 22 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(66, 22, 'https://picsum.photos/seed/22_3/900/900', 'https://picsum.photos/seed/22_3/900/900', 'Marketplace Product 22 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(67, 23, 'https://picsum.photos/seed/23_1/900/900', 'https://picsum.photos/seed/23_1/900/900', 'Marketplace Product 23 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(68, 23, 'https://picsum.photos/seed/23_2/900/900', 'https://picsum.photos/seed/23_2/900/900', 'Marketplace Product 23 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(69, 23, 'https://picsum.photos/seed/23_3/900/900', 'https://picsum.photos/seed/23_3/900/900', 'Marketplace Product 23 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(70, 24, 'https://picsum.photos/seed/24_1/900/900', 'https://picsum.photos/seed/24_1/900/900', 'Marketplace Product 24 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(71, 24, 'https://picsum.photos/seed/24_2/900/900', 'https://picsum.photos/seed/24_2/900/900', 'Marketplace Product 24 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(72, 24, 'https://picsum.photos/seed/24_3/900/900', 'https://picsum.photos/seed/24_3/900/900', 'Marketplace Product 24 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(73, 25, 'https://picsum.photos/seed/25_1/900/900', 'https://picsum.photos/seed/25_1/900/900', 'Marketplace Product 25 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(74, 25, 'https://picsum.photos/seed/25_2/900/900', 'https://picsum.photos/seed/25_2/900/900', 'Marketplace Product 25 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(75, 25, 'https://picsum.photos/seed/25_3/900/900', 'https://picsum.photos/seed/25_3/900/900', 'Marketplace Product 25 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(76, 26, 'https://picsum.photos/seed/26_1/900/900', 'https://picsum.photos/seed/26_1/900/900', 'Marketplace Product 26 image', 1, 1, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(77, 26, 'https://picsum.photos/seed/26_2/900/900', 'https://picsum.photos/seed/26_2/900/900', 'Marketplace Product 26 image', 0, 2, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(78, 26, 'https://picsum.photos/seed/26_3/900/900', 'https://picsum.photos/seed/26_3/900/900', 'Marketplace Product 26 image', 0, 3, '2026-04-19 22:44:23', '2026-04-19 22:44:23'),
-	(79, 1, NULL, 'https://cdn.toko.com/images/nike-mercurial.jpg', 'Nike Mercurial Main Image', 1, 0, NULL, NULL),
-	(80, 2, NULL, 'https://cdn.toko.com/images/adidas-predator.jpg', 'Adidas Predator Main Image', 1, 0, NULL, NULL),
-	(81, 3, NULL, 'https://cdn.toko.com/images/compass-gazelle.jpg', 'Compass Gazelle', 1, 0, NULL, NULL),
-	(82, 4, NULL, 'https://cdn.toko.com/images/ventela-public.jpg', 'Ventela Public', 1, 0, NULL, NULL),
-	(83, 5, NULL, 'https://cdn.toko.com/images/buccheri-pantofel.jpg', 'Buccheri Pantofel', 1, 0, NULL, NULL),
-	(84, 6, NULL, 'https://cdn.toko.com/images/rayban-aviator.jpg', 'Rayban Aviator', 1, 0, NULL, NULL),
-	(85, 7, NULL, 'https://cdn.toko.com/images/casio-edifice.jpg', 'Casio Edifice', 1, 0, NULL, NULL),
-	(86, 8, NULL, 'https://cdn.toko.com/images/seiko-5.jpg', 'Seiko 5 Sports', 1, 0, NULL, NULL),
-	(87, 9, NULL, 'https://cdn.toko.com/images/levis-belt.jpg', 'Levis Belt', 1, 0, NULL, NULL),
-	(88, 10, NULL, 'https://cdn.toko.com/images/newera-ny.jpg', 'New Era NY Hat', 1, 0, NULL, NULL);
+-- Dumping data for table kishamarket.product_images: ~13 rows (approximately)
+INSERT IGNORE INTO `product_images` (`id`, `product_id`, `url`, `alt_text`, `is_primary`, `sort_order`, `created_at`, `updated_at`) VALUES
+	(6, 10, 'https://images.com/nike-1.jpg', 'Tampak Depan Nike', 1, 1, '2026-06-24 02:45:51', '2026-06-24 02:45:51'),
+	(7, 11, 'https://images.com/kaos-1.jpg', 'Pilihan Warna Kaos', 1, 1, '2026-06-24 02:45:51', '2026-06-24 02:45:51'),
+	(8, 12, 'https://images.com/flanel-1.jpg', 'Detail Bahan Flanel', 1, 1, '2026-06-24 02:45:51', '2026-06-24 02:45:51'),
+	(9, 13, 'https://images.com/bomber-1.jpg', 'Model Menggunakan Jaket', 1, 1, '2026-06-24 02:45:51', '2026-06-24 02:45:51'),
+	(10, 14, 'https://images.com/chino-1.jpg', 'Celana Chino Hitam', 1, 1, '2026-06-24 02:45:51', '2026-06-24 02:45:51'),
+	(11, 16, 'https://images.unsplash.com/photo-1542291026-7eec264c27ff', 'Nike Air Max Merah - Tampak Samping', 1, 1, '2026-06-23 21:14:10', '2026-06-23 21:14:10'),
+	(12, 16, 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa', 'Nike Air Max Merah - Tampak Atas', 0, 2, '2026-06-23 21:14:10', '2026-06-23 21:14:10'),
+	(21, 20, 'https://images.unsplash.com/photo-1542291026-7eec264c27ff', 'Nike Air Max Merah - Tampak Samping', 1, 1, '2026-06-23 21:20:36', '2026-06-23 21:20:36'),
+	(22, 20, 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa', 'Nike Air Max Merah - Tampak Atas', 0, 2, '2026-06-23 21:20:36', '2026-06-23 21:20:36'),
+	(29, 25, 'https://images.unsplash.com/photo-1542291026-7eec264c27ff', 'Nike Air Max Merah - Tampak Samping', 1, 1, '2026-06-23 22:50:59', '2026-06-23 22:50:59'),
+	(30, 25, 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa', 'Nike Air Max Merah - Tampak Atas', 0, 2, '2026-06-23 22:50:59', '2026-06-23 22:50:59');
 
 -- Dumping structure for table kishamarket.product_variants
 CREATE TABLE IF NOT EXISTS `product_variants` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `product_id` bigint unsigned NOT NULL,
-  `sku` varchar(100) DEFAULT NULL,
-  `name` varchar(255) NOT NULL,
-  `price` decimal(14,2) NOT NULL DEFAULT '0.00',
-  `stock` int unsigned NOT NULL DEFAULT '0',
-  `is_default` tinyint(1) DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
+  `sku` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `price` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `stock` int NOT NULL DEFAULT '0',
+  `is_default` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `fk_variant_product` (`product_id`),
-  CONSTRAINT `fk_variant_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  UNIQUE KEY `variants_sku_unique` (`sku`),
+  KEY `fk_variants_product` (`product_id`),
+  CONSTRAINT `fk_variants_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=125 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.product_variants: ~0 rows (approximately)
+-- Dumping data for table kishamarket.product_variants: ~12 rows (approximately)
 INSERT IGNORE INTO `product_variants` (`id`, `product_id`, `sku`, `name`, `price`, `stock`, `is_default`, `created_at`, `updated_at`) VALUES
-	(1, 1, 'NK-MRC-001-BL-XL', 'Sepatu Futsal Nike Mercurial Biru XL (43)', 1250000.00, 15, 1, NULL, NULL),
-	(2, 1, 'NK-MRC-001-OR-L', 'Sepatu Futsal Nike Mercurial Orange L (41)', 1200000.00, 20, 0, NULL, NULL),
-	(3, 2, 'AD-PRD-002-BK-XL', 'Sepatu Futsal Adidas Predator Hitam XL (42)', 1550000.00, 10, 1, NULL, NULL),
-	(4, 2, 'AD-PRD-002-WH-L', 'Sepatu Futsal Adidas Predator Putih L (40)', 1500000.00, 12, 0, NULL, NULL),
-	(5, 3, 'CP-GZL-003-BK-40', 'Compass Gazelle Hitam 40', 458000.00, 50, 1, NULL, NULL),
-	(6, 4, 'VT-PUB-004-BK-42', 'Ventela Public Black 42', 350000.00, 40, 1, NULL, NULL),
-	(7, 5, 'BC-PTF-005-BR-41', 'Buccheri Pantofel Coklat 41', 850000.00, 15, 1, NULL, NULL),
-	(8, 6, 'RB-AVT-006-GOLD', 'Rayban Aviator Gold Frame', 2600000.00, 5, 1, NULL, NULL),
-	(9, 7, 'CS-EDF-007-SILVER', 'Casio Edifice Silver', 1850000.00, 10, 1, NULL, NULL),
-	(10, 10, 'NE-NY-010-NAVY', 'Topi New Era NY Navy Blue', 499000.00, 15, 1, NULL, NULL);
+	(105, 10, 'NK-RUN-PRO-WHT-42', 'Sepatu Olahraga Pro - Putih - 42', 750000.00, 20, 1, '2026-06-24 02:46:18', '2026-06-24 02:46:18'),
+	(106, 11, 'KS-TSHIRT-BLK-M', 'Kaos Polos Combed - Hitam - M', 450000.00, 20, 1, '2026-06-24 02:46:18', '2026-06-24 02:46:18'),
+	(107, 12, 'FL-PREM-RED-L', 'Flanel Premium - Merah Kotak - L', 125000.00, 15, 1, '2026-06-24 02:46:18', '2026-06-24 02:46:18'),
+	(108, 13, 'WB-BOMBER-NVY-XL', 'Jaket Bomber - Navy - XL', 210000.00, 8, 1, '2026-06-24 02:46:18', '2026-06-24 02:46:18'),
+	(109, 14, 'CN-CHINO-GRY-32', 'Celana Chino Slimfit - Abu-abu - 32', 140000.00, 30, 1, '2026-06-24 02:46:18', '2026-06-24 02:46:18'),
+	(110, 16, 'NIKE-AM26-RED-42', 'Nike Air Max Red 42', 1850000.00, 25, 0, '2026-06-23 21:14:10', '2026-06-23 23:35:15'),
+	(111, 16, 'NIKE-AM26-RED-43', 'Nike Air Max Red 43', 1850000.00, 15, 0, '2026-06-23 21:14:10', '2026-06-23 23:35:15'),
+	(115, 20, 'NIKE-AdckjcdjkdM26-RED-42', 'Nike Air Max Red 42', 1850000.00, 25, 1, '2026-06-23 21:17:42', '2026-06-23 21:17:42'),
+	(116, 20, 'NIKE-AM26-RED-4asasnms3', 'Nike Air Max Red 43', 1850000.00, 15, 0, '2026-06-23 21:17:42', '2026-06-23 21:17:42'),
+	(118, 25, 'NIKE-sqdsqdj-RED-42', 'Nike Air Max Red 42', 185099000.00, 25, 1, '2026-06-23 22:45:45', '2026-06-23 22:50:59'),
+	(119, 25, 'NIKE-AM26-qdqwq-4asasnms3', 'Nike Air Max Red 43', 1850000.00, 15, 0, '2026-06-23 22:45:45', '2026-06-23 22:50:59'),
+	(120, 25, 'NIKE-AM26-hjsjdgsjdgajsdhgsjdh', 'Nike Air Max Red 44', 1850000.00, 10, 0, '2026-06-23 22:54:46', '2026-06-23 22:55:31');
 
 -- Dumping structure for table kishamarket.product_variant_values
 CREATE TABLE IF NOT EXISTS `product_variant_values` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `variant_id` bigint unsigned NOT NULL,
   `attribute_id` bigint unsigned NOT NULL,
-  `value` varchar(255) NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
+  `value` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_pvv_variant` (`variant_id`),
   KEY `fk_pvv_attribute` (`attribute_id`),
   CONSTRAINT `fk_pvv_attribute` FOREIGN KEY (`attribute_id`) REFERENCES `product_attributes` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_pvv_variant` FOREIGN KEY (`variant_id`) REFERENCES `product_variants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.product_variant_values: ~0 rows (approximately)
-INSERT IGNORE INTO `product_variant_values` (`id`, `variant_id`, `attribute_id`, `value`, `created_at`, `updated_at`) VALUES
-	(1, 1, 1, 'XL (43)', NULL, NULL),
-	(2, 1, 2, 'Biru', NULL, NULL),
-	(3, 2, 1, 'L (41)', NULL, NULL),
-	(4, 2, 2, 'Orange', NULL, NULL),
-	(5, 3, 1, 'XL (42)', NULL, NULL),
-	(6, 3, 2, 'Hitam', NULL, NULL),
-	(7, 4, 1, 'L (40)', NULL, NULL),
-	(8, 4, 2, 'Putih', NULL, NULL),
-	(9, 5, 1, '40', NULL, NULL),
-	(10, 5, 2, 'Hitam', NULL, NULL),
-	(11, 6, 1, '42', NULL, NULL),
-	(12, 6, 2, 'Hitam', NULL, NULL),
-	(13, 7, 1, '41', NULL, NULL),
-	(14, 7, 2, 'Coklat', NULL, NULL),
-	(15, 8, 2, 'Emas', NULL, NULL),
-	(16, 9, 2, 'Perak', NULL, NULL),
-	(17, 10, 2, 'Navy Blue', NULL, NULL);
+-- Dumping data for table kishamarket.product_variant_values: ~19 rows (approximately)
+INSERT IGNORE INTO `product_variant_values` (`id`, `variant_id`, `attribute_id`, `value`) VALUES
+	(6, 105, 1, 'Putih'),
+	(7, 105, 2, '42'),
+	(8, 106, 1, 'Hitam'),
+	(9, 106, 2, 'M'),
+	(10, 107, 1, 'Merah'),
+	(11, 110, 1, 'Merah'),
+	(12, 110, 2, '42'),
+	(13, 111, 1, 'Merah'),
+	(14, 111, 2, '43'),
+	(17, 115, 1, 'Merah'),
+	(18, 115, 2, '42'),
+	(19, 116, 1, 'Merah'),
+	(20, 116, 2, '43'),
+	(21, 118, 1, 'Merah'),
+	(22, 118, 2, '42'),
+	(23, 119, 1, 'Merah'),
+	(24, 119, 2, '43'),
+	(27, 120, 1, 'Merah'),
+	(28, 120, 2, '44');
 
--- Dumping structure for table kishamarket.reviews
-CREATE TABLE IF NOT EXISTS `reviews` (
+-- Dumping structure for table kishamarket.promotions
+CREATE TABLE IF NOT EXISTS `promotions` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `user_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `product_id` bigint unsigned NOT NULL,
-  `rating` tinyint unsigned NOT NULL,
-  `comment` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `image_url` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `mobile_image_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `click_action` enum('none','product','category','url') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'none',
+  `target_id` bigint unsigned DEFAULT NULL,
+  `target_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `reviews_user_id_foreign` (`user_id`),
-  KEY `reviews_product_id_rating_index` (`product_id`,`rating`),
-  CONSTRAINT `reviews_product_id_foreign` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `reviews_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `idx_promotions_active_order` (`is_active`,`sort_order`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.reviews: ~0 rows (approximately)
+-- Dumping data for table kishamarket.promotions: ~1 rows (approximately)
+INSERT IGNORE INTO `promotions` (`id`, `image_url`, `mobile_image_url`, `click_action`, `target_id`, `target_url`, `sort_order`, `is_active`, `created_at`, `updated_at`) VALUES
+	(1, 'https://cdn.marketplace.com/promotions/promo-gajian-juni.jpg', 'https://cdn.marketplace.com/promotions/promo-gajian-juni-mobile.jpg', 'product', 8, NULL, 1, 1, '2026-06-21 20:10:24', '2026-06-21 20:10:24');
 
 -- Dumping structure for table kishamarket.roles
 CREATE TABLE IF NOT EXISTS `roles` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `roles_name_unique` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.roles: ~5 rows (approximately)
-INSERT IGNORE INTO `roles` (`id`, `name`, `created_at`, `updated_at`) VALUES
-	(1, 'buyer', '2026-04-19 21:42:35', '2026-04-19 21:42:35'),
-	(2, 'seller', '2026-04-19 21:42:35', '2026-04-19 21:42:35'),
-	(3, 'admin', '2026-04-19 21:42:35', '2026-04-19 21:42:35'),
-	(4, 'courier', '2026-04-19 21:42:35', '2026-04-19 21:42:35'),
-	(5, 'sales', '2026-04-19 21:42:35', '2026-04-19 21:42:35');
-
--- Dumping structure for procedure kishamarket.SeedMegaMenuData
-DELIMITER //
-CREATE PROCEDURE `SeedMegaMenuData`()
-BEGIN
-    -- Deklarasi ID Penampung Relasi
-    DECLARE c1_id BIGINT UNSIGNED;
-    DECLARE c2_id BIGINT UNSIGNED;
-    DECLARE c3_id BIGINT UNSIGNED;
-    DECLARE p_id BIGINT UNSIGNED;
-    DECLARE v_id BIGINT UNSIGNED;
-    
-    -- Deklarasi Counter Looping
-    DECLARE i INT DEFAULT 1; -- Level 1
-    DECLARE j INT DEFAULT 1; -- Level 2
-    DECLARE k INT DEFAULT 1; -- Level 3
-    DECLARE p INT DEFAULT 1; -- Produk
-    DECLARE v INT DEFAULT 1; -- Varian
-    
-    -- Matikan proteksi foreign key sementara agar proses seed lancar
-    SET FOREIGN_KEY_CHECKS = 0;
-    
-    -- 1. INSERT CATALOG GROUP (Gadget & Elektronik)
-    INSERT INTO `catalog_groups` (`id`, `name`, `slug`, `is_active`) 
-    VALUES (2, 'Gadget & Elektronik', 'gadget-elektronik', 1);
-    
-    -- 2. INSERT MASTER ATTRIBUTES (Untuk Kriteria Varian)
-    INSERT IGNORE INTO `product_attributes` (`id`, `name`, `slug`, `type`) VALUES
-    (10, 'Warna', 'warna-gadget', 'select'),
-    (11, 'Kapasitas Memori', 'kapasitas-memori', 'select'),
-    (12, 'Bahan Material', 'bahan-material', 'text');
-
-    -- LOOP LEVEL 1: Membuat 5 Kategori Utama
-    SET i = 1;
-    WHILE i <= 5 DO
-        INSERT INTO `categories` (`catalog_group_id`, `parent_id`, `level`, `name`, `slug`, `full_slug`)
-        VALUES (2, NULL, 1, CONCAT('Elektronik Lvl 1 - ', i), CONCAT('elektronik-l1-', i), CONCAT('gadget/l1-', i));
-        SET c1_id = LAST_INSERT_ID();
-        
-        -- LOOP LEVEL 2: Membuat 3 Sub-Kategori untuk setiap Level 1 (Total: 15)
-        SET j = 1;
-        WHILE j <= 3 DO
-            INSERT INTO `categories` (`catalog_group_id`, `parent_id`, `level`, `name`, `slug`, `full_slug`)
-            VALUES (2, c1_id, 2, CONCAT('Sub Lvl 2 - ', i, '.', j), CONCAT('sub-l2-', i, '-', j), CONCAT('gadget/l1-', i, '/l2-', j));
-            SET c2_id = LAST_INSERT_ID();
-            
-            -- LOOP LEVEL 3: Membuat 3 Sub-Sub-Kategori untuk setiap Level 2 (Total: 45)
-            SET k = 1;
-            WHILE k <= 3 DO
-                INSERT INTO `categories` (`catalog_group_id`, `parent_id`, `level`, `name`, `slug`, `full_slug`)
-                VALUES (2, c2_id, 3, CONCAT('Kategori Terujung Lvl 3 - ', i, '.', j, '.', k), CONCAT('cat-l3-', i, '-', j, '-', k), CONCAT('gadget/l1-', i, '/l2-', j, '/l3-', k));
-                SET c3_id = LAST_INSERT_ID();
-                
-                -- LOOP PRODUCTS: Membuat 3 Produk di setiap Kategori Level 3 (Total: 135)
-                SET p = 1;
-                WHILE p <= 3 DO
-                    INSERT INTO `products` (`store_id`, `primary_category_id`, `seller_id`, `name`, `slug`, `sku`, `price`, `stock`, `status`, `is_active`)
-                    VALUES (1, c3_id, 'seller-uuid-gadget', 
-                            CONCAT('Produk Gadget Super ', i, '.', j, '.', k, ' - Item ', p), 
-                            CONCAT('produk-gadget-super-', i, '-', j, '-', k, '-item-', p), 
-                            CONCAT('SKU-GDG-', i, '-', j, '-', k, '-', p), 
-                            2500000.00, 250, 'active', 1);
-                    SET p_id = LAST_INSERT_ID();
-                    
-                    -- Masukkan ke Mapping Table Many-to-Many Categories
-                    INSERT INTO `product_categories` (`product_id`, `category_id`, `is_primary`) 
-                    VALUES (p_id, c3_id, 1);
-                    
-                    -- Masukkan data Atribut Statis (Bahan Material Produk)
-                    INSERT INTO `product_attribute_values` (`product_id`, `attribute_id`, `value`) 
-                    VALUES (p_id, 12, 'Titanium Glass Alloy');
-                    
-                    -- LOOP VARIANTS: Membuat 5 Varian Spesifik untuk setiap Produk (Total: 675 Varian)
-                    SET v = 1;
-                    WHILE v <= 5 DO
-                        INSERT INTO `product_variants` (`product_id`, `sku`, `name`, `price`, `stock`, `is_default`)
-                        VALUES (p_id, 
-                                CONCAT('SKU-GDG-', i, '-', j, '-', k, '-', p, '-VAR-', v), 
-                                CONCAT('Varian Tipe ', v, ' (Warna ', v, ' / Spec ', v, ')'), 
-                                2500000.00 + (v * 150000), 50, IF(v = 1, 1, 0));
-                        SET v_id = LAST_INSERT_ID();
-                        
-                        -- Hubungkan Nilai Varian ke Opsi Atribut 10 (Warna) dan 11 (Kapasitas Memori)
-                        INSERT INTO `product_variant_values` (`variant_id`, `attribute_id`, `value`) VALUES
-                        (v_id, 10, CONCAT('Warna Pilihan ke-', v)),
-                        (v_id, 11, CONCAT(64 * v, ' GB'));
-                        
-                        SET v = v + 1;
-                    END WHILE;
-                    
-                    SET p = p + 1;
-                END WHILE;
-                
-                SET k = k + 1;
-            END WHILE;
-            
-            SET j = j + 1;
-        END WHILE;
-        
-        SET i = i + 1;
-    END WHILE;
-    
-    -- Aktifkan kembali pengecekan foreign key
-    SET FOREIGN_KEY_CHECKS = 1;
-END//
-DELIMITER ;
-
--- Dumping structure for table kishamarket.seller_profiles
-CREATE TABLE IF NOT EXISTS `seller_profiles` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `user_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `store_id` bigint unsigned DEFAULT NULL,
-  `status` enum('pending','active','suspended','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
-  `verified_at` timestamp NULL DEFAULT NULL,
-  `suspended_at` timestamp NULL DEFAULT NULL,
-  `rejected_reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `seller_profiles_user_id_unique` (`user_id`),
-  UNIQUE KEY `seller_profiles_store_id_unique` (`store_id`),
-  KEY `seller_profiles_status_index` (`status`),
-  CONSTRAINT `seller_profiles_store_id_foreign` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `seller_profiles_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table kishamarket.seller_profiles: ~5 rows (approximately)
+-- Dumping data for table kishamarket.roles: ~2 rows (approximately)
+INSERT IGNORE INTO `roles` (`id`, `name`, `created_at`) VALUES
+	(1, 'Buyer', '2026-06-04 12:34:54'),
+	(2, 'Seller', '2026-06-04 12:34:54'),
+	(3, 'admin', '2026-06-12 15:46:43');
 
 -- Dumping structure for table kishamarket.sessions
 CREATE TABLE IF NOT EXISTS `sessions` (
@@ -1127,90 +642,89 @@ CREATE TABLE IF NOT EXISTS `sessions` (
   KEY `sessions_last_activity_index` (`last_activity`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.sessions: ~9 rows (approximately)
+-- Dumping data for table kishamarket.sessions: ~15 rows (approximately)
 INSERT IGNORE INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) VALUES
 	('1f6tTR9OuTMcQZv76vr2JU1ocZrxf4JFOIp8Wodg', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJoY0hMR2ExT3ZzT0hGYlFUOGRjMW5CQTc1aHFQSzNWc2FNTlh2UEkwIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1776670743),
+	('26XeoyiM8jkSAWcKI7aZWbsqcaIkSg9WRtaMT3Mz', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiIwVGdpdm1NZjdOeU1lc3dWT3g4QjlQUzlaY1J1RFk0QzQ3NnNrdDRIIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782354896),
 	('2keNjE4FWnRDyKxWV5Nhw0qgZVHD9WvSbSnBgN2T', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJEQnlSengwa3o2TzF4cjc1V1ZHOEJlM2ZBR0JIVWhGdzQ0bnFNRHB2IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL21hcmtldC1hcGkudGVzdCIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1779616974),
+	('3KggZokKfEESIs0oRvRGJx5YvsreeM67aCoPQBQ9', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36 Edg/149.0.0.0', 'eyJfdG9rZW4iOiJlcGx5eDN2ZTRRU2t3RzF3WGNOS0I3aVpab2M0MWNTV25kYnlLQVRpIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782351234),
+	('4730JiHxljFc7uNiZ5zkXgqSdtAfpXRyBm1KmNto', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJpWnU2Y3ZPeDB6aTYxcllMWmZXTk5hemFjUTVrajcyS2lVd1F5ejAzIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782355012),
+	('7P5kKjWQ9eCWguVCAtYzmDzC5hKSMTdbqG2Gv10z', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36 Edg/149.0.0.0', 'eyJfdG9rZW4iOiJybWtmdUpaMHFiQnhKZ21LUmdnY2JJNU5OaTJNcnljSGVHYUVKV1lEIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782351229),
 	('Bbb8sn4ccPNnF0UpSjnDHi835aBV5OGtC5JDbqZe', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJKSDVpOERSV3VCdDJuSUVDaG9Ec1VzTGM4V05EbHY1ckd5MTlvSG9pIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL21hcmtldC1hcGkudGVzdCIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1779542384),
 	('ev7s5JCNVWA5f8AxwpPF5ZXobCByfzw6e9EujaV1', NULL, '127.0.0.1', 'PostmanRuntime/7.37.3', 'eyJfdG9rZW4iOiJhNnlVTWxUUGl1TDdyMTlzYTFCcVNVZnBVQ2JqRGEycW5qUllXeWNvIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1776664754),
+	('HeAnjVmCnXKXlA0LbCaJhvCZl9pJ1S5IJyWdpEgU', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJ4TURydk90T282UGJCWlNBTTR3d0JjeDBsWENadm5Ia291YUlZUWlKIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782351250),
 	('HP33qdWDpAtr2cqwRW6ItY5kIAN4hMcFD7Kn5IM3', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJmaEkya3dtWlltS2lYeVlyd0JBZFp3YWY3Z1B0TXV5UlNMTEZGcXhnIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1777269692),
 	('KTvSNNdtAJc8r9gJb2HRCVeeo7Nz84jJsuDFcPMx', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiI3ekUwQUpvTFlXQ094R1BxcEwybVBKTEVXRHFPZGlTSG9sUHZkWU5PIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC9zYW5jdHVtXC9jc3JmLWNvb2tpZSIsInJvdXRlIjoic2FuY3R1bS5jc3JmLWNvb2tpZSJ9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1779631378),
 	('R9gPnyuxuzuQOXy9OWlSxKdiv8TgWjbKkRcchcDW', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJHbTJSV2FNMnNCWDhkaXU4N1dvOGNaUlp3WGFvQlI4V0VPTTlmSFl6IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL21hcmtldC1hcGkudGVzdCIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1779510889),
+	('roV0NSRVI84goonXBmbWjScGWZtgCHolVHN1m7jr', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJPTFIwUldaVWNOa3FDWHB6VnR3OHowQjhBdURMUjY2Mm52SzNIa0U1IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782351667),
 	('Scl8HU7PJqj8HlaJBQWAgNksUxuy9O0MyJrVaynN', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiI2cFhLVFFtQ2wzOUVQbFdrZkFoaUptd2JtdXN5R0dOT0pwUmt1OXRSIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1776670741),
-	('TGFQSfz9zNriU4KhYcfKiscu176v6XoZMsZ9rOGX', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', 'eyJfdG9rZW4iOiJxeFFXOTU2OWJldmFYdldUUXFGQWtHUndSWWs4S3N4SEJucDlkYWYyIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1779257821);
+	('TGFQSfz9zNriU4KhYcfKiscu176v6XoZMsZ9rOGX', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', 'eyJfdG9rZW4iOiJxeFFXOTU2OWJldmFYdldUUXFGQWtHUndSWWs4S3N4SEJucDlkYWYyIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1779257821),
+	('WjLyNWOF1Grkl5A8OnFex9fIE5HfQFHFvEpQb4YA', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJ1cU1rQkxSUExoWGRlUk05YkJIR1NIbllHMWVMbTRoblFFa0pyNXBZIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782351725),
+	('XutD4k1ElmM6xit3Z5C2atiINiJQTncbo5WLd6VG', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36 Edg/149.0.0.0', 'eyJfdG9rZW4iOiI4eFVrRm9nVFJEZ21QMGQxbmhnRzJDT2UwN0l4Wlg0TjVWVmtpU25aIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782351232);
 
 -- Dumping structure for table kishamarket.stores
 CREATE TABLE IF NOT EXISTS `stores` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `user_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `short_description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `city` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `province` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `user_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `short_description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `city` varchar(80) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `province` varchar(80) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `address` text COLLATE utf8mb4_unicode_ci,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `logo` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `banner_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `logo` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `stores_user_id_unique` (`user_id`),
   UNIQUE KEY `stores_slug_unique` (`slug`),
-  KEY `idx_stores_active_created_id` (`is_active`,`created_at`,`id`),
   CONSTRAINT `stores_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.stores: ~5 rows (approximately)
-INSERT IGNORE INTO `stores` (`id`, `user_id`, `name`, `slug`, `description`, `short_description`, `phone`, `email`, `city`, `province`, `address`, `is_active`, `logo`, `banner_url`, `created_at`, `updated_at`) VALUES
-	(1, '019da96a-ff4a-7167-a188-05685e19921b', 'Seller 1 Store', 'seller-1-store', 'Curated marketplace store #1.', 'Trusted marketplace store #1 dengan kurasi produk yang rapi dan visual yang lebih menarik.', '08123000001', 'seller1store@ukomp.test', 'Jakarta', 'DKI Jakarta', 'Jl. Store No. 1, Jakarta', 1, 'https://picsum.photos/seed/store1/300/300', 'https://picsum.photos/seed/store-banner-1/1600/600', '2026-04-19 22:44:14', '2026-04-19 22:44:14'),
-	(2, '019da96b-0108-7193-b0f7-63ddb08a9eea', 'Seller 2 Store', 'seller-2-store', 'Curated marketplace store #2.', 'Trusted marketplace store #2 dengan kurasi produk yang rapi dan visual yang lebih menarik.', '08123000002', 'seller2store@ukomp.test', 'Bandung', 'Jawa Barat', 'Jl. Store No. 2, Bandung', 1, 'https://picsum.photos/seed/store2/300/300', 'https://picsum.photos/seed/store-banner-2/1600/600', '2026-04-19 22:44:15', '2026-04-19 22:44:15'),
-	(3, '019da96b-0352-70b2-89ef-54a033feb736', 'Seller 3 Store', 'seller-3-store', 'Curated marketplace store #3.', 'Trusted marketplace store #3 dengan kurasi produk yang rapi dan visual yang lebih menarik.', '08123000003', 'seller3store@ukomp.test', 'Surabaya', 'Jawa Timur', 'Jl. Store No. 3, Surabaya', 1, 'https://picsum.photos/seed/store3/300/300', 'https://picsum.photos/seed/store-banner-3/1600/600', '2026-04-19 22:44:15', '2026-04-19 22:44:15'),
-	(4, '019da96b-0509-7381-9312-f18813450644', 'Seller 4 Store', 'seller-4-store', 'Curated marketplace store #4.', 'Trusted marketplace store #4 dengan kurasi produk yang rapi dan visual yang lebih menarik.', '08123000004', 'seller4store@ukomp.test', 'Yogyakarta', 'DI Yogyakarta', 'Jl. Store No. 4, Yogyakarta', 1, 'https://picsum.photos/seed/store4/300/300', 'https://picsum.photos/seed/store-banner-4/1600/600', '2026-04-19 22:44:16', '2026-04-19 22:44:16'),
-	(5, '019da96b-06b7-70e0-adfb-035d02015b79', 'Seller 5 Store', 'seller-5-store', 'Curated marketplace store #5.', 'Trusted marketplace store #5 dengan kurasi produk yang rapi dan visual yang lebih menarik.', '08123000005', 'seller5store@ukomp.test', 'Semarang', 'Jawa Tengah', 'Jl. Store No. 5, Semarang', 1, 'https://picsum.photos/seed/store5/300/300', 'https://picsum.photos/seed/store-banner-5/1600/600', '2026-04-19 22:44:16', '2026-04-19 22:44:16');
+-- Dumping data for table kishamarket.stores: ~2 rows (approximately)
+INSERT IGNORE INTO `stores` (`id`, `user_id`, `name`, `slug`, `description`, `short_description`, `phone`, `email`, `city`, `province`, `address`, `is_active`, `logo`, `created_at`, `updated_at`) VALUES
+	(27, '7d140c91-2c01-431f-9c5b-f41c629b1a06', 'Toko Elektronik Berkah', 'toko-elektronik-berkah', 'Menyediakan berbagai macam kebutuhan elektronik rumah tangga dengan kualitas terbaik dan garansi resmi.', 'Kebutuhan elektronik rumah tangga terbaik.', '081234567890', 'berkah.elektronik@email.com', 'Jakarta Selatan', 'DKI Jakarta', 'Jl. Mangga Besar No. 12, Kebayoran Baru', 1, 'logo_berkah.png', '2026-06-18 14:38:33', '2026-06-18 14:38:33'),
+	(31, 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'Gadget Core Storejwdkjhwdsjh', 'gadget-core-storejwdkjhwdsjh', 'Toko resmi yang menyediakan berbagai macam smartphone, laptop, dan aksesori gadget original dengan garansi resmi.', 'Pusat gadget original dan bergaransi resmi.', '081234567890', 'info@gadgetcore.com', 'Sidoarjo', 'Jawa Timur', 'Jl. Jenggolo No. 12, Kecamatan Buduran', 1, 'stores/logos/gadget-core.png', '2026-06-22 20:43:16', '2026-06-22 23:51:31');
 
 -- Dumping structure for table kishamarket.store_details
 CREATE TABLE IF NOT EXISTS `store_details` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `store_id` bigint unsigned NOT NULL,
-  `owner_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `owner_phone` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `shipping_policy` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `return_policy` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `open_days` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `open_time` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `close_time` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `whatsapp_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `instagram_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `tiktok_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `website_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `owner_name` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `owner_phone` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `shipping_policy` text COLLATE utf8mb4_unicode_ci,
+  `return_policy` text COLLATE utf8mb4_unicode_ci,
+  `open_days` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `open_time` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `close_time` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `whatsapp_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `instagram_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tiktok_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `website_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `store_details_store_id_unique` (`store_id`),
   CONSTRAINT `fk_store_details_store` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.store_details: ~5 rows (approximately)
+-- Dumping data for table kishamarket.store_details: ~1 rows (approximately)
 INSERT IGNORE INTO `store_details` (`id`, `store_id`, `owner_name`, `owner_phone`, `description`, `shipping_policy`, `return_policy`, `open_days`, `open_time`, `close_time`, `whatsapp_url`, `instagram_url`, `tiktok_url`, `website_url`, `created_at`, `updated_at`) VALUES
-	(1, 1, 'Seller 1', '081110000001', 'Store dengan fokus produk pilihan untuk kebutuhan populer.', 'Pesanan sebelum jam 15.00 diproses di hari yang sama.', 'Retur 3 hari untuk produk rusak saat diterima.', 'Mon-Sat', '09:00', '20:00', 'https://wa.me/6281110000001', 'https://instagram.com/seller1store', 'https://tiktok.com/@seller1store', 'https://seller1store.test', '2026-04-23 03:34:25', '2026-04-23 03:35:15'),
-	(2, 2, 'Seller 2', '081110000002', 'Store dengan kurasi item rumah tangga dan lifestyle.', 'Pengiriman H+1 untuk area Jawa.', 'Retur 5 hari untuk salah kirim atau cacat produksi.', 'Mon-Sun', '09:00', '21:00', 'https://wa.me/6281110000002', 'https://instagram.com/seller2store', 'https://tiktok.com/@seller2store', 'https://seller2store.test', '2026-04-23 03:34:25', '2026-04-23 03:35:15'),
-	(3, 3, 'Seller 3', '081110000003', 'Store dengan katalog visual yang cocok untuk homepage buyer.', 'Order diproses maksimal 24 jam.', 'Retur 3 hari jika produk tidak sesuai deskripsi.', 'Mon-Sat', '08:30', '19:30', 'https://wa.me/6281110000003', 'https://instagram.com/seller3store', 'https://tiktok.com/@seller3store', 'https://seller3store.test', '2026-04-23 03:34:25', '2026-04-23 03:35:15'),
-	(4, 4, 'Seller 4', '081110000004', 'Store yang menonjolkan produk elektronik dan active items.', 'Packing aman dengan bubble wrap dan box tambahan.', 'Retur 7 hari untuk unit cacat produksi.', 'Mon-Sun', '10:00', '21:00', 'https://wa.me/6281110000004', 'https://instagram.com/seller4store', 'https://tiktok.com/@seller4store', 'https://seller4store.test', '2026-04-23 03:34:25', '2026-04-23 03:35:15'),
-	(5, 5, 'Seller 5', '081110000005', 'Store dengan produk kategori beragam dan stok stabil.', 'Pengiriman cepat untuk kota besar.', 'Retur berlaku jika item rusak atau salah kirim.', 'Mon-Sat', '09:30', '20:30', 'https://wa.me/6281110000005', 'https://instagram.com/seller5store', 'https://tiktok.com/@seller5store', 'https://seller5store.test', '2026-04-23 03:34:25', '2026-04-23 03:35:15');
+	(4, 31, 'Rian Wijaya', '081987654321', 'Layanan operasional pusat Gadget Core Indonesia.', 'Pengiriman diproses di hari yang sama untuk order sebelum jam 15.00. Mendukung Instant Courier (Gojek/Grab).', 'Garansi retur 3x24 jam jika produk cacat pabrik, wajib menyertakan video unboxing lengkap tanpa edit.', 'Senin - Minggu', '09:00', '21:00', 'https://wa.me/6281987654321', 'https://instagram.com/gadgetcore.id', 'https://tiktok.com/@gadgetcore.id', 'https://gadgetcore.com', '2026-06-22 20:43:16', '2026-06-22 23:25:55');
 
 -- Dumping structure for table kishamarket.users
 CREATE TABLE IF NOT EXISTS `users` (
-  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `firebase_uid` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `avatar` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `firebase_uid` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `avatar` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_email_verified` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -1221,27 +735,84 @@ CREATE TABLE IF NOT EXISTS `users` (
   KEY `users_deleted_at_index` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.users: ~17 rows (approximately)
+-- Dumping data for table kishamarket.users: ~2 rows (approximately)
 INSERT IGNORE INTO `users` (`id`, `firebase_uid`, `email`, `password`, `name`, `avatar`, `is_email_verified`, `created_at`, `updated_at`, `deleted_at`) VALUES
-	('seller-uuid-gadget', NULL, 'seller.gadget@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Juragan Gadget', NULL, 1, '2026-06-04 06:06:34', '2026-06-04 06:06:34', NULL);
+	('32394b22-956f-4161-a45c-da7ded058428', NULL, 'akbarr@gmail.com', '$2y$12$mePD4yALbTrQJKnGihxV9.X9iAaBL2iv1BQO608uRe4FLfcdj1oPa', 'ss Doe', 'https://example.com/avatars/johndoe.png', 0, '2026-06-28 19:14:28', '2026-06-28 19:14:28', NULL),
+	('45e1e9f7-a60c-448e-bee5-9d7a7db1e7de', 'qg3DenKlgHMJkV4OzJvzjZegkfJ3', 'akbarfahlevy39@gmail.com', '$2y$12$PSvFG/Df2VRhr5kw4tO.SOYY2zV/kH0ETOwGhJYJpMdUHyzPHRS1y', 'Mochammad Rachman Akbar Fahlevy', 'https://lh3.googleusercontent.com/a/ACg8ocLwIcW9YpN2423z6G110ndWsC_stH2vC89ST117X1UV-w1l_Q=s96-c', 1, '2026-06-24 19:37:09', '2026-06-24 19:37:09', NULL),
+	('4ee11211-b153-4b7b-805d-bf838d65d802', NULL, 'aris.wijaya@example.com', '$2y$12$gNIKsaElxjgoePJJptduAutFKlHwbJto5qlrga4SLIz4BdSQD5h3O', 'Aris Wijaya', NULL, 0, '2026-06-22 00:10:49', '2026-06-22 00:10:49', NULL),
+	('fe55a239-8462-4e8f-99e1-3755faa6507a', NULL, 'akbarr@gmail.nmsahgshj', '$2y$12$pvCw/4oNEg.KkfPhm1HU2.4v28FU/ojFL2hyMUbbGPvegF/OYBFu.', 'sakjaskj Doe', 'https://example.com/avatars/johndoe.png', 1, '2026-06-22 00:00:15', '2026-06-22 01:24:53', NULL);
 
 -- Dumping structure for table kishamarket.user_roles
 CREATE TABLE IF NOT EXISTS `user_roles` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `role_id` bigint unsigned NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `user_roles_user_id_role_id_unique` (`user_id`,`role_id`),
-  KEY `user_roles_role_id_foreign` (`role_id`),
-  CONSTRAINT `user_roles_role_id_foreign` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `user_roles_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  PRIMARY KEY (`user_id`,`role_id`),
+  KEY `fk_user_roles_role_id` (`role_id`),
+  CONSTRAINT `fk_user_roles_role_id` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Dumping data for table kishamarket.user_roles: ~22 rows (approximately)
-INSERT IGNORE INTO `user_roles` (`id`, `user_id`, `role_id`, `created_at`, `updated_at`) VALUES
-	(1, 'seller-uuid-gadget', 2, '2026-06-04 06:06:34', '2026-06-04 06:06:34');
+-- Dumping data for table kishamarket.user_roles: ~3 rows (approximately)
+INSERT IGNORE INTO `user_roles` (`user_id`, `role_id`, `created_at`, `updated_at`) VALUES
+	('32394b22-956f-4161-a45c-da7ded058428', 1, '2026-06-28 19:14:28', '2026-06-28 19:14:28'),
+	('32394b22-956f-4161-a45c-da7ded058428', 2, '2026-06-28 19:14:28', '2026-06-28 19:14:28'),
+	('45e1e9f7-a60c-448e-bee5-9d7a7db1e7de', 1, '2026-06-24 19:37:09', '2026-06-24 19:37:09'),
+	('fe55a239-8462-4e8f-99e1-3755faa6507a', 1, '2026-06-22 00:00:15', '2026-06-22 00:00:15'),
+	('fe55a239-8462-4e8f-99e1-3755faa6507a', 2, '2026-06-22 20:43:16', '2026-06-22 20:43:16'),
+	('fe55a239-8462-4e8f-99e1-3755faa6507a', 3, '2026-06-22 00:10:49', '2026-06-22 00:10:49');
+
+-- Dumping structure for table kishamarket.vouchers
+CREATE TABLE IF NOT EXISTS `vouchers` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `discount_type` enum('fixed','percentage') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'fixed',
+  `discount_value` decimal(10,2) NOT NULL,
+  `min_spend` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `max_discount` decimal(10,2) DEFAULT NULL,
+  `starts_at` datetime NOT NULL,
+  `ends_at` datetime NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table kishamarket.vouchers: ~0 rows (approximately)
+
+-- Dumping structure for table kishamarket.wishlists
+CREATE TABLE IF NOT EXISTS `wishlists` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Utama',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_wishlists_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table kishamarket.wishlists: ~0 rows (approximately)
+INSERT IGNORE INTO `wishlists` (`id`, `user_id`, `name`, `created_at`, `updated_at`) VALUES
+	('99f1ba3d-5472-4338-87c7-cb36455b99b8', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'Utama', '2026-06-25 01:26:01', '2026-06-25 01:26:01');
+
+-- Dumping structure for table kishamarket.wishlist_items
+CREATE TABLE IF NOT EXISTS `wishlist_items` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `wishlist_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `product_id` bigint unsigned NOT NULL,
+  `added_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_wishlist_product` (`wishlist_id`,`product_id`),
+  KEY `fk_wi_product` (`product_id`),
+  CONSTRAINT `fk_wi_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_wi_wishlist` FOREIGN KEY (`wishlist_id`) REFERENCES `wishlists` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table kishamarket.wishlist_items: ~0 rows (approximately)
+INSERT IGNORE INTO `wishlist_items` (`id`, `wishlist_id`, `product_id`, `added_at`) VALUES
+	(9, '99f1ba3d-5472-4338-87c7-cb36455b99b8', 10, '2026-06-25 01:26:01');
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
