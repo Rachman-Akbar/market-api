@@ -25,12 +25,12 @@ final class StoreProductVariantRequest extends FormRequest
         return [
             // PERBAIKAN: Validasi SKU unik dalam scope toko yang sama
             'sku' => [
-                'required', 
+                'nullable', 
                 'string', 
                 'max:100', 
                 Rule::unique('product_variants', 'sku')->where(fn ($query) => $query->where('store_id', $storeId))
             ],
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['nullable', 'string', 'max:255'],
             'price' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['nullable', 'integer', 'min:0'],
             'is_default' => ['nullable', 'boolean'],

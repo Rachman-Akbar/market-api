@@ -31,6 +31,22 @@ JSON
     "stock": 90
     }
 
+    {
+    "price": 195000.00,
+    "stock": 20,
+    "is_default": false,
+    "values": [
+        {
+        "attribute_id": 3,
+        "value": "XL"
+        },
+        {
+        "attribute_id": 4,
+        "value": "Merah"
+        }
+    ]
+    }
+
     1. Payload Pembuatan Produk Baru (Flat Payload / Varian Otomatis)
 
     Gunakan payload ini untuk melakukan pengujian pada endpoint `POST /api/seller/products`. Payload ini tidak mengirimkan array `variants`, sehingga sistem akan membuat satu varian default secara otomatis menggunakan data utama produk.
