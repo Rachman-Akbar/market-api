@@ -43,6 +43,7 @@ final class EloquentProductVariantRepository implements ProductVariantRepository
         }
 
         $model->product_id = $variant->productId();
+        $model->store_id = $variant->storeId(); // Ditambahkan untuk mengamankan validasi SKU per toko
         $model->sku = $variant->sku();
         $model->name = $variant->name();
         $model->price = $variant->price();
@@ -76,7 +77,6 @@ final class EloquentProductVariantRepository implements ProductVariantRepository
             }
 
             $attributeId = (int) $value['attribute_id'];
-
             if (in_array($attributeId, $usedAttributeIds, true)) {
                 continue;
             }

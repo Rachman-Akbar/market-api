@@ -24,6 +24,7 @@ final class UpdateProductVariantUseCase
             $variant = $this->variants->save(new ProductVariant(
                 id: $current->id(),
                 productId: $current->productId(),
+                storeId: $current->storeId(), // Dipertahankan dari state saat ini
                 sku: (string) ($data['sku'] ?? $current->sku()),
                 name: (string) ($data['name'] ?? $current->name()),
                 price: (float) ($data['price'] ?? $current->price()),

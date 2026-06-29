@@ -6,6 +6,7 @@ namespace App\Domains\Catalog\Product\Presentation\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use App\Domains\Catalog\Product\Application\Query\Product\GetProductQuery;
 use App\Domains\Catalog\Product\Application\Query\ProductVariant\GetProductVariantQuery;
 use App\Domains\Catalog\Product\Application\Query\ProductVariant\ListProductVariantsQuery;
@@ -22,13 +23,11 @@ final class ProductVariantController extends Controller
     public function publicIndex(Request $request, int $productId, GetProductQuery $productQuery, ListProductVariantsQuery $query)
     {
         $product = $productQuery->execute($productId);
-        
         if (! $product) {
             return response()->json(['message' => 'Product not found.'], 404);
         }
 
         $variants = $query->execute($productId, $request->all());
-
         return ProductVariantResource::collection($variants);
     }
 
@@ -36,18 +35,14 @@ final class ProductVariantController extends Controller
     public function index(Request $request, int $productId, GetProductQuery $productQuery, ListProductVariantsQuery $query)
     {
         $this->assertSellerProduct($request, $productId, $productQuery);
-
         $variants = $query->execute($productId, $request->all());
-
         return ProductVariantResource::collection($variants);
     }
 
     public function store(StoreProductVariantRequest $request, int $productId, GetProductQuery $productQuery, CreateProductVariantUseCase $useCase)
     {
         $this->assertSellerProduct($request, $productId, $productQuery);
-
         $variant = $useCase->execute($productId, $request->validated());
-
         return new ProductVariantResource($variant);
     }
 
@@ -56,7 +51,6 @@ final class ProductVariantController extends Controller
         $this->assertSellerProduct($request, $productId, $productQuery);
 
         $variant = $query->execute($variantId);
-
         if (! $variant || $variant->productId() !== $productId) {
             return response()->json(['message' => 'Product variant not found.'], 404);
         }
@@ -69,13 +63,11 @@ final class ProductVariantController extends Controller
         $this->assertSellerProduct($request, $productId, $productQuery);
 
         $variant = $query->execute($variantId);
-
         if (! $variant || $variant->productId() !== $productId) {
             return response()->json(['message' => 'Product variant not found.'], 404);
         }
 
         $updated = $useCase->execute($variantId, $request->validated());
-
         return new ProductVariantResource($updated);
     }
 
@@ -84,26 +76,30 @@ final class ProductVariantController extends Controller
         $this->assertSellerProduct($request, $productId, $productQuery);
 
         $variant = $query->execute($variantId);
-
         if (! $variant || $variant->productId() !== $productId) {
             return response()->json(['message' => 'Product variant not found.'], 404);
         }
 
         $useCase->execute($variantId);
-
         return response()->json(['message' => 'Product variant deleted successfully.']);
     }
 
-    // --- HELPER METOD ---
+    // --- HELPER METHOD ---
     private function assertSellerProduct(Request $request, int $productId, GetProductQuery $query): void
     {
         $product = $query->execute($productId);
-        
         abort_if(! $product, 404, 'Product not found.');
 
         $user = $request->user();
         abort_if(! $user, 401, 'Unauthenticated.');
 
-        abort_if($product->sellerId() !== (string) $user->getAuthIdentifier(), 403, 'Forbidden. This product does not belong to you.');
+        // Mencari storeId milik user saat ini dari DB untuk validasi kepemilikan produk induk
+        $sellerStoreId = DB::table('stores')->where('user_id', (string) $user->getAuthIdentifier())->value('id');
+        
+        abort_if(
+            $product->storeId() !== ($sellerStoreId ? (int) $sellerStoreId : null), 
+            303, 
+            'Forbidden. This product does not belong to your store.'
+        );
     }
 }

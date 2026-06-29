@@ -16,7 +16,7 @@ final class ProductModel extends Model
     protected $fillable = [
         'store_id',
         'primary_category_id',
-        'seller_id',
+        // 'seller_id' TELAH DIHAPUS
         'name',
         'slug',
         'description',
@@ -66,5 +66,4 @@ final class ProductModel extends Model
     {
         return $this->hasMany(ProductImageModel::class, 'product_id', 'id');
     }
-
 }

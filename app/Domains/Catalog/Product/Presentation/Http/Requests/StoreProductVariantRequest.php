@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Catalog\Product\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 final class StoreProductVariantRequest extends FormRequest
 {
@@ -15,8 +17,19 @@ final class StoreProductVariantRequest extends FormRequest
 
     public function rules(): array
     {
+        $productId = $this->route('productId');
+        
+        // Dapatkan store_id dari produk induk
+        $storeId = DB::table('products')->where('id', $productId)->value('store_id');
+
         return [
-            'sku' => ['required', 'string', 'max:100', 'unique:product_variants,sku'],
+            // PERBAIKAN: Validasi SKU unik dalam scope toko yang sama
+            'sku' => [
+                'required', 
+                'string', 
+                'max:100', 
+                Rule::unique('product_variants', 'sku')->where(fn ($query) => $query->where('store_id', $storeId))
+            ],
             'name' => ['required', 'string', 'max:255'],
             'price' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['nullable', 'integer', 'min:0'],
@@ -27,4 +40,3 @@ final class StoreProductVariantRequest extends FormRequest
         ];
     }
 }
-

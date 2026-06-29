@@ -33,3 +33,5 @@ final class ProductAttribute
         return $this->type;
     }
 }
+
+

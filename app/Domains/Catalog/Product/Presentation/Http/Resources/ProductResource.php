@@ -13,6 +13,7 @@ final class ProductResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
+     * @param  Request  $request
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -41,7 +42,9 @@ final class ProductResource extends JsonResource
             'id' => $product->id(),
             'store_id' => $product->storeId(),
             'primary_category_id' => $product->primaryCategoryId(),
-            'seller_id' => $product->sellerId(),
+            
+            // HAPUS: 'seller_id' => $product->sellerId() karena properti sudah dipindah sepenuhnya ke level Store/Variant
+
             'name' => $product->name(),
             'slug' => $product->slug(),
 

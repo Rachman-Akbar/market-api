@@ -18,6 +18,7 @@ final class ProductVariantMapper
         return new ProductVariant(
             id: (int) $model->id,
             productId: (int) $model->product_id,
+            storeId: (int) $model->store_id, // Ditambahkan pasca perubahan DB
             sku: (string) $model->sku,
             name: (string) $model->name,
             price: (float) $model->price,
@@ -29,5 +30,3 @@ final class ProductVariantMapper
         );
     }
 }
-
-

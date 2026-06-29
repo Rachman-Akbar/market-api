@@ -9,6 +9,7 @@ final class ProductVariant
     public function __construct(
         private readonly ?int $id,
         private readonly int $productId,
+        private readonly int $storeId, // Ditambahkan sesuai perubahan tabel database
         private readonly string $sku,
         private readonly string $name,
         private readonly float $price,
@@ -27,6 +28,11 @@ final class ProductVariant
     public function productId(): int
     {
         return $this->productId;
+    }
+
+    public function storeId(): int
+    {
+        return $this->storeId;
     }
 
     public function sku(): string

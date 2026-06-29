@@ -31,7 +31,6 @@ final class ProductMapper
             id: (int) $model->id,
             storeId: (int) $model->store_id,
             primaryCategoryId: $model->primary_category_id ? (int) $model->primary_category_id : null,
-            sellerId: (string) $model->seller_id,
             name: (string) $model->name,
             slug: (string) $model->slug,
             description: $model->description,
@@ -54,7 +53,6 @@ final class ProductMapper
 
         $model->store_id = $product->storeId();
         $model->primary_category_id = $product->primaryCategoryId();
-        $model->seller_id = $product->sellerId();
         $model->name = $product->name();
         $model->slug = $product->slug();
         $model->description = $product->description();
@@ -66,5 +64,3 @@ final class ProductMapper
         return $model;
     }
 }
-
-

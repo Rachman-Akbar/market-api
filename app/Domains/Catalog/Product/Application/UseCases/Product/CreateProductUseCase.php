@@ -25,7 +25,6 @@ final class CreateProductUseCase
     public function execute(array $data): Product
     {
         return DB::transaction(function () use ($data) {
-            // 1. Resolve Store ID dari Seller ID secara otomatis
             $sellerId = $data['seller_id'];
             $storeId = $this->resolveStoreIdBySellerId($sellerId);
 
@@ -33,15 +32,13 @@ final class CreateProductUseCase
                 throw new \InvalidArgumentException('Toko untuk seller tersebut tidak ditemukan.');
             }
 
-            // 2. Resolve SKU jika user tidak mengisinya
-            $sku = $this->resolveSku($data);
+            $sku = $this->resolveSku($data, $storeId);
 
-            // 3. Simpan data utama Product
+            // Simpan data utama Product (Tanpa sellerId)
             $product = $this->products->save(new Product(
                 id: null,
                 storeId: $storeId,
                 primaryCategoryId: isset($data['primary_category_id']) ? (int) $data['primary_category_id'] : null,
-                sellerId: $sellerId,
                 name: (string) $data['name'],
                 slug: (string) ($data['slug'] ?? Str::slug((string) $data['name'])),
                 description: $data['description'] ?? null,
@@ -52,7 +49,6 @@ final class CreateProductUseCase
                 categoryIds: array_map('intval', $data['category_ids'] ?? [])
             ));
 
-            // 4. Simpan Galeri Gambar (Product Images) jika ada
             if (! empty($data['images'])) {
                 $this->productImages->replaceForProduct(
                     productId: (int) $product->id(),
@@ -60,7 +56,6 @@ final class CreateProductUseCase
                 );
             }
 
-            // 5. Simpan Atribut/Spesifikasi Product
             if (! empty($data['attribute_values'])) {
                 $this->attributeValues->replaceForProduct(
                     productId: (int) $product->id(),
@@ -68,12 +63,12 @@ final class CreateProductUseCase
                 );
             }
 
-            // 6. FIX: Tangani Pembuatan Varian (Mendukung Flat Payload & Multi-Variant)
+            // Tangani Pembuatan Varian dengan Store ID tersemat
             if (empty($data['variants'])) {
-                // Jika request berbentuk flat, buatkan 1 varian default otomatis
                 $this->variants->save(new ProductVariant(
                     id: null,
                     productId: (int) $product->id(),
+                    storeId: $storeId, // Wajib disertakan
                     sku: $sku,
                     name: (string) $data['name'],
                     price: (float) ($data['price'] ?? 0),
@@ -81,11 +76,11 @@ final class CreateProductUseCase
                     isDefault: true
                 ));
             } else {
-                // Jika request membawa array variants eksplisit
                 foreach ($data['variants'] as $variantData) {
                     $variant = $this->variants->save(new ProductVariant(
                         id: null,
                         productId: (int) $product->id(),
+                        storeId: $storeId, // Wajib disertakan
                         sku: (string) ($variantData['sku'] ?? $sku),
                         name: (string) $variantData['name'],
                         price: (float) ($variantData['price'] ?? 0),
@@ -102,7 +97,6 @@ final class CreateProductUseCase
                 }
             }
 
-            // PENTING: Pastikan di dalam method findById() repositori Anda sudah menerapkan ->with(['variants'])
             return $this->products->findById((int) $product->id());
         });
     }
@@ -113,13 +107,13 @@ final class CreateProductUseCase
         return $storeId ? (int) $storeId : null;
     }
 
-    private function resolveSku(array $payload): string
+    private function resolveSku(array $payload, int $storeId): string
     {
         $sku = isset($payload['sku']) && is_string($payload['sku']) ? trim($payload['sku']) : '';
-        return $sku !== '' ? $sku : $this->generateSku($payload);
+        return $sku !== '' ? $sku : $this->generateSku($payload, $storeId);
     }
 
-    private function generateSku(array $payload): string
+    private function generateSku(array $payload, int $storeId): string
     {
         $parts = [];
         if (! empty($payload['name'])) $parts[] = (string) $payload['name'];
@@ -134,7 +128,11 @@ final class CreateProductUseCase
 
         do {
             $sku = $base . '-' . $date . '-' . str_pad((string) $counter, 4, '0', STR_PAD_LEFT);
-            $exists = DB::table('product_variants')->where('sku', $sku)->exists();
+            // Cek keunikan SKU dipersempit hanya dalam cakupan Store ID yang sama
+            $exists = DB::table('product_variants')
+                ->where('sku', $sku)
+                ->where('store_id', $storeId)
+                ->exists();
             $counter++;
         } while ($exists);
 

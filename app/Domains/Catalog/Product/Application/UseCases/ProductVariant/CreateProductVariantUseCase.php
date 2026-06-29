@@ -6,20 +6,26 @@ namespace App\Domains\Catalog\Product\Application\UseCases\ProductVariant;
 
 use Illuminate\Support\Facades\DB;
 use App\Domains\Catalog\Product\Domain\Entities\ProductVariant;
+use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductVariantRepositoryInterface;
 
 final class CreateProductVariantUseCase
 {
     public function __construct(
+        private readonly ProductRepositoryInterface $products,
         private readonly ProductVariantRepositoryInterface $variants
     ) {}
 
     public function execute(int $productId, array $data): ProductVariant
     {
         return DB::transaction(function () use ($productId, $data) {
+            $product = $this->products->findById($productId);
+            abort_if(! $product, 404, 'Product not found.');
+
             $variant = $this->variants->save(new ProductVariant(
                 id: null,
                 productId: $productId,
+                storeId: (int) $product->storeId(), // Ditambahkan untuk mengunci keunikan SKU per toko
                 sku: (string) $data['sku'],
                 name: (string) $data['name'],
                 price: (float) ($data['price'] ?? 0),

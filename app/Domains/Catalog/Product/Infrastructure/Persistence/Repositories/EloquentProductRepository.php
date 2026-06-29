@@ -20,9 +20,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         $query = ProductModel::query()
             ->with($this->relations());
 
-        if (! empty($filters['seller_id'])) {
-            $query->where('seller_id', (string) $filters['seller_id']);
-        }
+        // FILTER seller_id TELAH DIHAPUS, SEKARANG GUNAKAN filter store_id DI BAWAH
 
         if (! empty($filters['status'])) {
             $query->where('status', (string) $filters['status']);
@@ -50,7 +48,10 @@ final class EloquentProductRepository implements ProductRepositoryInterface
                     ->orWhere('slug', 'like', '%' . $search . '%')
                     ->orWhere('description', 'like', '%' . $search . '%')
                     ->orWhere('brand', 'like', '%' . $search . '%')
-                    ->orWhere('sku', 'like', '%' . $search . '%');
+                    // Memastikan pencarian SKU tembus ke tabel varian anak
+                    ->orWhereHas('variants', function ($q) use ($search) {
+                        $q->where('sku', 'like', '%' . $search . '%');
+                    });
             });
         }
 
@@ -64,15 +65,8 @@ final class EloquentProductRepository implements ProductRepositoryInterface
 
     public function findById(int $id): ?Product
     {
-        // Memuat semua relasi penting (variants, images, attributeValues) agar data tidak kosong
         $model = ProductModel::with($this->relations())->find($id);
-        
-        if (! $model) {
-            return null;
-        }
-        
-        // FIX: Menggunakan ProductMapper untuk standarisasi konversi ke Domain Entity
-        return ProductMapper::toEntity($model);
+        return $model ? ProductMapper::toEntity($model) : null;
     }
 
     public function findBySlug(string $slug): ?Product
@@ -104,11 +98,8 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         int $perPage = 15
     ): LengthAwarePaginator {
         $category = CategoryModel::query()
-            ->where(function ($query) use ($categorySlug) {
-                $query
-                    ->where('slug', $categorySlug)
-                    ->orWhere('full_slug', $categorySlug);
-            })
+            ->where('slug', $categorySlug)
+            ->orWhere('full_slug', $categorySlug)
             ->first();
 
         $categoryIds = $category
@@ -128,13 +119,14 @@ final class EloquentProductRepository implements ProductRepositoryInterface
 
         if (! empty($filters['search'])) {
             $search = trim((string) $filters['search']);
-
             $query->where(function ($query) use ($search) {
                 $query
                     ->where('name', 'like', '%' . $search . '%')
                     ->orWhere('description', 'like', '%' . $search . '%')
                     ->orWhere('brand', 'like', '%' . $search . '%')
-                    ->orWhere('sku', 'like', '%' . $search . '%');
+                    ->orWhereHas('variants', function ($q) use ($search) {
+                        $q->where('sku', 'like', '%' . $search . '%');
+                    });
             });
         }
 
@@ -156,9 +148,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         bool $includeDescendants,
         int $perPage
     ): LengthAwarePaginator {
-        $category = CategoryModel::query()
-            ->where('full_slug', $path)
-            ->first();
+        $category = CategoryModel::query()->where('full_slug', $path)->first();
 
         if (! $category) {
             abort(404, 'Category not found.');
@@ -220,7 +210,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         } else {
             $model->store_id = $product->storeId();
             $model->primary_category_id = $product->primaryCategoryId();
-            $model->seller_id = $product->sellerId();
+            // $model->seller_id TELAH DIHAPUS
             $model->name = $product->name();
             $model->slug = $product->slug();
             $model->description = $product->description();
@@ -228,22 +218,16 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             $model->thumbnail = $product->thumbnail();
             $model->status = $product->status();
             $model->is_active = $product->isActive();
-
-            if (method_exists($product, 'sku')) {
-                $model->sku = $product->sku();
-            }
         }
 
         $model->save();
 
         $categoryIds = $product->categoryIds();
-
         if ($product->primaryCategoryId() && ! in_array($product->primaryCategoryId(), $categoryIds, true)) {
             $categoryIds[] = $product->primaryCategoryId();
         }
 
         $syncPayload = [];
-
         foreach (array_values(array_unique($categoryIds)) as $categoryId) {
             $syncPayload[$categoryId] = [
                 'is_primary' => (int) ($categoryId === $product->primaryCategoryId()),
@@ -293,10 +277,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
 
     private function getCategoryAndDescendantIdsById(int $categoryId): array
     {
-        $categoryExists = CategoryModel::query()
-            ->where('id', $categoryId)
-            ->exists();
-
+        $categoryExists = CategoryModel::query()->where('id', $categoryId)->exists();
         if (! $categoryExists) {
             return [];
         }
@@ -312,7 +293,6 @@ final class EloquentProductRepository implements ProductRepositoryInterface
                 ->all();
 
             $childIds = array_values(array_diff($childIds, $ids));
-
             if (empty($childIds)) {
                 break;
             }

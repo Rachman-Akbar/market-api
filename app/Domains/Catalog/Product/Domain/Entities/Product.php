@@ -10,7 +10,6 @@ final class Product
         private readonly ?int $id,
         private readonly int $storeId,
         private readonly ?int $primaryCategoryId,
-        private readonly string $sellerId,
         private readonly string $name,
         private readonly string $slug,
         private readonly ?string $description,
@@ -39,11 +38,6 @@ final class Product
     public function primaryCategoryId(): ?int
     {
         return $this->primaryCategoryId;
-    }
-
-    public function sellerId(): string
-    {
-        return $this->sellerId;
     }
 
     public function name(): string

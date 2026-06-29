@@ -9,13 +9,24 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 final class ProductVariantResource extends JsonResource
 {
+    /**
+     * Transform the resource into an array.
+     *
+     * @param  Request  $request
+     * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
+        /** @var \App\Domains\Catalog\Product\Domain\Entities\ProductVariant $variant */
         $variant = $this->resource;
 
         return [
             'id' => $variant->id(),
             'product_id' => $variant->productId(),
+            
+            // TAMBAHAN: Menyertakan store_id sesuai arsitektur database baru
+            'store_id' => $variant->storeId(), 
+            
             'sku' => $variant->sku(),
             'name' => $variant->name(),
             'price' => $variant->price(),
