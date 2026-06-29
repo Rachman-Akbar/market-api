@@ -3,7 +3,10 @@
 use App\Domains\Order\Ordering\Presentation\Http\Controllers\OrderingController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('orderings')->group(function () {
+Route::middleware(['auth:sanctum'])
+        ->prefix('orderings')
+        ->name('orderings.')
+        ->group(function (): void {
     // 1. Checkout / Buat Order Baru
     Route::post('/', [OrderingController::class, 'store']);
 

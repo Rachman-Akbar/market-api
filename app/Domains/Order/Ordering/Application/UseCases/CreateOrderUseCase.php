@@ -13,27 +13,30 @@ class CreateOrderUseCase
 {
     public function __construct(private OrderRepositoryInterface $orderRepository) {}
 
-    // 1. TAMBAHKAN PARAMETER $cartItemIds (array)
-    public function execute(?string $userId, ?string $shippingAddress, array $cartItemIds = []): Order
+    // Mengubah parameter $userId menjadi strict string (wajib diisi)
+    public function execute(string $userId, ?string $shippingAddress, array $cartItemIds = []): Order
     {
-        $finalUserId = $userId ?: 'fe55a239-8462-4e8f-99e1-3755faa6507a';
+        // 1. Validasi Keamanan: Pastikan user ID benar-benar ada (tidak kosong)
+        if (empty(trim($userId))) {
+            throw new Exception("Sesi Anda telah berakhir. Silakan login kembali.");
+        }
 
         // Validasi jika frontend tidak mengirimkan checkbox sama sekali
         if (empty($cartItemIds)) {
             throw new Exception("Pilih minimal satu produk untuk melakukan checkout.");
         }
 
-        // Logika Alamat
+        // Logika Alamat berdasarkan real user ID
         if (empty(trim($shippingAddress ?? ''))) {
-            $addressRow = DB::table('addresses')->where('user_id', $finalUserId)->first();
+            $addressRow = DB::table('addresses')->where('user_id', $userId)->first();
             if (!$addressRow) {
-                throw new Exception("Alamat pengiriman gagal dimuat.");
+                throw new Exception("Alamat pengiriman gagal dimuat. Sediakan alamat manual atau tambahkan alamat di profil Anda.");
             }
             $shippingAddress = $addressRow->full_address ?? $addressRow->address ?? $addressRow->alamat;
         }
 
-        // 2. PERUBAHAN QUERY: Filter item keranjang menggunakan whereIn berdasarkan pilihan checkbox
-        $cart = CartModel::where('user_id', $finalUserId)->first();
+        // 2. Query Keranjang Belanja milik real user yang sedang login
+        $cart = CartModel::where('user_id', $userId)->first();
         if (!$cart) {
             throw new Exception("Keranjang belanja tidak ditemukan.");
         }
@@ -71,12 +74,12 @@ class CreateOrderUseCase
         }
 
         $orderNumber = 'ORD-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(4)));
-        $order = new Order(null, $orderNumber, $finalUserId, $totalAmount, 'pending', $shippingAddress, $domainItems);
+        $order = new Order(null, $orderNumber, $userId, $totalAmount, 'pending', $shippingAddress, $domainItems);
 
         return DB::transaction(function () use ($order, $cart, $cartItemIds) {
             $createdOrder = $this->orderRepository->create($order);
 
-            // 3. PERUBAHAN DELETE: Hapus HANYA item yang di-order, item lain yang tidak dicentang tetap tinggal di keranjang
+            // Hapus hanya item yang di-order, item lain yang tidak dicentang tetap tinggal di keranjang
             $cart->items()->whereIn('id', $cartItemIds)->delete();
 
             return $createdOrder;

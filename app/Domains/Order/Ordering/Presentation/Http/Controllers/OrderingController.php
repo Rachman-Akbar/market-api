@@ -20,49 +20,59 @@ class OrderingController extends Controller
 
     // 1. Checkout / Buat Order
     public function store(Request $request): JsonResponse
-    {
-        try {
-            // Jalankan usecase
-            $order = $this->createOrderUseCase->execute(
-                userId: $request->input('user_id'),
-                shippingAddress: $request->input('shipping_address'),
-                cartItemIds: $request->input('cart_item_ids', []) // Tangkap array checkbox dari frontend
-            );
+{
+    try {
+        // PERBAIKAN: Ambil ID user yang login secara real, bukan dari input request body
+        $userId = (string) $request->user()?->id;
 
-            // Mapping items agar menampilkan properti di dalam array JSON
-            $itemsData = array_map(function ($item) {
-                return [
-                    'id'          => $item->id, // Sekarang ID item sudah tidak null
-                    'productId'   => $item->productId,
-                    'storeId'     => $item->storeId,
-                    'productName' => $item->productName,
-                    'sku'          => $item->sku,
-                    'price'        => $item->price,
-                    'quantity'     => $item->quantity,
-                ];
-            }, $order->items);
-
-            // PERBAIKAN: Pastikan 'id' => $order->id dimasukkan ke dalam response data
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'id'              => $order->id, // <--- ID ORDER UTAMA SEKARANG DI SINI
-                    'orderNumber'     => $order->orderNumber,
-                    'userId'          => $order->userId,
-                    'totalAmount'     => $order->totalAmount,
-                    'status'          => $order->status,
-                    'shippingAddress' => $order->shippingAddress,
-                    'items'           => $itemsData
-                ]
-            ], 201);
-
-        } catch (\Exception $e) {
+        // Jika route tidak dilindungi middleware auth, kita kasih proteksi tambahan di sini
+        if (!$userId) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
-            ], 400);
+                'message' => 'Sesi Anda telah berakhir. Silakan login kembali.'
+            ], 401);
         }
+
+        // Jalankan usecase dengan real userId
+        $order = $this->createOrderUseCase->execute(
+            userId: $userId, // <--- Sudah menggunakan ID real
+            shippingAddress: $request->input('shipping_address'),
+            cartItemIds: $request->input('cart_item_ids', [])
+        );
+
+        // Mapping items agar menampilkan properti di dalam array JSON
+        $itemsData = array_map(function ($item) {
+            return [
+                'id'          => $item->id,
+                'productId'   => $item->productId,
+                'storeId'     => $item->storeId,
+                'productName' => $item->productName,
+                'sku'          => $item->sku,
+                'price'        => $item->price,
+                'quantity'     => $item->quantity,
+            ];
+        }, $order->items);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id'              => $order->id,
+                'orderNumber'     => $order->orderNumber,
+                'userId'          => $order->userId,
+                'totalAmount'     => $order->totalAmount,
+                'status'          => $order->status,
+                'shippingAddress' => $order->shippingAddress,
+                'items'           => $itemsData
+            ]
+        ], 201);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 400);
     }
+}
 
 
     // 2. Get By User ID (Menerima parameter string UUID dari URL rute)
