@@ -13,15 +13,14 @@ class CreateOrderUseCase
 {
     public function __construct(private OrderRepositoryInterface $orderRepository) {}
 
-    // Mengubah parameter $userId menjadi strict string (wajib diisi)
-    public function execute(string $userId, ?string $shippingAddress, array $cartItemIds = []): Order
+    public function execute(string $userId, ?string $shippingAddress, array $cartItemIds = [], ?string $voucherCode = null): Order
     {
-        // 1. Validasi Keamanan: Pastikan user ID benar-benar ada (tidak kosong)
+        // Validasi Keamanan: Pastikan user ID benar-benar ada
         if (empty(trim($userId))) {
             throw new Exception("Sesi Anda telah berakhir. Silakan login kembali.");
         }
 
-        // Validasi jika frontend tidak mengirimkan checkbox sama sekali
+        // Validasi item checkbox
         if (empty($cartItemIds)) {
             throw new Exception("Pilih minimal satu produk untuk melakukan checkout.");
         }
@@ -35,13 +34,13 @@ class CreateOrderUseCase
             $shippingAddress = $addressRow->full_address ?? $addressRow->address ?? $addressRow->alamat;
         }
 
-        // 2. Query Keranjang Belanja milik real user yang sedang login
+        // Query Keranjang Belanja
         $cart = CartModel::where('user_id', $userId)->first();
         if (!$cart) {
             throw new Exception("Keranjang belanja tidak ditemukan.");
         }
 
-        // Ambil items yang hanya dicentang oleh user
+        // Ambil items yang dicentang
         $selectedItems = $cart->items()->whereIn('id', $cartItemIds)->get();
         if ($selectedItems->isEmpty()) {
             throw new Exception("Item yang dipilih tidak ditemukan di keranjang belanja Anda.");
@@ -73,13 +72,80 @@ class CreateOrderUseCase
             );
         }
 
-        $orderNumber = 'ORD-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(4)));
-        $order = new Order(null, $orderNumber, $userId, $totalAmount, 'pending', $shippingAddress, $domainItems);
+        // --- INTEGRASI LOGIC VOUCHER KETAT ---
+        $voucherId = null;
+        $discountAmount = 0.00;
 
-        return DB::transaction(function () use ($order, $cart, $cartItemIds) {
+        $cleanVoucherCode = isset($voucherCode) ? trim($voucherCode) : '';
+
+        if ($cleanVoucherCode !== '') {
+            $voucher = DB::table('vouchers')
+                ->where('code', strtoupper($cleanVoucherCode))
+                ->lockForUpdate()
+                ->first();
+
+            if (!$voucher) {
+                throw new Exception("Voucher tidak dikenali.");
+            }
+
+            // PERBAIKAN: Menggunakan method Carbon isBefore() dan isAfter() agar tidak memicu MethodDoesNotExistsException
+            $now = now();
+            if (!$voucher->is_active || $now->isBefore($voucher->starts_at) || $now->isAfter($voucher->ends_at)) {
+                throw new Exception("Voucher sudah kedaluwarsa atau sudah tidak aktif.");
+            }
+
+            if ($voucher->usage_limit > 0 && $voucher->used_count >= $voucher->usage_limit) {
+                throw new Exception("Maaf, kuota penggunaan voucher ini sudah habis.");
+            }
+
+            if ($totalAmount < $voucher->min_spend) {
+                throw new Exception("Minimal belanja untuk menggunakan voucher ini adalah Rp" . number_format($voucher->min_spend, 0, ',', '.'));
+            }
+
+            if ($voucher->discount_type === 'percentage') {
+                $discountAmount = ($totalAmount * $voucher->discount_value) / 100;
+
+                if (!is_null($voucher->max_discount) && $discountAmount > $voucher->max_discount) {
+                    $discountAmount = $voucher->max_discount;
+                }
+            } else {
+                $discountAmount = $voucher->discount_value;
+            }
+
+            if ($discountAmount > $totalAmount) {
+                $discountAmount = $totalAmount;
+            }
+
+            $voucherId = $voucher->id;
+        }
+
+        $orderNumber = 'ORD-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(4)));
+
+        // Buat entitas domain lengkap
+        $order = new Order(
+            id: null,
+            orderNumber: $orderNumber,
+            userId: $userId,
+            totalAmount: $totalAmount,
+            status: 'pending',
+            shippingAddress: $shippingAddress,
+            items: $domainItems,
+            voucherId: $voucherId,
+            discountAmount: $discountAmount
+        );
+
+        return DB::transaction(function () use ($order, $cart, $cartItemIds, $voucherId) {
+            // Simpan transaksi order ke database lewat repository
             $createdOrder = $this->orderRepository->create($order);
 
-            // Hapus hanya item yang di-order, item lain yang tidak dicentang tetap tinggal di keranjang
+            // JIKA pakai voucher, potong kuota / naikkan used_count
+            if ($voucherId) {
+                DB::table('vouchers')
+                    ->where('id', $voucherId)
+                    ->increment('used_count');
+            }
+
+            // Hapus item dari keranjang
             $cart->items()->whereIn('id', $cartItemIds)->delete();
 
             return $createdOrder;

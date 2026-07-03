@@ -11,3 +11,7 @@ Route::get('/', function () {
 
 // Akses lewat browser: http://localhost:8000/test-firebase-login
 Route::view('/test-firebase-login', 'login-firebase');
+
+Route::get('/test-map', function () {
+    return view('test-address');
+});

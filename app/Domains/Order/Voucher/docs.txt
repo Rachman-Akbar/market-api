@@ -1,0 +1,77 @@
+API
+
+Json
+{
+  "code": "DISKON2026",
+  "name": "Promo Seru Pertengahan Tahun",
+  "discount_type": "percentage",
+  "discount_value": 10.00,
+  "min_spend": 50000.00,
+  "max_discount": 15000.00,
+  "starts_at": "2026-06-30 00:00:00",
+  "ends_at": "2026-07-07 23:59:59",
+  "usage_limit": 150,
+  "store_id": null,
+  "is_active": true
+}
+
+DB
+
+
+
+
+Konsep voucher pada database yang kamu rancang mengadopsi standar sistem **E-commerce Promosi** modern. Struktur ini dibuat untuk mengontrol kapan diskon bisa digunakan, seberapa besar potongannya, siapa yang menanggung biayanya, hingga memastikan sistem tidak rugi akibat eksploitasi kuota.
+
+    Berikut adalah penjelasan konsep per baris/kolom pada tabel `vouchers` milikmu:
+
+    ---
+
+    ### 1. Identitas & Validasi Unik (`code`, `name`)
+
+    * **`code`**: Ini adalah string unik (misal: `GAJIAN2026`, `DISKONBARU`). Kolom ini dipasang `UNIQUE KEY` agar sistem memiliki kepastian tunggal. Saat user mengetikkan kode di frontend, backend tinggal mencari baris yang cocok menggunakan klausa `WHERE code = '...'`.
+    * **`name`**: Nama komersial untuk kebutuhan tampilan di frontend (misal: *"Promo Gajian Spesial Potongan 10%"*).
+
+    ---
+
+    ### 2. Aturan Mekanisme Diskon (`discount_type`, `discount_value`, `max_discount`)
+
+    Sistem ini mendukung dua jenis pemotongan harga yang dinamis melalui kolom `discount_type`:
+
+    * **Tipe `fixed` (Nominal Tetap):** Jika `discount_type` adalah `fixed` dan `discount_value` berisi `15000.00`, maka total tagihan user langsung dipotong **Rp15.000** secara flat. Kolom `max_discount` akan diabaikan pada tipe ini.
+    * **Tipe `percentage` (Persentase):** Jika `discount_type` adalah `percentage` dan `discount_value` berisi `10.00`, maka user mendapat diskon **10%** dari total belanja. Di sinilah kolom `max_discount` bekerja sebagai sekring pengaman. Jika user belanja Rp2.000.000, seharusnya diskon 10%-nya adalah Rp200.000. Namun, jika `max_discount` kamu set di angka `50000.00`, sistem akan membatasi potongan maksimal hanya **Rp50.000**.
+
+    ---
+
+    ### 3. Syarat & Ketentuan Penggunaan (`min_spend`, `starts_at`, `ends_at`, `is_active`)
+
+    Sebelum voucher memotong harga, backend akan mengecek gerbang pembatas ini:
+
+    * **`min_spend`**: Batas minimal belanja produk. Jika berisi `100000.00`, dan isi keranjang belanja user yang dicentang hanya Rp80.000, UseCase akan melempar error: *"Minimal pembelian belum terpenuhi."*
+    * **`starts_at` & `ends_at**`: Masa berlaku (Waktu Mulai & Waktu Kedaluwarsa). Backend akan mengecek waktu server saat ini ($current\_time$). Voucher hanya valid jika:
+
+    $$starts\_at \le current\_time \le ends\_at$$
+
+
+    * **`is_active`**: Saklar darurat berbentuk boolean (`1` atau `0`). Jika admin mendeteksi adanya kecurangan atau ingin membatalkan promo secara mendadak sebelum masa `ends_at` habis, admin cukup mengubah nilai ini menjadi `0`.
+
+    ---
+
+    ### 4. Kontrol Kuota & Skala Besar (`usage_limit`, `used_count`)
+
+    * **`usage_limit`**: Kuota total yang disediakan (misal: `100`). Jika diisi `0`, aplikasi bisa menganggapnya sebagai voucher tanpa batas kuota.
+    * **`used_count`**: Penghitung (*counter*) real-time di database. Konsepnya:
+
+    $$\text{Sisa Kuota} = \text{usage\_limit} - \text{used\_count}$$
+
+
+
+    Setiap kali ada pesanan baru yang berhasil dibuat menggunakan voucher ini, backend wajib menjalankan perintah increment ($used\_count = used\_count + 1$). Jika angka `used_count` sudah sama dengan `usage_limit`, pintu akses voucher otomatis terkunci.
+
+    ---
+
+    ### 5. Koncept Kepemilikan / Scope Multi-Vendor (`store_id`)
+
+    Kolom ini menentukan siapa yang menerbitkan dan membiayai diskon tersebut:
+
+    * **Jika `store_id` berisi `NULL` (Voucher Global / Platform):** Voucher dibuat oleh admin utama Kisha Market. Potongan harga berlaku untuk seluruh produk dari toko mana pun yang ada di dalam keranjang belanja user.
+    * **Jika `store_id` berisi ID Toko tertentu (Voucher Spesifik Toko):** Voucher ini dibuat secara mandiri oleh penjual. Backend akan melakukan validasi tambahan: **Voucher hanya boleh memotong harga jika produk yang dicheckout berasal dari toko dengan ID yang sama.** Jika user mencoba memakai kode tersebut untuk membeli barang di toko lain, sistem akan menolaknya.

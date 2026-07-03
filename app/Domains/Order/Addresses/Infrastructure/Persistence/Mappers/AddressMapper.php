@@ -17,7 +17,11 @@ class AddressMapper
             full_address: $data['full_address'],
             city: $data['city'],
             postal_code: $data['postal_code'],
-            is_primary: $data['is_primary'] ?? false
+            is_primary: $data['is_primary'] ?? false,
+
+            // TAMBAHKAN DUA BARIS INI (Pastikan di AddressDTO juga sudah ada property ini)
+            latitude: (float) $data['latitude'],
+            longitude: (float) $data['longitude']
         );
     }
 
@@ -33,6 +37,10 @@ class AddressMapper
             'city' => $dto->city,
             'postal_code' => $dto->postal_code,
             'is_primary' => $dto->is_primary,
+
+            // TAMBAHKAN DUA BARIS INI AGAR MASUK KE DATABASE VIA REPOSITORY
+            'latitude' => $dto->latitude,
+            'longitude' => $dto->longitude,
         ];
     }
 }

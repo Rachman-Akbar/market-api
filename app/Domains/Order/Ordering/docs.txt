@@ -22,19 +22,32 @@ JSON
         "cart_item_ids": [12, 15]
     }
 
+    {
+        "user_id": "fe55a239-8462-4e8f-99e1-3755faa6507a",
+        "address_id": 12,
+        "cart_item_ids": [12, 15],
+        "payment_method": "bank_transfer",
+        "voucher_code": "DISKON2026"
+    }
+
 DB
     CREATE TABLE `orders` (
-        `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        `order_number` VARCHAR(50) NOT NULL,
-        `user_id` VARCHAR(255) NOT NULL,
-        `total_amount` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
-        `status` VARCHAR(50) NOT NULL DEFAULT 'pending',
-        `shipping_address` TEXT NOT NULL,
-        `created_at` TIMESTAMP NULL DEFAULT NULL,
-        `updated_at` TIMESTAMP NULL DEFAULT NULL,
-        UNIQUE KEY `orders_order_number_unique` (`order_number`),
-        INDEX `orders_user_id_index` (`user_id`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+    `order_number` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `user_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `voucher_id` bigint unsigned DEFAULT NULL,
+    `total_amount` decimal(12,2) NOT NULL DEFAULT '0.00',
+    `discount_amount` decimal(12,2) NOT NULL DEFAULT '0.00',
+    `status` enum('pending','processing','shipped','delivered','cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+    `shipping_address` text COLLATE utf8mb4_unicode_ci NOT NULL,
+    `created_at` timestamp NULL DEFAULT NULL,
+    `updated_at` timestamp NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `orders_order_number_unique` (`order_number`),
+    KEY `orders_user_id_index` (`user_id`),
+    KEY `orders_voucher_id_foreign` (`voucher_id`),
+    CONSTRAINT `orders_voucher_id_foreign` FOREIGN KEY (`voucher_id`) REFERENCES `vouchers` (`id`) ON DELETE SET NULL
+    ) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 
     CREATE TABLE `order_items` (
         `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

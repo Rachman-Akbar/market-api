@@ -6,12 +6,14 @@ API
 
 JSON
     {
-    "label": "Rumah Utama",
+    "label": "toko Utama",
     "recipient_name": "John Doe",
     "phone_number": "081234567890",
-    "full_address": "Jl. Merdeka No. 123, RT 01/RW 02, Kecamatan Kebayoran Baru",
-    "city": "Jakarta Selatan",
-    "postal_code": "12110",
+    "full_address": "Jl. Raya Boulevard No. 45, Cluster Lavender",
+    "city": "Jakarta Pusat",
+    "postal_code": "10110",
+    "latitude": -6.9898175392,
+    "longitude": 106.8279090153,
     "is_primary": true
     }
 
@@ -26,15 +28,13 @@ DB
     `full_address` text COLLATE utf8mb4_unicode_ci NOT NULL,
     `city` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
     `postal_code` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `latitude` decimal(10,8) NOT NULL,
+    `longitude` decimal(11,8) NOT NULL,
     `is_primary` tinyint(1) NOT NULL DEFAULT '0',
     `created_at` timestamp NULL DEFAULT NULL,
     `updated_at` timestamp NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
+    UNIQUE KEY `user_address_unique` (`user_id`,`label`,`full_address`(255)),
     KEY `addresses_user_id_index` (`user_id`),
     KEY `addresses_store_id_index` (`store_id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-
-    saat mau diberikan maps tracker
-    ALTER TABLE `addresses`
-        ADD COLUMN `latitude` DECIMAL(10, 8) NULL AFTER `postal_code`,
-        ADD COLUMN `longitude` DECIMAL(11, 8) NULL AFTER `latitude`;
+    ) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

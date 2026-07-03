@@ -14,6 +14,8 @@ use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Repositories\EloquentOrderRepository;
 use App\Domains\Order\Wishlist\Domain\Repositories\WishlistRepositoryInterface;
 use App\Domains\Order\Wishlist\Infrastructure\Persistence\Repositories\EloquentWishlistRepository;
+use App\Domains\Order\Voucher\Domain\Repositories\VoucherRepositoryInterface;
+use App\Domains\Order\Voucher\Infrastructure\Persistence\Repositories\EloquentVoucherRepository;
 use Illuminate\Support\ServiceProvider;
 
 class OrderServiceProvider extends ServiceProvider
@@ -28,6 +30,9 @@ class OrderServiceProvider extends ServiceProvider
         $this->app->bind(WishlistRepositoryInterface::class, EloquentWishlistRepository::class);
 
         $this->app->bind(OrderRepositoryInterface::class, EloquentOrderRepository::class);
+
+        $this->app->bind(VoucherRepositoryInterface::class, EloquentVoucherRepository::class);
+
     }
 
     public function boot(): void

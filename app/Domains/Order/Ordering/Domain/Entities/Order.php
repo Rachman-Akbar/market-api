@@ -11,6 +11,8 @@ class Order
         public float $totalAmount,
         public string $status,
         public string $shippingAddress,
-        public array $items = []
+        public array $items = [],
+        public ?int $voucherId = null,         // <--- TAMBAHKAN INI
+        public float $discountAmount = 0.00   // <--- TAMBAHKAN INI
     ) {}
 }

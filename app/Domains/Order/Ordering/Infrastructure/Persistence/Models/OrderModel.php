@@ -7,7 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class OrderModel extends Model
 {
     protected $table = 'orders';
-    protected $fillable = ['order_number', 'user_id', 'total_amount', 'status', 'shipping_address'];
+
+    // Tambahkan voucher_id dan discount_amount di sini
+    protected $fillable = [
+        'order_number',
+        'user_id',
+        'voucher_id', // <--- Ditambahkan
+        'total_amount',
+        'discount_amount', // <--- Ditambahkan (Sesuaikan dengan nama kolom DB)
+        'status',
+        'shipping_address'
+    ];
 
     public function items()
     {
