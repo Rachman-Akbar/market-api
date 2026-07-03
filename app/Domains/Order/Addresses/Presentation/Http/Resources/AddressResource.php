@@ -21,6 +21,7 @@ public function toArray(Request $request): array
         'full_address'   => $this->full_address,
         'city'           => $this->city,
         'postal_code'    => $this->postal_code,
+        'notes'          => $this->notes,
 
         // TAMBAHKAN DI SINI
         'latitude'       => $this->latitude,

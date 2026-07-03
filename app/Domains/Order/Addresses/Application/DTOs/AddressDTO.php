@@ -13,6 +13,7 @@ class AddressDTO
         public string $full_address,
         public string $city,
         public string $postal_code,
+        public ?string $notes,
         public ?float $latitude,
         public ?float $longitude,
         public bool $is_primary = false

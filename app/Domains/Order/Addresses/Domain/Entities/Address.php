@@ -18,6 +18,7 @@ class Address extends Model
         'full_address',
         'city',
         'postal_code',
+        'notes',
         'latitude',  // <-- Tambahkan ini
         'longitude',
         'is_primary',

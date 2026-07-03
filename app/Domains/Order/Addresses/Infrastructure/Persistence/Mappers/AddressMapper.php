@@ -17,6 +17,7 @@ class AddressMapper
             full_address: $data['full_address'],
             city: $data['city'],
             postal_code: $data['postal_code'],
+            notes: $data['notes'] ?? null,
             is_primary: $data['is_primary'] ?? false,
 
             // TAMBAHKAN DUA BARIS INI (Pastikan di AddressDTO juga sudah ada property ini)
@@ -36,6 +37,7 @@ class AddressMapper
             'full_address' => $dto->full_address,
             'city' => $dto->city,
             'postal_code' => $dto->postal_code,
+            'notes' => $dto->notes,
             'is_primary' => $dto->is_primary,
 
             // TAMBAHKAN DUA BARIS INI AGAR MASUK KE DATABASE VIA REPOSITORY

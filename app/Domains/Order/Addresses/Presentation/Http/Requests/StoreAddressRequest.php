@@ -24,7 +24,7 @@ public function rules(): array
         'postal_code'    => 'required|string|max:20',
         'is_primary'     => 'nullable|boolean',
         'store_id'       => 'nullable|string|max:255',
-
+        'notes' => 'nullable|string|max:255',
         // TAMBAHKAN VALIDASI WAJIB DI BAWAH INI
         'latitude'       => 'required|numeric|between:-90,90',
         'longitude'      => 'required|numeric|between:-180,180',
