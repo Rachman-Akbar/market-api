@@ -44,33 +44,32 @@ final class CategoryMapper
     }
 
     public static function toEntityFromArray(array|object $data): Category
-    {
-        $data = (array) $data;
+{
+    $data = (array) $data;
 
-        // Map children secara rekursif terlebih dahulu
-        $children = collect($data['children'] ?? $data['children_tree'] ?? [])
-            ->map(fn ($child) => self::toEntityFromArray((array) $child))
-            ->all();
+    // Tambahkan pengecekan $data['categories'] untuk menangkap kategori root dari Catalog Group
+    $categoriesData = $data['categories'] ?? $data['children'] ?? $data['children_tree'] ?? [];
 
-        // Urutan WAJIB sama persis dengan __construct di file Category.php kamu:
-        // 1. id, 2. catalogGroupId, 3. parentId, 4. name, 5. slug, 6. fullSlug,
-        // 7. imageUrl, 8. iconUrl, 9. level, 10. sortOrder, 11. productsCount,
-        // 12. isActive, 13. isVisibleInMenu, 14. children
-        return new Category(
-            id: isset($data['id']) ? (int) $data['id'] : null,
-            catalogGroupId: (int) ($data['catalog_group_id'] ?? 0),
-            parentId: isset($data['parent_id']) ? (int) $data['parent_id'] : null,
-            name: (string) ($data['name'] ?? ''),
-            slug: (string) ($data['slug'] ?? ''),
-            fullSlug: (string) ($data['full_slug'] ?? ''),
-            imageUrl: $data['image_url'] ?? null,
-            iconUrl: $data['icon_url'] ?? null,
-            level: (int) ($data['level'] ?? 1),
-            sortOrder: (int) ($data['sort_order'] ?? 0),
-            productsCount: (int) ($data['products_count'] ?? 0),
-            isActive: (bool) ($data['is_active'] ?? true),
-            isVisibleInMenu: (bool) ($data['is_visible_in_menu'] ?? true),
-            children: $children,
-        );
-    }
+    // Map secara rekursif
+    $children = collect($categoriesData)
+        ->map(fn ($child) => self::toEntityFromArray((array) $child))
+        ->all();
+
+    return new Category(
+        id: isset($data['id']) ? (int) $data['id'] : null,
+        catalogGroupId: (int) ($data['catalog_group_id'] ?? $data['catalog_id'] ?? 0),
+        parentId: isset($data['parent_id']) ? (int) $data['parent_id'] : null,
+        name: (string) ($data['name'] ?? ''),
+        slug: (string) ($data['slug'] ?? ''),
+        fullSlug: (string) ($data['full_slug'] ?? ''),
+        imageUrl: $data['image_url'] ?? null,
+        iconUrl: $data['icon_url'] ?? null,
+        level: (int) ($data['level'] ?? 1),
+        sortOrder: (int) ($data['sort_order'] ?? 0),
+        productsCount: (int) ($data['products_count'] ?? 0),
+        isActive: (bool) ($data['is_active'] ?? true),
+        isVisibleInMenu: (bool) ($data['is_visible_in_menu'] ?? true),
+        children: $children,
+    );
+}
 }

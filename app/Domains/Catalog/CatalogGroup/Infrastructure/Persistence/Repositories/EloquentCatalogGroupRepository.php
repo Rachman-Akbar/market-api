@@ -139,20 +139,35 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
         return CatalogGroupMapper::toEntityFromArray($cached);
     }
 
-    public function getCategoriesByGroupId(int $groupId): Collection
-    {
-        return Cache::remember("catalog_group_{$groupId}_categories", 600, function () use ($groupId) {
-            $model = CatalogGroupModel::findOrFail($groupId);
+   public function getCategoriesByGroupId(int $groupId): Collection
+{
+    $cacheKey = "catalog_group_{$groupId}_categories_array";
 
-            return $model->categories()
-                ->where('is_active', true)
-                ->where('is_visible_in_menu', true)
-                ->orderBy('sort_order')
-                ->orderBy('name')
-                ->get()
-                ->map(fn($cat) => CategoryMapper::toEntity($cat));
-        });
-    }
+    $cachedArray = Cache::remember($cacheKey, 600, function () use ($groupId) {
+        $model = CatalogGroupModel::findOrFail($groupId);
+
+        return $model->categories()
+            ->where('is_active', true)
+            ->where('is_visible_in_menu', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            // Map to an array structure instead of domain object
+            ->map(fn($cat) => [
+                'id' => $cat->id,
+                'catalog_group_id' => $cat->catalog_group_id,
+                'parent_id' => $cat->parent_id,
+                'name' => $cat->name,
+                'slug' => $cat->slug,
+                // ... add other fields needed by CategoryMapper::toEntityFromArray
+            ])
+            ->all();
+    });
+
+    return collect($cachedArray)->map(
+        fn(array $item) => CategoryMapper::toEntityFromArray($item)
+    );
+}
 
     /**
      * Pengganti method Create & Update (DDD Strict Standard)

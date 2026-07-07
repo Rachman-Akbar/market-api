@@ -1,4 +1,9 @@
 API
+  GET|HEAD  api/v1/order/vouchers 
+  POST      api/v1/order/vouchers 
+  GET|HEAD  api/v1/order/vouchers/{id}
+  PUT       api/v1/order/vouchers/{id}
+  DELETE    api/v1/order/vouchers/{id}
 
 Json
 {
