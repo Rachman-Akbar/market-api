@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Order\Voucher\Presentation\Http\Controllers; // <-- Pastikan ini tepat sama!
+namespace App\Domains\Order\Voucher\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Domains\Order\Voucher\Application\UseCases\ManageVoucherUseCase;
@@ -38,7 +38,28 @@ class VoucherController extends Controller
     public function store(StoreVoucherRequest $request): JsonResponse
     {
         try {
-            $dto = new VoucherDTO(...$request->validated());
+            $user = $request->user();
+            $data = $request->validated();
+
+            // 🛑 PRIORITAS 1: Cek Admin Terlebih Dahulu
+            if ($user->hasRole('admin')) {
+                // Admin bebas mengisi store_id apa saja, atau null untuk global
+                $data['store_id'] = $request->input('store_id', null);
+            }
+            // 🛍️ PRIORITAS 2: Cek Seller
+            elseif ($user->hasRole('seller')) {
+                // Seller dipaksa menggunakan store_id dari tokonya
+                $data['store_id'] = $user->store?->id;
+
+                if (!$data['store_id']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Akun seller Anda belum terhubung dengan toko mana pun.'
+                    ], 400);
+                }
+            }
+
+            $dto = new VoucherDTO(...$data);
             $voucher = $this->useCase->createVoucher($dto);
 
             return response()->json([
@@ -54,7 +75,30 @@ class VoucherController extends Controller
     public function update(int $id, StoreVoucherRequest $request): JsonResponse
     {
         try {
-            $dto = new VoucherDTO(...$request->validated());
+            $user = $request->user();
+            $data = $request->validated();
+
+            // 🛑 PRIORITAS 1: Jika Admin, Bypass Semua Proteksi Kepemilikan Toko
+            if ($user->hasRole('admin')) {
+                $data['store_id'] = $request->input('store_id', null);
+            }
+            // 🛍️ PRIORITAS 2: Jika BUKAN Admin tapi Seller, Lakukan Validasi Ketat
+            elseif ($user->hasRole('seller')) {
+                $sellerStoreId = $user->store?->id;
+                $currentVoucher = $this->useCase->showVoucher($id);
+
+                // Pastikan seller tidak mengedit voucher milik toko lain / global
+                if ((int) $currentVoucher->store_id !== (int) $sellerStoreId) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Anda tidak memiliki hak akses untuk mengubah voucher ini.'
+                    ], 403);
+                }
+
+                $data['store_id'] = $sellerStoreId;
+            }
+
+            $dto = new VoucherDTO(...$data);
             $voucher = $this->useCase->updateVoucher($id, $dto);
 
             return response()->json([
@@ -70,6 +114,20 @@ class VoucherController extends Controller
     public function destroy(int $id): JsonResponse
     {
         try {
+            // Menggunakan request() helper untuk menarik data user yang login
+            $user = request()->user();
+
+            // 🛡️ PROTEKSI: Seller tidak boleh menghapus voucher milik toko lain / global
+            if ($user->hasRole('seller')) {
+                $currentVoucher = $this->useCase->showVoucher($id);
+                if ($currentVoucher->store_id !== $user->store_id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Anda tidak memiliki hak akses untuk menghapus voucher ini.'
+                    ], 403);
+                }
+            }
+
             $this->useCase->deleteVoucher($id);
             return response()->json([
                 'success' => true,

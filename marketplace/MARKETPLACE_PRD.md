@@ -157,16 +157,6 @@ created_at      TIMESTAMP
 updated_at      TIMESTAMP
 ```
 
-### 3.4 Auth API Endpoints
-
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| POST | `/api/auth/google` | None | Login/Register via Firebase ID Token |
-| POST | `/api/auth/logout` | Bearer | Revoke current token |
-| POST | `/api/auth/logout-all` | Bearer | Revoke ALL tokens milik user ini |
-| GET | `/api/auth/me` | Bearer | Get current user info + device_type |
-| POST | `/api/auth/upgrade-to-seller` | Bearer (Buyer) | Upgrade role ke seller |
-
 ### 3.5 Middleware Stack
 
 ```
