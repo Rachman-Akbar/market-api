@@ -6,6 +6,8 @@ namespace App\Domains\Catalog\Category\Infrastructure\Persistence\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany; // 1. Tambahkan import ini
+use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel; // 2. Tambahkan import ini
 
 final class CategoryModel extends Model
 {
@@ -45,5 +47,18 @@ final class CategoryModel extends Model
             ->orderBy('sort_order')
             ->orderBy('name')
             ->with('childrenTree');
+    }
+
+    /**
+     * 3. Tambahkan method products() ini agar error bad method call selesai
+     */
+    public function products(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ProductModel::class,
+            'product_categories', // Nama pivot table disamakan dengan ProductModel
+            'category_id',        // Foreign key untuk category di pivot table
+            'product_id'          // Foreign key untuk product di pivot table
+        )->withPivot('is_primary');
     }
 }

@@ -9,6 +9,8 @@ use App\Domains\Catalog\Category\Domain\Repositories\CategoryRepositoryInterface
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Mappers\CategoryMapper;
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
 
 final class EloquentCategoryRepository implements CategoryRepositoryInterface
 {
@@ -207,5 +209,10 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
 
         return $roots;
     }
+
+    public function products(): HasMany
+{
+    return $this->hasMany(ProductModel::class, 'primary_category_id');
+}
 
    }
