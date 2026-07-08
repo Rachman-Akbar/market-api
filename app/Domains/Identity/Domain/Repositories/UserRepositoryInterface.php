@@ -30,18 +30,14 @@ interface UserRepositoryInterface
     public function resolveDefaultActiveRole(User $user): ?string;
 
     // --- Seller & Store Management (Cleaned) ---
-    /**
-     * Mendaftarkan toko baru untuk user dan mengembalikan ID toko.
-     */
     public function registerStore(string $userId, RegisterSellerDTO $dto): int;
-
-    /**
-     * Memeriksa apakah user memiliki akses seller aktif berdasarkan keberadaan toko.
-     */
     public function hasSellerAccess(User $user): bool;
 
-    /**
-     * Menghapus token yang sedang digunakan saat ini.
-     */
+    // --- Token Management (LENGKAPI DI SINI) ---
     public function deleteCurrentToken(User $user): void;
+
+    /**
+     * Mengeluarkan semua sesi perangkat lain kecuali perangkat saat ini.
+     */
+    public function logoutOtherDevices(User $user): void;
 }
