@@ -23,13 +23,19 @@ class UpdateUserUseCase
             throw new UserNotFoundException("User with ID {$id} not found.");
         }
 
-        // PERBAIKAN: Mengubah $user->getEmail() menjadi $user->email
+        // Jika email diupdate dan berbeda dengan email lama, cek keunikan
         if ($dto->email !== null && $dto->email !== $user->email) {
             $existingUser = $this->userRepository->findByEmail($dto->email);
             if ($existingUser) {
                 throw new EmailAlreadyExistsException("Email {$dto->email} is already taken.");
             }
         }
+
+        /* Catatan Keamanan:
+           Jika user (terutama dari Google Auth yang passwordnya masih null)
+           mengirimkan $dto->password, maka EloquentUserRepository@update 
+           akan otomatis meng-hash-nya dan menyimpannya ke database.
+        */
 
         return $this->userRepository->update($id, $dto);
     }

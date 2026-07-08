@@ -14,11 +14,11 @@
 
     <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md">
         <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Simulasi Tambah Alamat (DDD Test)</h2>
-        
+
         <form id="addressForm" class="space-y-4">
             <div class="bg-amber-50 p-4 rounded-lg border border-amber-200 mb-4">
                 <label class="block text-sm font-bold text-amber-800 mb-1">Bearer Token (Untuk Auth API)</label>
-                <input type="text" id="auth_token" placeholder="Masukkan token Anda di sini" 
+                <input type="text" id="auth_token" placeholder="Masukkan token Anda di sini"
                        class="mt-1 block w-full p-2 border border-amber-300 rounded-md shadow-sm bg-white text-sm font-mono">
             </div>
 
@@ -111,7 +111,7 @@ if (navigator.geolocation) {
         (position) => {
             currentLat = position.coords.latitude;
             currentLng = position.coords.longitude;
-            
+
             // Pasang marker dan fokuskan peta hanya karena GPS terdeteksi asli
             marker.setLatLng([currentLat, currentLng]).addTo(map);
             map.setView([currentLat, currentLng], 16);
@@ -169,7 +169,7 @@ async function updateCoordsFromAddress() {
     const searchQuery = `${fullAddress}, ${city}`;
 
     // Jangan cari jika input terlalu pendek
-    if (fullAddress.length < 5) return; 
+    if (fullAddress.length < 5) return;
 
     try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`, {
@@ -192,10 +192,10 @@ async function updateCoordsFromAddress() {
             // TOTAL REJECTION JIKA KOORDINAT TIDAK PAS
             document.getElementById('latitude').value = "";
             document.getElementById('longitude').value = "";
-            
+
             // Hapus pin dari peta karena lokasinya gaib/tidak ketemu
-            map.removeLayer(marker); 
-            
+            map.removeLayer(marker);
+
             alert("⚠️ ALAMAT TIDAK DIKENALI! Koordinat tidak dapat ditemukan secara akurat. Mohon perbaiki teks alamat atau pilih langsung titiknya di peta.");
         }
     } catch (error) {
@@ -216,15 +216,15 @@ async function submitAddress() {
     const lat = document.getElementById('latitude').value;
     const lng = document.getElementById('longitude').value;
 
-    if (!token) { 
-        alert('❌ Gagal: Mohon isi Bearer Token!'); 
-        return; 
+    if (!token) {
+        alert('❌ Gagal: Mohon isi Bearer Token!');
+        return;
     }
-    
+
     // Validasi keras: Jika koordinat kosong, request tidak akan pernah dikirim ke backend
-    if (!lat || !lng || lat === "" || lng === "") { 
-        alert('❌ Gagal: Koordinat kosong atau tidak valid! Alamat harus ter-mapping dengan benar di peta dunia nyata sebelum disimpan.'); 
-        return; 
+    if (!lat || !lng || lat === "" || lng === "") {
+        alert('❌ Gagal: Koordinat kosong atau tidak valid! Alamat harus ter-mapping dengan benar di peta dunia nyata sebelum disimpan.');
+        return;
     }
 
     const payload = {
@@ -246,7 +246,7 @@ async function submitAddress() {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Authorization': `Bearer ${token}` 
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify(payload)
         });

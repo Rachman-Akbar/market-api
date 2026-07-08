@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Test Firebase Auth</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
@@ -31,41 +32,33 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        // TODO: Ganti dengan konfigurasi Firebase Project Anda sendiri
-  const firebaseConfig = {
-  apiKey: "AIzaSyBY5kse5sDeMCIU0UXVheWKUHhpSFBGGCw",
-  authDomain: "marketplace-village.firebaseapp.com",
-  databaseURL: "https://marketplace-village-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "marketplace-village",
-  storageBucket: "marketplace-village.firebasestorage.app",
-  messagingSenderId: "698326217840",
-  appId: "1:698326217840:web:e3bb3a1a6eb4da25f8b0b5"
-};
+        const firebaseConfig = {
+            apiKey: "{{ env('FIREBASE_API_KEY') }}",
+            authDomain: "{{ env('FIREBASE_AUTH_DOMAIN') }}",
+            databaseURL: "{{ env('FIREBASE_DATABASE_URL') }}",
+            projectId: "{{ env('FIREBASE_PROJECT_ID') }}",
+            storageBucket: "{{ env('FIREBASE_STORAGE_BUCKET') }}",
+            messagingSenderId: "{{ env('FIREBASE_MESSAGING_SENDER_ID') }}",
+            appId: "{{ env('FIREBASE_APP_ID') }}"
+        };
 
-        // Inisialisasi Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
 
-        // Elemen DOM
         const btnLogin = document.getElementById('btn-google-login');
         const logContainer = document.getElementById('log-container');
         const logOutput = document.getElementById('log-output');
 
-        // Helper untuk mencetak log ke layar
         function showLog(title, data) {
             logContainer.classList.remove('hidden');
             logOutput.innerText = `[${title}]\n` + JSON.stringify(data, null, 2);
         }
 
-        // Event Listener Tombol Login
         btnLogin.addEventListener('click', async () => {
             try {
-                // 1. Trigger Pop Up Google Sign-In dari Firebase
                 const result = await signInWithPopup(auth, provider);
                 const user = result.user;
-
-                // 2. Ambil ID Token Firebase untuk dikirim ke Backend Laravel
                 const idToken = await user.getIdToken();
 
                 showLog("Firebase Login Success", {
@@ -75,43 +68,49 @@
                     token_preview: idToken.substring(0, 30) + "..."
                 });
 
-                // 3. Kirim Token ke API Laravel Backend Anda
                 sendTokenToBackend(idToken);
-
             } catch (error) {
                 console.error(error);
                 showLog("Firebase Error", { code: error.code, message: error.message });
             }
         });
 
-        // Fungsi untuk menembak API Backend Laravel
-// Fungsi yang sudah disesuaikan dengan kebutuhan Bearer Header Backend Anda
-async function sendTokenToBackend(token) {
-    const apiUrl = '/api/v1/identity/auth/firebase-login'; // Sesuaikan jika domain API berbeda
+        async function sendTokenToBackend(token) {
+            // Menggunakan helper url() Laravel agar rute absolut dan presisi
+            const apiUrl = "{{ url('/api/v1/identity/auth/firebase-login') }}";
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-    try {
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                // Tambahkan token Firebase ke dalam Authorization Header di sini
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                // Tetap kirim device_name di body karena API membutuhkannya
-                device_name: "Browser Testing (Laravel Blade)"
-            })
-        });
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'X-CSRF-TOKEN': csrfToken // Disertakan jika rute sewaktu-waktu melewati web middleware
+                    },
+                    body: JSON.stringify({
+                        device_name: "Browser Testing (Laravel Blade)"
+                    })
+                });
 
-        const jsonResponse = await response.json();
-        showLog("Laravel Backend API Response", jsonResponse);
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const jsonResponse = await response.json();
+                    showLog(`Laravel Backend API Response (${response.status})`, jsonResponse);
+                } else {
+                    const textResponse = await response.text();
+                    console.error("Backend returned non-JSON response:", textResponse);
+                    showLog(`Backend Error HTML (${response.status})`, {
+                        message: "Server tidak mengembalikan JSON. Jalankan 'php artisan log:clear' lalu cek 'storage/logs/laravel.log' untuk melihat isi error stack-trace Laravel."
+                    });
+                }
 
-    } catch (error) {
-        console.error(error);
-        showLog("Backend API Network Error", { message: error.message });
-    }
-}
+            } catch (error) {
+                console.error(error);
+                showLog("Backend API Network Error", { message: error.message });
+            }
+        }
     </script>
 </body>
 </html>
