@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Order\Ordering\Infrastructure\Persistence\Mappers;
 
 use App\Domains\Order\Ordering\Domain\Entities\Order as DomainOrder;
+use App\Domains\Order\Ordering\Domain\Entities\SubOrder as DomainSubOrder;
 use App\Domains\Order\Ordering\Domain\Entities\OrderItem as DomainOrderItem;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
 
@@ -15,39 +16,60 @@ final class OrderMapper
      */
     public function toDomain(OrderModel $model): DomainOrder
     {
-        $items = $model->items->map(function ($item) {
-            return new DomainOrderItem(
-                id: (int) $item->id,
-                productId: (int) $item->product_id,
-                storeId: (int) $item->store_id,
-                productName: (string) $item->product_name,
-                sku: (string) $item->sku,
-                price: (float) $item->price,
-                quantity: (int) $item->quantity
-            );
-        })->toArray();
+        $subOrders = [];
+
+        if ($model->relationLoaded('subOrders')) {
+            $subOrders = $model->subOrders->map(function ($subOrder) {
+
+                $items = [];
+if ($subOrder->relationLoaded('items')) {
+    // TAMBAHKAN use ($subOrder) di sini agar variabel $subOrder terbaca di dalam scope
+    $items = $subOrder->items->map(function ($item) use ($subOrder) {
+        return new DomainOrderItem(
+            id: (int) $item->id,
+            productId: (int) $item->product_id,
+            storeId: (int) $subOrder->store_id,
+            productName: (string) $item->product_name,
+            sku: (string) $item->sku,
+            price: (float) $item->price,
+            quantity: (int) $item->quantity
+        );
+    })->toArray();
+}
+
+                return new DomainSubOrder(
+                    id: (int) $subOrder->id,
+                    storeId: (int) $subOrder->store_id,
+                    subOrderNumber: (string) $subOrder->sub_order_number,
+                    totalItemsPrice: (float) $subOrder->total_items_price,
+                    shippingCost: (float) $subOrder->shipping_cost,
+                    courier: $subOrder->courier ? (string) $subOrder->courier : null,
+                    destinationId: (string) $subOrder->destination_id,
+                    status: (string) $subOrder->status,
+                    trackingNumber: $subOrder->tracking_number ? (string) $subOrder->tracking_number : null,
+                    items: $items
+                );
+            })->toArray();
+        }
 
         return new DomainOrder(
             id: (int) $model->id,
             orderNumber: (string) $model->order_number,
             userId: (string) $model->user_id,
+            voucherId: $model->voucher_id ? (int) $model->voucher_id : null,
             totalAmount: (float) $model->total_amount,
-            shippingCost: (float) $model->shipping_cost, // <--- TAMBAHKAN INI
             discountAmount: (float) $model->discount_amount,
             status: (string) $model->status,
-            paymentStatus: (string) $model->payment_status, // <--- TAMBAHKAN INI
-            paymentMethod: $model->payment_method ? (string) $model->payment_method : null, // <--- TAMBAHKAN INI
-            snapToken: $model->midtrans_snap_token ? (string) $model->midtrans_snap_token : null, // <--- TAMBAHKAN INI
+            paymentStatus: (string) $model->payment_status,
+            paymentMethod: $model->payment_method ? (string) $model->payment_method : null,
+            snapToken: $model->midtrans_snap_token ? (string) $model->midtrans_snap_token : null,
             shippingAddress: (string) $model->shipping_address,
-            destinationId: (string) $model->destination_id, // <--- TAMBAHKAN INI
-            courier: $model->courier ? (string) $model->courier : null, // <--- TAMBAHKAN INI
-            items: $items,
-            voucherId: $model->voucher_id ? (int) $model->voucher_id : null
+            subOrders: $subOrders
         );
     }
 
     /**
-     * Mentransfer data dari Domain Entity ke Eloquent Model array untuk disimpan ke DB
+     * Mentransfer data dari Domain Entity ke Eloquent Model array untuk tabel `orders` parent
      */
     public function toPersistenceArray(DomainOrder $entity): array
     {
@@ -57,14 +79,11 @@ final class OrderMapper
             'voucher_id'          => $entity->voucherId,
             'total_amount'        => $entity->totalAmount,
             'discount_amount'     => $entity->discountAmount,
-            'shipping_cost'       => $entity->shippingCost, // <--- TAMBAHKAN INI
             'status'              => $entity->status,
-            'payment_status'      => $entity->paymentStatus, // <--- TAMBAHKAN INI
-            'payment_method'      => $entity->paymentMethod, // <--- TAMBAHKAN INI
-            'midtrans_snap_token' => $entity->snapToken, // <--- TAMBAHKAN INI
+            'payment_status'      => $entity->paymentStatus,
+            'payment_method'      => $entity->paymentMethod,
+            'midtrans_snap_token' => $entity->snapToken,
             'shipping_address'    => $entity->shippingAddress,
-            'destination_id'      => $entity->destinationId, // <--- TAMBAHKAN INI
-            'courier'             => $entity->courier, // <--- TAMBAHKAN INI
         ];
     }
 }

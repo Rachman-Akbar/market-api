@@ -12,5 +12,6 @@ Route::prefix('order')->group(function () {
     Route::group([], app_path('Domains/Order/Wishlist/Presentation/routes.php'));
     Route::group([], app_path('Domains/Order/Ordering/Presentation/routes.php'));
     Route::group([], app_path('Domains/Order/Voucher/Presentation/routes.php'));
+    Route::group([], app_path('Domains/Order/Payment/Presentation/routes.php'));
 
 });

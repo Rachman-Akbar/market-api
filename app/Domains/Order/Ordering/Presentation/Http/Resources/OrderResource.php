@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Order\Ordering\Presentation\Http\Resources;
 
-use App\Domains\Ordering\Presentation\Http\Resources\OrderItemResource;
+use App\Domains\Order\Ordering\Presentation\Http\Resources\OrderItemResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -14,33 +14,51 @@ final class OrderResource extends JsonResource
     {
         $order = $this->resource;
 
-        // Hitung subtotal & grand_total secara dinamis jika properti kustom tidak ada
+        // 1. Hitung total ongkir kumulatif secara dinamis dari sub-orders
+        $shippingCost = 0;
+        $subOrdersArray = $this->read($order, 'subOrders') ?? [];
+        
+        foreach ($subOrdersArray as $subOrder) {
+            $shippingCost += (float) ($this->read($subOrder, 'shippingCost') ?? $this->read($subOrder, 'shipping_cost') ?? 0);
+        }
+
+        // 2. Satukan semua items dari berbagai sub-order toko ke dalam satu array linier (jika frontend butuh data flat)
+        $allItems = [];
+        foreach ($subOrdersArray as $subOrder) {
+            $itemsInSubOrder = $this->read($subOrder, 'items') ?? [];
+            foreach ($itemsInSubOrder as $item) {
+                $allItems[] = $item;
+            }
+        }
+
         $totalAmount = (float) ($this->read($order, 'totalAmount') ?? $this->read($order, 'total_amount') ?? 0);
-        $shippingCost = (float) ($this->read($order, 'shippingCost') ?? $this->read($order, 'shipping_cost') ?? 0);
         $discountAmount = (float) ($this->read($order, 'discountAmount') ?? $this->read($order, 'discount_amount') ?? 0);
+        
+        // Rumus Grand Total: (Total Belanja + Total Ongkir) - Diskon Voucher
         $grandTotal = ($totalAmount + $shippingCost) - $discountAmount;
 
         return [
-            'id' => $this->read($order, 'id'),
-            'order_number' => $this->readValue($this->read($order, 'orderNumber') ?? $this->read($order, 'order_number')),
-            'user_id' => $this->read($order, 'userId') ?? $this->read($order, 'user_id'),
-            'status' => $this->readValue($this->read($order, 'status')),
+            'id'             => $this->read($order, 'id'),
+            'order_number'   => $this->readValue($this->read($order, 'orderNumber') ?? $this->read($order, 'order_number')),
+            'user_id'        => $this->read($order, 'userId') ?? $this->read($order, 'user_id'),
+            'status'         => $this->readValue($this->read($order, 'status')),
             'payment_status' => $this->readValue($this->read($order, 'paymentStatus') ?? $this->read($order, 'payment_status')),
 
-            // Keuangan & Biaya
-            'total_amount' => $this->readMoney($totalAmount),
-            'shipping_cost' => $this->readMoney($shippingCost),
+            // Keuangan & Biaya ter-kalkulasi
+            'total_amount'    => $this->readMoney($totalAmount),
+            'shipping_cost'   => $this->readMoney($shippingCost),
             'discount_amount' => $this->readMoney($discountAmount),
-            'grand_total' => $this->readMoney($this->read($order, 'grandTotal') ?? $this->read($order, 'grand_total') ?? $grandTotal),
+            'grand_total'     => $this->readMoney($this->read($order, 'grandTotal') ?? $this->read($order, 'grand_total') ?? $grandTotal),
 
             // Logistik & Pembayaran
             'shipping_address' => $this->readAddress($this->read($order, 'shippingAddress') ?? $this->read($order, 'shipping_address')),
-            'destination_id' => $this->read($order, 'destinationId') ?? $this->read($order, 'destination_id'),
-            'courier' => $this->read($order, 'courier'),
-            'payment_method' => $this->read($order, 'paymentMethod') ?? $this->read($order, 'payment_method'),
-            'snap_token' => $this->read($order, 'snapToken') ?? $this->read($order, 'midtrans_snap_token'), // <--- Menyerahkan Snap Token ke Frontend
+            'destination_id'   => $this->read($order, 'destinationId') ?? $this->read($order, 'destination_id'),
+            'courier'          => $this->read($order, 'courier'),
+            'payment_method'   => $this->read($order, 'paymentMethod') ?? $this->read($order, 'payment_method'),
+            'snap_token'       => $this->read($order, 'snapToken') ?? $this->read($order, 'midtrans_snap_token'),
 
-            'items' => OrderItemResource::collection($this->toCollection($this->read($order, 'items'))),
+            // Memasukkan list item gabungan
+            'items'      => OrderItemResource::collection($this->toCollection($allItems)),
             'created_at' => $this->readDate($this->read($order, 'createdAt') ?? $this->read($order, 'created_at')),
             'updated_at' => $this->readDate($this->read($order, 'updatedAt') ?? $this->read($order, 'updated_at')),
         ];

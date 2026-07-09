@@ -15,3 +15,7 @@ Route::view('/test-firebase-login', 'login-firebase');
 Route::get('/test-map', function () {
     return view('test-address');
 });
+
+Route::get('/test-checkout', function () {
+    return view('checkout-test');
+})->name('checkout.test');

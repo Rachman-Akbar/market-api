@@ -2,12 +2,15 @@
 
 namespace App\Domains\Order\Ordering\Application\UseCases;
 
+use App\Domains\Order\Cart\Application\Readers\ProductForCartReaderInterface;
 use App\Domains\Order\Ordering\Domain\Entities\Order;
+use App\Domains\Order\Ordering\Domain\Entities\SubOrder;
 use App\Domains\Order\Ordering\Domain\Entities\OrderItem;
 use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
 use App\Domains\Order\Addresses\Domain\Repositories\AddressRepositoryInterface;
-use App\Domains\Order\Ordering\Domain\Services\ShippingCostCalculator; // <--- IMPORT SERVICE BARU
+use App\Domains\Order\Ordering\Domain\Services\ShippingCostCalculator;
 use App\Domains\Order\Cart\Infrastructure\Persistence\Models\CartModel;
+use App\Domains\Order\Payment\Infrastructure\Services\MidtransService;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
@@ -16,15 +19,17 @@ class CreateOrderUseCase
     public function __construct(
         private OrderRepositoryInterface $orderRepository,
         private AddressRepositoryInterface $addressRepository,
-        private ShippingCostCalculator $shippingCalculator // <--- INJECT SERVICE DI SINI
+        private ShippingCostCalculator $shippingCalculator,
+        private MidtransService $midtransService,
+        private ProductForCartReaderInterface $productReader
     ) {}
 
     public function execute(
         string $userId,
-        int $addressId,
+        ?int $addressId,
         array $cartItemIds = [],
         string $courier = 'jne',
-        string $paymentMethod = 'qris',
+        string $paymentMethod = 'midtrans',
         ?string $voucherCode = null
     ): Order {
 
@@ -35,28 +40,36 @@ class CreateOrderUseCase
             throw new Exception("Pilih minimal satu produk untuk melakukan checkout.");
         }
 
-        // Ambil data alamat via Repository
-        $addressRow = $this->addressRepository->findByIdAndOwner($addressId, $userId, null);
-        if (!$addressRow) {
-            throw new Exception("Alamat pengiriman tidak ditemukan.");
+        // 1. Inisialisasi Data Pengiriman Global
+        $shippingAddress = "Ambil Sendiri di Toko Utama";
+        $destinationId = "STORE-PICKUP";
+        $shippingContext = [];
+
+        if ($courier !== 'ambil_sendiri') {
+            if (!$addressId) {
+                throw new Exception("Alamat pengiriman wajib ditentukan.");
+            }
+
+            $addressRow = $this->addressRepository->findByIdAndOwner($addressId, $userId, null);
+            if (!$addressRow) {
+                throw new Exception("Alamat pengiriman tidak ditemukan.");
+            }
+
+            $shippingAddress = $addressRow->full_address . ", " . $addressRow->city_or_regency . " " . $addressRow->postal_code;
+            $destinationId = $addressRow->komerce_destination_id;
+
+            $shippingContext = [
+                'latitude'       => (float) $addressRow->latitude,
+                'longitude'      => (float) $addressRow->longitude,
+                'destination_id' => $destinationId,
+                'weight'         => 1000
+            ];
         }
 
-        $shippingAddress = $addressRow->full_address . ", " . $addressRow->city . " " . $addressRow->postal_code;
-        $destinationId = $addressRow->komerce_destination_id;
+        // 2. Hitung Ongkir Base Global (Nanti bisa dipecah per toko jika strategi ongkirnya sudah multi-origin)
+        $globalShippingCost = $this->shippingCalculator->calculate($courier, $shippingContext);
 
-        if (empty($destinationId)) {
-            throw new Exception("Wilayah alamat belum terhubung dengan sistem logistik Komerce.");
-        }
-
-        // --- PROSES HITUNG ONGKIR DINAMIS ---
-        // Panggil service kalkulator dengan menyuplai koordinat milik customer
-        $shippingCost = $this->shippingCalculator->calculate(
-            customerLat: (float) $addressRow->latitude,
-            customerLng: (float) $addressRow->longitude
-        );
-        // -------------------------------------
-
-        // Query Keranjang Belanja
+        // 3. Ambil Item Dari Keranjang Belanja
         $cart = CartModel::where('user_id', $userId)->first();
         if (!$cart) {
             throw new Exception("Keranjang belanja tidak ditemukan.");
@@ -67,98 +80,154 @@ class CreateOrderUseCase
             throw new Exception("Item yang dipilih tidak ditemukan di keranjang belanja Anda.");
         }
 
-        $totalAmount = 0;
-        $domainItems = [];
+        // Kelompokkan data mentah berdasarkan Store ID untuk kebutuhan Split Order
+        $groupedCartItems = [];
+$totalAmount = 0;
 
-        foreach ($selectedItems as $cartItem) {
-            if (is_null($cartItem->product_variant_id)) {
-                throw new Exception("Data keranjang rusak.");
-            }
+foreach ($selectedItems as $cartItem) {
+    $variantDetails = $this->productReader->getVariantDetails((int) $cartItem->product_variant_id);
 
-            $mockPrice = 100000.00;
-            $mockName = "Produk Varian ID " . $cartItem->product_variant_id;
-            $mockSku = "SKU-VAR-" . $cartItem->product_variant_id;
-            $mockStoreId = ($cartItem->product_variant_id == 1) ? 10 : 20;
+    if (!$variantDetails) {
+        throw new Exception("Data varian tidak ditemukan.");
+    }
 
-            $totalAmount += ($mockPrice * $cartItem->quantity);
+    $realPrice   = (float) $variantDetails->getPrice()->getAmount(); 
+    $realName    = $variantDetails->getName();
+    $realSku     = $variantDetails->getSku();
+    $realStoreId = $variantDetails->getStoreId(); 
 
-            $domainItems[] = new OrderItem(
-                id: null,
-                productId: (int) $cartItem->product_variant_id,
-                storeId: $mockStoreId,
-                productName: $mockName,
-                sku: $mockSku,
-                price: $mockPrice,
-                quantity: $cartItem->quantity
-            );
-        }
+    $totalAmount += ($realPrice * $cartItem->quantity);
 
-        // Integrasi Voucher (Ketat DB)
-        $voucherId = null;
-        $discountAmount = 0.00;
-        $cleanVoucherCode = isset($voucherCode) ? trim($voucherCode) : '';
-
-        if ($cleanVoucherCode !== '') {
-            $voucher = DB::table('vouchers')->where('code', strtoupper($cleanVoucherCode))->lockForUpdate()->first();
-            if (!$voucher) {
-                throw new Exception("Voucher tidak dikenali.");
-            }
-
-            $now = now();
-            if (!$voucher->is_active || $now->isBefore($voucher->starts_at) || $now->isAfter($voucher->ends_at)) {
-                throw new Exception("Voucher sudah kedaluwarsa atau sudah tidak aktif.");
-            }
-            if ($voucher->usage_limit > 0 && $voucher->used_count >= $voucher->usage_limit) {
-                throw new Exception("Maaf, kuota penggunaan voucher ini sudah habis.");
-            }
-            if ($totalAmount < $voucher->min_spend) {
-                throw new Exception("Minimal belanja untuk menggunakan voucher ini adalah Rp" . number_format($voucher->min_spend, 0, ',', '.'));
-            }
-
-            if ($voucher->discount_type === 'percentage') {
-                $discountAmount = ($totalAmount * $voucher->discount_value) / 100;
-                if (!is_null($voucher->max_discount) && $discountAmount > $voucher->max_discount) {
-                    $discountAmount = $voucher->max_discount;
-                }
-            } else {
-                $discountAmount = $voucher->discount_value;
-            }
-
-            if ($discountAmount > $totalAmount) {
-                $discountAmount = $totalAmount;
-            }
-            $voucherId = $voucher->id;
-        }
+    $groupedCartItems[$realStoreId][] = [
+        'productId'   => $variantDetails->getProductId(), // Dilempar ke kolom product_id (Lolos Foreign Key)
+        'variantId'   => $variantDetails->getId(),        // Tetap simpan ID Varian aslinya jika diperlukan
+        'productName' => $realName,                       // Nama Varian (misal: "Hitam - L")
+        'sku'         => $realSku,                        // SKU Varian
+        'price'       => $realPrice,
+        'quantity'    => $cartItem->quantity
+    ];
+}
 
         $orderNumber = 'ORD-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(4)));
-        $mockMidtransSnapToken = "snap-token-" . bin2hex(random_bytes(8));
 
-        // Buat Entitas Domain Utama
-        $order = new Order(
-            id: null,
-            orderNumber: $orderNumber,
-            userId: $userId,
-            totalAmount: $totalAmount,
-            shippingCost: $shippingCost, // <--- Sudah Otomatis Dinamis (0 atau 15000)
-            discountAmount: $discountAmount,
-            status: 'pending',
-            paymentStatus: 'unpaid',
-            paymentMethod: $paymentMethod,
-            snapToken: $mockMidtransSnapToken,
-            shippingAddress: $shippingAddress,
-            destinationId: $destinationId,
-            courier: $courier,
-            items: $domainItems,
-            voucherId: $voucherId
-        );
+        // 4. Operasi Database Terbuka Bergaransi Transaksi
+        return DB::transaction(function () use (
+            $userId, $orderNumber, $totalAmount, $globalShippingCost, $shippingAddress,
+            $destinationId, $courier, $paymentMethod, $voucherCode, $groupedCartItems, $cart, $cartItemIds
+        ) {
 
-        return DB::transaction(function () use ($order, $cart, $cartItemIds, $voucherId) {
+            // Logika Validasi Voucher Global
+            $voucherId = null;
+            $discountAmount = 0.00;
+            $cleanVoucherCode = isset($voucherCode) ? trim($voucherCode) : '';
+
+            if ($cleanVoucherCode !== '') {
+                $voucher = DB::table('vouchers')->where('code', strtoupper($cleanVoucherCode))->lockForUpdate()->first();
+                if (!$voucher) {
+                    throw new Exception("Voucher tidak dikenali.");
+                }
+
+                $now = now();
+                if (!$voucher->is_active || $now->isBefore($voucher->starts_at) || $now->isAfter($voucher->ends_at)) {
+                    throw new Exception("Voucher sudah kedaluwarsa atau sudah tidak aktif.");
+                }
+                if ($voucher->usage_limit > 0 && $voucher->used_count >= $voucher->usage_limit) {
+                    throw new Exception("Maaf, kuota penggunaan voucher ini sudah habis.");
+                }
+                if ($totalAmount < $voucher->min_spend) {
+                    throw new Exception("Minimal belanja untuk menggunakan voucher ini adalah Rp" . number_format($voucher->min_spend, 0, ',', '.'));
+                }
+
+                if ($voucher->discount_type === 'percentage') {
+                    $discountAmount = ($totalAmount * $voucher->discount_value) / 100;
+                    if (!is_null($voucher->max_discount) && $discountAmount > $voucher->max_discount) {
+                        $discountAmount = $voucher->max_discount;
+                    }
+                } else {
+                    $discountAmount = $voucher->discount_value;
+                }
+
+                if ($discountAmount > $totalAmount) {
+                    $discountAmount = $totalAmount;
+                }
+                $voucherId = $voucher->id;
+            }
+
+            // 5. Pemetaan Koleksi Sub-Order Toko beserta Item di dalamnya
+            $domainSubOrders = [];
+            $totalStores = count($groupedCartItems);
+
+            foreach ($groupedCartItems as $storeId => $itemsArray) {
+                $subOrderItems = [];
+                $subOrderTotalItemsPrice = 0;
+
+                foreach ($itemsArray as $itemData) {
+                    $subOrderTotalItemsPrice += ($itemData['price'] * $itemData['quantity']);
+
+                    $subOrderItems[] = new OrderItem(
+                        id: null,
+                        productId: $itemData['productId'],
+                        storeId: $storeId,
+                        productName: $itemData['productName'],
+                        sku: $itemData['sku'],
+                        price: $itemData['price'],
+                        quantity: $itemData['quantity']
+                    );
+                }
+
+                // Adil membagi ongkir rata ke tiap toko sebagai nilai default (atau disesuaikan kalkulasi per toko)
+                $allocatedShippingCost = $globalShippingCost / max(1, $totalStores);
+
+                $domainSubOrders[] = new SubOrder(
+                    id: null,
+                    storeId: $storeId,
+                    subOrderNumber: $orderNumber . '-S' . $storeId,
+                    totalItemsPrice: $subOrderTotalItemsPrice,
+                    shippingCost: $allocatedShippingCost,
+                    courier: $courier,
+                    destinationId: $destinationId,
+                    status: 'pending',
+                    trackingNumber: null,
+                    items: $subOrderItems
+                );
+            }
+
+            // 6. Hitung Total Pembayaran Bersih
+            $finalPay = ($totalAmount + $globalShippingCost) - $discountAmount;
+            $midtransSnapToken = null;
+
+            if ($paymentMethod === 'midtrans' && $finalPay > 0) {
+                $midtransSnapToken = $this->midtransService->createSnapToken([
+                    'order_id'     => $orderNumber,
+                    'gross_amount' => (int) $finalPay,
+                    'user_id'      => $userId
+                ]);
+            }
+
+            // 7. Instansiasi Rich Domain Order Baru dengan named parameter yang benar
+            $order = new Order(
+                id: null,
+                orderNumber: $orderNumber,
+                userId: $userId,
+                voucherId: $voucherId,
+                totalAmount: $totalAmount + $globalShippingCost, // Sesuai DDL: Total belanja ditambah total ongkir
+                discountAmount: $discountAmount,
+                status: 'pending',
+                paymentStatus: 'unpaid',
+                paymentMethod: $paymentMethod,
+                snapToken: $midtransSnapToken,
+                shippingAddress: $shippingAddress,
+                subOrders: $domainSubOrders // Masukkan array sub-orders ke sini!
+            );
+
+            // Simpan ke DB lewat repository
             $createdOrder = $this->orderRepository->create($order);
 
             if ($voucherId) {
                 DB::table('vouchers')->where('id', $voucherId)->increment('used_count');
             }
 
+            // Hapus item dari checkout cart
             $cart->items()->whereIn('id', $cartItemIds)->delete();
 
             return $createdOrder;

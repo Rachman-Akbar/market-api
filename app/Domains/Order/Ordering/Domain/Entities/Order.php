@@ -1,32 +1,57 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Order\Ordering\Domain\Entities;
 
-class Order
+final class Order
 {
+    /**
+     * @param SubOrder[] $subOrders
+     */
     public function __construct(
         public ?int $id,
         public string $orderNumber,
         public string $userId,
-        public float $totalAmount,       // Total murni harga produk
-        public float $shippingCost,      // <--- TAMBAHKAN INI (Ongkir Komerce)
-        public float $discountAmount,    // Potongan voucher
-        public string $status,           // Status Logistik
-        public string $paymentStatus,    // <--- TAMBAHKAN INI (Status Midtrans)
-        public ?string $paymentMethod,   // <--- TAMBAHKAN INI (e.g. qris, bank_transfer)
-        public ?string $snapToken,       // <--- TAMBAHKAN INI (Token transaksi Midtrans)
+        public ?int $voucherId,
+        public float $totalAmount,
+        public float $discountAmount,
+        public string $status,
+        public string $paymentStatus,
+        public ?string $paymentMethod,
+        public ?string $snapToken,
         public string $shippingAddress,
-        public string $destinationId,    // <--- TAMBAHKAN INI (Komerce Destination ID)
-        public ?string $courier,         // <--- TAMBAHKAN INI
-        public array $items = [],
-        public ?int $voucherId = null
+        public array $subOrders = [] // Menampung koleksi pecahan toko
     ) {}
 
-    /**
-     * Menghitung total bersih yang wajib dibayar oleh pembeli
-     */
     public function getFinalPay(): float
     {
-        return ($this->totalAmount + $this->shippingCost) - $this->discountAmount;
+        return max(0.00, ($this->totalAmount - $this->discountAmount));
+    }
+
+    /**
+     * Helper untuk mendapatkan ongkir spesifik milik suatu toko
+     */
+    public function getShippingCostByStore(int $storeId): float
+    {
+        foreach ($this->subOrders as $subOrder) {
+            if ($subOrder->storeId === $storeId) {
+                return $subOrder->shippingCost;
+            }
+        }
+        return 0.00;
+    }
+
+    /**
+     * Helper untuk mendapatkan kurir spesifik milik suatu toko
+     */
+    public function getCourierByStore(int $storeId): ?string
+    {
+        foreach ($this->subOrders as $subOrder) {
+            if ($subOrder->storeId === $storeId) {
+                return $subOrder->courier;
+            }
+        }
+        return null;
     }
 }

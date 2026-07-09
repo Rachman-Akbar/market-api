@@ -14,11 +14,11 @@ class CreateOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'address_id' => 'required|integer|exists:addresses,id',
+            'address_id' => 'required_unless:courier,ambil_sendiri|integer|exists:addresses,id',
             'cart_item_ids' => 'required|array|min:1',
             'cart_item_ids.*' => 'required|integer',
-            'courier' => 'required|string|in:jne,pos,tiki', // Validasi kurir paket starter Komerce
-            'payment_method' => 'required|string',
+            'courier' => 'required|string|in:jne,pos,tiki,express,ambil_sendiri',
+            'payment_method' => 'required|string|in:midtrans,transfer_manual,cod,tunai_toko',
             'voucher_code' => 'nullable|string',
         ];
     }
@@ -26,10 +26,13 @@ class CreateOrderRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'address_id.required' => 'Pilih atau tambahkan alamat pengiriman terlebih dahulu.',
+            'address_id.required_unless' => 'Alamat pengiriman wajib diisi kecuali Anda mengambil sendiri ke toko.',
             'address_id.exists' => 'Alamat pengiriman tidak valid.',
             'cart_item_ids.required' => 'Keranjang belanja tidak boleh kosong.',
-            'courier.required' => 'Silakan tentukan kurir pengiriman pilihan Anda.',
+            'courier.required' => 'Silakan tentukan metode pengiriman terlebih dahulu.',
+            'courier.in' => 'Metode pengiriman opsi kurir tidak valid.',
+            'payment_method.required' => 'Silakan pilih metode pembayaran.',
+            'payment_method.in' => 'Metode pembayaran tidak didukung.',
         ];
     }
 }

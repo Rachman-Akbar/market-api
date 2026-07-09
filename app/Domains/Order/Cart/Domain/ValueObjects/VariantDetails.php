@@ -10,12 +10,14 @@ final class VariantDetails
      * @param array<string, string> $attributes
      */
     public function __construct(
-        private readonly int $id,
-        private readonly string $name,
-        private readonly string $sku,
-        private readonly Money $price,
-        private readonly array $attributes = []
-    ) {
+    private readonly int $id,          // Ini ID Varian (misal: 3)
+    private readonly int $productId,   // Ini ID Produk Utama (misal: 1)
+    private readonly string $name,
+    private readonly int $storeId,
+    private readonly string $sku,
+    private readonly Money $price,
+    private readonly array $attributes = []
+) {
     }
 
     public function getId(): int
@@ -23,9 +25,19 @@ final class VariantDetails
         return $this->id;
     }
 
+    public function getProductId(): int
+    {
+        return $this->productId;
+    }
+    
     public function getName(): string
     {
         return $this->name;
+    }
+
+    public function getStoreId(): int
+    {
+        return $this->storeId;
     }
 
     public function getSku(): string
@@ -38,9 +50,6 @@ final class VariantDetails
         return $this->price;
     }
 
-    /**
-     * @return array<string, string>
-     */
     public function getAttributes(): array
     {
         return $this->attributes;

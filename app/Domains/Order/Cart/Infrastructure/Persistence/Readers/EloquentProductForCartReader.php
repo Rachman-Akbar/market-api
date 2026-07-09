@@ -45,12 +45,14 @@ public function getVariantDetails(int $productVariantId): ?VariantDetails
         ->toArray();
 
     return new VariantDetails(
-        id: (int) $variant->id,
-        name: (string) $variant->name,
-        sku: (string) $variant->sku,
-        price: new Money((int) $variant->price),
-        attributes: $attributes
-    );
+    id: (int) $variant->id,
+    productId: (int) $variant->product_id, // Ambil dari kolom product_id di tabel variants
+    name: (string) $variant->name,
+    storeId: (int) $variant->store_id,
+    sku: (string) $variant->sku,
+    price: new Money((int) $variant->price),
+    attributes: $attributes
+);
 }
 
 }

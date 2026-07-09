@@ -8,7 +8,9 @@ use Illuminate\Http\JsonResponse;
 use App\Domains\Order\Ordering\Application\UseCases\CreateOrderUseCase;
 use App\Domains\Order\Ordering\Application\UseCases\CancelOrderUseCase;
 use App\Domains\Order\Ordering\Application\UseCases\UpdateOrderStatusUseCase;
+use App\Domains\Order\Ordering\Application\UseCases\GetOrdersUseCase; // Pastikan use case baru di-import
 use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
+use App\Domains\Order\Ordering\Presentation\Http\Resources\OrderResource;
 
 class OrderingController extends Controller
 {
@@ -16,10 +18,13 @@ class OrderingController extends Controller
         private CreateOrderUseCase $createOrderUseCase,
         private CancelOrderUseCase $cancelOrderUseCase,
         private UpdateOrderStatusUseCase $updateOrderStatusUseCase,
-        private OrderRepositoryInterface $orderRepository // <--- Inject repositori untuk query baca
+        private GetOrdersUseCase $getOrdersUseCase, // Inject Use Case Pagination
+        private OrderRepositoryInterface $orderRepository
     ) {}
 
-    // 1. Checkout / Buat Order
+    /**
+     * 1. Checkout / Buat Order baru (Split Order per Store)
+     */
     public function store(Request $request): JsonResponse
     {
         try {
@@ -40,29 +45,21 @@ class OrderingController extends Controller
                 'payment_method' => 'required|string'
             ]);
 
+            // Eksekusi Use Case
             $order = $this->createOrderUseCase->execute(
                 userId: $userId,
                 addressId: (int) $request->input('address_id'),
-                cartItemIds: $request->input('cart_item_ids'),
-                courier: $request->input('courier'),
-                paymentMethod: $request->input('payment_method'),
+                cartItemIds: (array) $request->input('cart_item_ids'),
+                courier: (string) $request->input('courier'),
+                paymentMethod: (string) $request->input('payment_method'),
                 voucherCode: $request->input('voucher_code')
             );
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'id'               => $order->id,
-                    'orderNumber'      => $order->orderNumber,
-                    'status'           => $order->status,
-                    'paymentStatus'    => $order->paymentStatus,
-                    'snapToken'        => $order->snapToken, // <--- Token diserahkan ke frontend
-                    'totalAmount'      => $order->totalAmount,
-                    'shippingCost'     => $order->shippingCost,
-                    'discountAmount'   => $order->discountAmount,
-                    'finalPay'         => $order->getFinalPay()
-                ]
-            ], 201);
+            // Eksekusi Resource Presenter untuk merespons ke frontend secara rapi
+            return (new OrderResource($order))
+                ->additional(['success' => true])
+                ->response()
+                ->setStatusCode(201);
 
         } catch (\Exception $e) {
             return response()->json([
@@ -72,18 +69,29 @@ class OrderingController extends Controller
         }
     }
 
-
-    // 2. Get By User ID (Menggunakan Pola Abstraksi Repositori)
+    /**
+     * 2. Ambil list order berdasarkan Customer/User ID (Mendukung Pagination & Cache)
+     */
     public function getByCustomer(string $userId): JsonResponse
     {
-        // Dialirkan melalui repositori yang mengembalikan entitas ter-mapping murni
-        $orders = $this->orderRepository->getByUserId($userId);
-
-        return response()->json(['success' => true, 'data' => $orders]);
+        // Eksekusi Use Case Pagination dengan limit default 15 data per halaman
+        $paginatedOrders = $this->getOrdersUseCase->execute(
+            authenticatedUserId: $userId,
+            canViewAllOrders: false,
+            filters: [],
+            perPage: 15
+        );
+        
+        // Membungkus Paginator Domain ke dalam format JSON Resource yang valid
+        return OrderResource::collection($paginatedOrders)
+            ->additional(['success' => true])
+            ->response();
     }
 
-    // 3. Get Detail Order
-    public function show($id): JsonResponse
+    /**
+     * 3. Ambil Detail Order tunggal beserta sub-orders & items
+     */
+    public function show(int $id): JsonResponse
     {
         if (!is_numeric($id)) {
             return response()->json(['success' => false, 'message' => 'ID Order harus berupa angka.'], 400);
@@ -94,12 +102,15 @@ class OrderingController extends Controller
             return response()->json(['success' => false, 'message' => 'Order tidak ditemukan.'], 404);
         }
 
-        return response()->json(['success' => true, 'data' => $order]);
+        return (new OrderResource($order))
+            ->additional(['success' => true])
+            ->response();
     }
 
-    // 4. Get By ID Toko / Store
-    // (Bisa tetap menggunakan OrderModel jika kriteria filter terlalu dinamis bagi repositori standar Anda)
-    public function getByStore(Request $request, $storeId): JsonResponse
+    /**
+     * 4. Ambil list order berdasarkan ID Toko / Store (Untuk Seller Panel)
+     */
+    public function getByStore(Request $request, int $storeId): JsonResponse
     {
         if (!is_numeric($storeId)) {
             return response()->json(['success' => false, 'message' => 'Store ID harus berupa angka.'], 400);
@@ -108,43 +119,45 @@ class OrderingController extends Controller
         $statusFilter = $request->query('status');
         $searchFilter = $request->query('order_number');
 
-        // Karena query antar domain (Item -> Store), diizinkan memakai data infrastruktur lokal
-        $query = \App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel::whereHas('items', function ($q) use ($storeId) {
-            $q->where('store_id', $storeId);
-        });
+        $query = \App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel::where('store_id', $storeId)
+            ->with(['parentOrder', 'items']);
 
         if ($statusFilter) {
             $query->where('status', $statusFilter);
         }
 
         if ($searchFilter) {
-            $query->where('order_number', 'LIKE', '%' . $searchFilter . '%');
+            $query->whereHas('parentOrder', function($q) use ($searchFilter) {
+                $q->where('order_number', 'LIKE', '%' . $searchFilter . '%');
+            });
         }
 
-        $orders = $query->with(['items' => function ($q) use ($storeId) {
-            $q->where('store_id', $storeId);
-        }])->orderBy('created_at', 'desc')->get();
+        $subOrders = $query->orderBy('created_at', 'desc')->get();
 
-        return response()->json(['success' => true, 'data' => $orders]);
+        return response()->json(['success' => true, 'data' => $subOrders]);
     }
 
-    // 5. Cancel Order
-    public function cancel($id): JsonResponse
+    /**
+     * 5. Batalkan Order
+     */
+    public function cancel(int $id): JsonResponse
     {
         try {
-            $this->cancelOrderUseCase->execute((int)$id);
+            $this->cancelOrderUseCase->execute($id);
             return response()->json(['success' => true, 'message' => 'Order berhasil dibatalkan.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
 
-    // 6. Update Status
-    public function updateStatus(Request $request, $id): JsonResponse
+    /**
+     * 6. Perbarui Status Logistik / Transaksi
+     */
+    public function updateStatus(Request $request, int $id): JsonResponse
     {
         $request->validate(['status' => 'required|string']);
         try {
-            $this->updateOrderStatusUseCase->execute((int)$id, $request->status);
+            $this->updateOrderStatusUseCase->execute($id, $request->status);
             return response()->json(['success' => true, 'message' => 'Status order berhasil diperbarui.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);

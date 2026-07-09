@@ -12,6 +12,8 @@ use App\Domains\Order\Cart\Domain\Repositories\CartRepositoryInterface;
 use App\Domains\Order\Cart\Infrastructure\Persistence\Repositories\EloquentCartRepository;
 use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Repositories\EloquentOrderRepository;
+use App\Domains\Order\Payment\Domain\Repositories\PaymentRepositoryInterface;
+use App\Domains\Order\Payment\Infrastructure\Persistence\Repositories\EloquentPaymentRepository;
 use App\Domains\Order\Wishlist\Domain\Repositories\WishlistRepositoryInterface;
 use App\Domains\Order\Wishlist\Infrastructure\Persistence\Repositories\EloquentWishlistRepository;
 use App\Domains\Order\Voucher\Domain\Repositories\VoucherRepositoryInterface;
@@ -28,6 +30,7 @@ class OrderServiceProvider extends ServiceProvider
 
         $this->app->bind(AddressRepositoryInterface::class, EloquentAddressRepository::class);
         $this->app->bind(WishlistRepositoryInterface::class, EloquentWishlistRepository::class);
+        $this->app->bind(PaymentRepositoryInterface::class, EloquentPaymentRepository::class);
 
         $this->app->bind(OrderRepositoryInterface::class, EloquentOrderRepository::class);
 

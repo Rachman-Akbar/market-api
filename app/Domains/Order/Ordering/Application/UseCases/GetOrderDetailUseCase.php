@@ -17,13 +17,17 @@ final readonly class GetOrderDetailUseCase
 
     public function execute(int|string $identifier, string $authenticatedUserId, bool $canViewAllOrders = false): Order
     {
-        $order = $this->orders->findByIdentifier($identifier);
+        // PERBAIKAN: Deteksi identifier apakah ID (integer) atau Order Number (string)
+        $order = is_numeric($identifier)
+            ? $this->orders->findById((int) $identifier)
+            : $this->orders->findByOrderNumber((string) $identifier);
 
         if (! $order) {
             throw (new ModelNotFoundException())->setModel(Order::class, [$identifier]);
         }
 
-        if (! $canViewAllOrders && ! $order->belongsTo($authenticatedUserId)) {
+        // Pastikan entity Order kamu memiliki method belongsTo() atau cek manual propertinya di sini
+        if (! $canViewAllOrders && method_exists($order, 'belongsTo') && ! $order->belongsTo($authenticatedUserId)) {
             throw new AuthorizationException('You are not allowed to access this order.');
         }
 
