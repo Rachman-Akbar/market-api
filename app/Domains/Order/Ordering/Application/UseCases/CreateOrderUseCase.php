@@ -5,42 +5,54 @@ namespace App\Domains\Order\Ordering\Application\UseCases;
 use App\Domains\Order\Ordering\Domain\Entities\Order;
 use App\Domains\Order\Ordering\Domain\Entities\OrderItem;
 use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
+use App\Domains\Order\Addresses\Domain\Repositories\AddressRepositoryInterface;
 use App\Domains\Order\Cart\Infrastructure\Persistence\Models\CartModel;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
 class CreateOrderUseCase
 {
-    public function __construct(private OrderRepositoryInterface $orderRepository) {}
+    public function __construct(
+        private OrderRepositoryInterface $orderRepository,
+        private AddressRepositoryInterface $addressRepository // <--- INJECT REPO ADDRESS
+    ) {}
 
-    public function execute(string $userId, ?string $shippingAddress, array $cartItemIds = [], ?string $voucherCode = null): Order
-    {
-        // Validasi Keamanan: Pastikan user ID benar-benar ada
+    public function execute(
+        string $userId,
+        int $addressId,
+        array $cartItemIds = [],
+        string $courier = 'jne',
+        string $paymentMethod = 'qris',
+        ?string $voucherCode = null
+    ): Order {
+
+        // 1. Validasi Input Dasar
         if (empty(trim($userId))) {
             throw new Exception("Sesi Anda telah berakhir. Silakan login kembali.");
         }
-
-        // Validasi item checkbox
         if (empty($cartItemIds)) {
             throw new Exception("Pilih minimal satu produk untuk melakukan checkout.");
         }
 
-        // Logika Alamat berdasarkan real user ID
-        if (empty(trim($shippingAddress ?? ''))) {
-            $addressRow = DB::table('addresses')->where('user_id', $userId)->first();
-            if (!$addressRow) {
-                throw new Exception("Alamat pengiriman gagal dimuat. Sediakan alamat manual atau tambahkan alamat di profil Anda.");
-            }
-            $shippingAddress = $addressRow->full_address ?? $addressRow->address ?? $addressRow->alamat;
+        // 2. Ambil data alamat via Repository terabstraksi
+        $addressRow = $this->addressRepository->findByIdAndOwner($addressId, $userId, null);
+        if (!$addressRow) {
+            throw new Exception("Alamat pengiriman tidak ditemukan.");
         }
 
-        // Query Keranjang Belanja
+        $shippingAddress = $addressRow->full_address . ", " . $addressRow->city . " " . $addressRow->postal_code;
+        $destinationId = $addressRow->komerce_destination_id;
+
+        if (empty($destinationId)) {
+            throw new Exception("Wilayah alamat belum terhubung dengan sistem logistik Komerce.");
+        }
+
+        // 3. Query Keranjang Belanja
         $cart = CartModel::where('user_id', $userId)->first();
         if (!$cart) {
             throw new Exception("Keranjang belanja tidak ditemukan.");
         }
 
-        // Ambil items yang dicentang
         $selectedItems = $cart->items()->whereIn('id', $cartItemIds)->get();
         if ($selectedItems->isEmpty()) {
             throw new Exception("Item yang dipilih tidak ditemukan di keranjang belanja Anda.");
@@ -72,10 +84,13 @@ class CreateOrderUseCase
             );
         }
 
-        // --- INTEGRASI LOGIC VOUCHER KETAT ---
+        // 4. Kalkulasi Ongkir Komerce (Simulasi/Service)
+        // Di sini Anda bisa meng-inject ShippingService. Sementara kita buat mock logis.
+        $shippingCost = $courier === 'jne' ? 15000.00 : 12000.00;
+
+        // 5. Integrasi Voucher Terkunci ke DB
         $voucherId = null;
         $discountAmount = 0.00;
-
         $cleanVoucherCode = isset($voucherCode) ? trim($voucherCode) : '';
 
         if ($cleanVoucherCode !== '') {
@@ -88,7 +103,6 @@ class CreateOrderUseCase
                 throw new Exception("Voucher tidak dikenali.");
             }
 
-            // PERBAIKAN: Menggunakan method Carbon isBefore() dan isAfter() agar tidak memicu MethodDoesNotExistsException
             $now = now();
             if (!$voucher->is_active || $now->isBefore($voucher->starts_at) || $now->isAfter($voucher->ends_at)) {
                 throw new Exception("Voucher sudah kedaluwarsa atau sudah tidak aktif.");
@@ -104,7 +118,6 @@ class CreateOrderUseCase
 
             if ($voucher->discount_type === 'percentage') {
                 $discountAmount = ($totalAmount * $voucher->discount_value) / 100;
-
                 if (!is_null($voucher->max_discount) && $discountAmount > $voucher->max_discount) {
                     $discountAmount = $voucher->max_discount;
                 }
@@ -121,31 +134,35 @@ class CreateOrderUseCase
 
         $orderNumber = 'ORD-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(4)));
 
-        // Buat entitas domain lengkap
+        // TODO: Integrasikan MidtransPaymentService Anda di sini untuk generate token asli
+        $mockMidtransSnapToken = "snap-token-" . bin2hex(random_bytes(8));
+
+        // 6. Buat Entitas Domain Lengkap Sesuai Struktur Baru
         $order = new Order(
             id: null,
             orderNumber: $orderNumber,
             userId: $userId,
             totalAmount: $totalAmount,
+            shippingCost: $shippingCost,
+            discountAmount: $discountAmount,
             status: 'pending',
+            paymentStatus: 'unpaid', // Status awal Midtrans
+            paymentMethod: $paymentMethod,
+            snapToken: $mockMidtransSnapToken,
             shippingAddress: $shippingAddress,
+            destinationId: $destinationId,
+            courier: $courier,
             items: $domainItems,
-            voucherId: $voucherId,
-            discountAmount: $discountAmount
+            voucherId: $voucherId
         );
 
         return DB::transaction(function () use ($order, $cart, $cartItemIds, $voucherId) {
-            // Simpan transaksi order ke database lewat repository
             $createdOrder = $this->orderRepository->create($order);
 
-            // JIKA pakai voucher, potong kuota / naikkan used_count
             if ($voucherId) {
-                DB::table('vouchers')
-                    ->where('id', $voucherId)
-                    ->increment('used_count');
+                DB::table('vouchers')->where('id', $voucherId)->increment('used_count');
             }
 
-            // Hapus item dari keranjang
             $cart->items()->whereIn('id', $cartItemIds)->delete();
 
             return $createdOrder;

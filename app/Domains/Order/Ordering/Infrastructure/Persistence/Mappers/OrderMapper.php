@@ -32,11 +32,17 @@ final class OrderMapper
             orderNumber: (string) $model->order_number,
             userId: (string) $model->user_id,
             totalAmount: (float) $model->total_amount,
+            shippingCost: (float) $model->shipping_cost, // <--- TAMBAHKAN INI
+            discountAmount: (float) $model->discount_amount,
             status: (string) $model->status,
+            paymentStatus: (string) $model->payment_status, // <--- TAMBAHKAN INI
+            paymentMethod: $model->payment_method ? (string) $model->payment_method : null, // <--- TAMBAHKAN INI
+            snapToken: $model->midtrans_snap_token ? (string) $model->midtrans_snap_token : null, // <--- TAMBAHKAN INI
             shippingAddress: (string) $model->shipping_address,
+            destinationId: (string) $model->destination_id, // <--- TAMBAHKAN INI
+            courier: $model->courier ? (string) $model->courier : null, // <--- TAMBAHKAN INI
             items: $items,
-            voucherId: $model->voucher_id ? (int) $model->voucher_id : null,
-            discountAmount: (float) $model->discount_amount
+            voucherId: $model->voucher_id ? (int) $model->voucher_id : null
         );
     }
 
@@ -46,13 +52,19 @@ final class OrderMapper
     public function toPersistenceArray(DomainOrder $entity): array
     {
         return [
-            'order_number'    => $entity->orderNumber,
-            'user_id'         => $entity->userId,
-            'voucher_id'      => $entity->voucherId,
-            'total_amount'    => $entity->totalAmount,
-            'discount_amount' => $entity->discountAmount,
-            'status'          => $entity->status,
-            'shipping_address'=> $entity->shippingAddress,
+            'order_number'        => $entity->orderNumber,
+            'user_id'             => $entity->userId,
+            'voucher_id'          => $entity->voucherId,
+            'total_amount'        => $entity->totalAmount,
+            'discount_amount'     => $entity->discountAmount,
+            'shipping_cost'       => $entity->shippingCost, // <--- TAMBAHKAN INI
+            'status'              => $entity->status,
+            'payment_status'      => $entity->paymentStatus, // <--- TAMBAHKAN INI
+            'payment_method'      => $entity->paymentMethod, // <--- TAMBAHKAN INI
+            'midtrans_snap_token' => $entity->snapToken, // <--- TAMBAHKAN INI
+            'shipping_address'    => $entity->shippingAddress,
+            'destination_id'      => $entity->destinationId, // <--- TAMBAHKAN INI
+            'courier'             => $entity->courier, // <--- TAMBAHKAN INI
         ];
     }
 }

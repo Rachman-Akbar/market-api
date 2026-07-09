@@ -16,6 +16,7 @@ class AddressDTO
         public ?string $notes,
         public ?float $latitude,
         public ?float $longitude,
+        public ?string $komerce_destination_id = null,
         public bool $is_primary = false
     ) {}
 }

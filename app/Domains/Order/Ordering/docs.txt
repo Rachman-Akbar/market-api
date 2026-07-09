@@ -8,46 +8,46 @@ API
 
 JSON
     {
-        "address_id": 12,
-        "payment_method": "bank_transfer"
-    }
-
-    {
-        "shipping_address": "Ruko Grand Wijaya Blok H-12, Jl. Wijaya II, Kebayoran Baru, Jakarta Selatan, 12160"
-    }
-
-    {
-        "user_id": "fe55a239-8462-4e8f-99e1-3755faa6507a",
-        "shipping_address": "Jl. Merdeka No. 17, Jakarta Pusat",
-        "cart_item_ids": [12, 15]
-    }
-
-    {
-        "user_id": "fe55a239-8462-4e8f-99e1-3755faa6507a",
-        "address_id": 12,
-        "cart_item_ids": [12, 15],
-        "payment_method": "bank_transfer",
-        "voucher_code": "DISKON2026"
-    }
+    "address_id": 1,
+    "cart_item_ids": [12, 15],
+    "courier": "jne",
+    "payment_method": "gopay",
+    "voucher_code": "DISKONHEMAT"
+}
 
 DB
     CREATE TABLE `orders` (
-    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-    `order_number` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-    `user_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-    `voucher_id` bigint unsigned DEFAULT NULL,
-    `total_amount` decimal(12,2) NOT NULL DEFAULT '0.00',
-    `discount_amount` decimal(12,2) NOT NULL DEFAULT '0.00',
-    `status` enum('pending','processing','shipped','delivered','cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-    `shipping_address` text COLLATE utf8mb4_unicode_ci NOT NULL,
-    `created_at` timestamp NULL DEFAULT NULL,
-    `updated_at` timestamp NULL DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `orders_order_number_unique` (`order_number`),
-    KEY `orders_user_id_index` (`user_id`),
-    KEY `orders_voucher_id_foreign` (`voucher_id`),
-    CONSTRAINT `orders_voucher_id_foreign` FOREIGN KEY (`voucher_id`) REFERENCES `vouchers` (`id`) ON DELETE SET NULL
-    ) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `order_number` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `voucher_id` bigint unsigned DEFAULT NULL,
+
+  -- Perhitungan Keuangan
+  `total_amount` decimal(12,2) NOT NULL DEFAULT '0.00',     -- Total harga barang murni
+  `discount_amount` decimal(12,2) NOT NULL DEFAULT '0.00',  -- Potongan voucher
+  `shipping_cost` decimal(12,2) NOT NULL DEFAULT '0.00',    -- [BARU] Ongkir dari Komerce
+  -- Total Akhir (final_pay) = total_amount + shipping_cost - discount_amount (bisa dihitung di code)
+
+  -- Status Alur Bisnis
+  `status` enum('pending','processing','shipped','delivered','cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending', -- Status Logistik
+
+  -- Integrasi Midtrans
+  `payment_method` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL, -- [BARU] e.g., 'qris', 'bank_transfer'
+  `payment_status` enum('pending', 'settlement', 'pending_payment', 'expire', 'cancel', 'deny') NOT NULL DEFAULT 'pending', -- [BARU] Status Midtrans
+  `midtrans_snap_token` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL, -- [BARU] Token untuk pop-up Midtrans di Frontend
+
+  -- Logistik
+  `shipping_address` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `courier` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL, -- [BARU] jne, pos, tiki
+
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `orders_order_number_unique` (`order_number`),
+  KEY `orders_user_id_index` (`user_id`),
+  KEY `orders_voucher_id_foreign` (`voucher_id`),
+  CONSTRAINT `orders_voucher_id_foreign` FOREIGN KEY (`voucher_id`) REFERENCES `vouchers` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
     CREATE TABLE `order_items` (
         `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

@@ -2,17 +2,29 @@
 
 namespace App\Domains\Order\Ordering\Application\UseCases;
 
-use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
+use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
 use Exception;
 
 class CancelOrderUseCase
 {
-    public function execute(int $orderId): bool
+    public function __construct(private OrderRepositoryInterface $orderRepository) {}
+
+    public function execute(int $orderId): void
     {
-        $order = OrderModel::findOrFail($orderId);
-        if (in_array($order->status, ['completed', 'cancelled'])) {
-            throw new Exception("Order yang sudah selesai atau dibatalkan tidak bisa di-cancel lagi.");
+        $order = $this->orderRepository->findById($orderId);
+
+        if (!$order) {
+            throw new Exception("Order tidak ditemukan.");
         }
-        return $order->update(['status' => 'cancelled']);
+
+        // Bisnis Aturan / Invariant Validation
+        if (in_array($order->status, ['completed', 'cancelled'])) {
+            throw new Exception("Order yang sudah selesai atau dibatalkan tidak bisa dibatalkan lagi.");
+        }
+
+        $order->status = 'cancelled';
+        $order->paymentStatus = 'cancelled'; // Selaraskan status Midtrans jika diperlukan
+
+        $this->orderRepository->update($order);
     }
 }

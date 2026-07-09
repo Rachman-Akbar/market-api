@@ -2,13 +2,25 @@
 
 namespace App\Domains\Order\Ordering\Application\UseCases;
 
-use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
+use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
+use Exception;
 
 class UpdateOrderStatusUseCase
 {
-    public function execute(int $orderId, string $status): bool
+    public function __construct(private OrderRepositoryInterface $orderRepository) {}
+
+    public function execute(int $orderId, string $status): void
     {
-        $order = OrderModel::findOrFail($orderId);
-        return $order->update(['status' => $status]);
+        $order = $this->orderRepository->findById($orderId);
+
+        if (!$order) {
+            throw new Exception("Order tidak ditemukan.");
+        }
+
+        // Mutasi State Objek Domain
+        $order->status = $status;
+
+        // Persist via Repository
+        $this->orderRepository->update($order);
     }
 }

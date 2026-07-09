@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Ordering\Application\UseCases\Order;
 
-use App\Domains\Ordering\Domain\Repositories\OrderRepositoryInterface;
+use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 final readonly class GetOrdersUseCase

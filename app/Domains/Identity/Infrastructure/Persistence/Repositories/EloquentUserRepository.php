@@ -215,7 +215,7 @@ final class EloquentUserRepository implements UserRepositoryInterface
     }
 
     /**
-     * Cek apakah user memiliki akses seller berdasarkan role 
+     * Cek apakah user memiliki akses seller berdasarkan role
      * dan keberadaan toko yang aktif.
      */
     public function hasSellerAccess(User $user): bool
@@ -280,7 +280,7 @@ final class EloquentUserRepository implements UserRepositoryInterface
                 'city'       => $dto->city,
                 'province'   => $dto->province,
                 'address'    => $dto->address,
-                'is_active'  => 1, 
+                'is_active'  => 1,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -295,4 +295,13 @@ final class EloquentUserRepository implements UserRepositoryInterface
             return $storeId;
         });
     }
-}
+
+
+public function logoutOtherDevices(User $user): void
+    {
+        $currentToken = $user->currentAccessToken();
+
+        // Hapus semua token user ini
+        $user->tokens()->where('id', '!=', $currentToken?->id)->delete();
+    }
+        }

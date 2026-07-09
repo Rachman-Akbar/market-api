@@ -32,38 +32,35 @@ class OrderingController extends Controller
                 ], 401);
             }
 
+            // Validasi Input
+            $request->validate([
+                'address_id'     => 'required|integer',
+                'cart_item_ids'  => 'required|array|min:1',
+                'courier'        => 'required|string',
+                'payment_method' => 'required|string'
+            ]);
+
             $order = $this->createOrderUseCase->execute(
                 userId: $userId,
-                shippingAddress: $request->input('shipping_address'),
-                cartItemIds: $request->input('cart_item_ids', []),
+                addressId: (int) $request->input('address_id'),
+                cartItemIds: $request->input('cart_item_ids'),
+                courier: $request->input('courier'),
+                paymentMethod: $request->input('payment_method'),
                 voucherCode: $request->input('voucher_code')
             );
-
-            $itemsData = array_map(function ($item) {
-                return [
-                    'id'          => $item->id,
-                    'productId'   => $item->productId,
-                    'storeId'     => $item->storeId,
-                    'productName' => $item->productName,
-                    'sku'          => $item->sku,
-                    'price'        => $item->price,
-                    'quantity'     => $item->quantity,
-                ];
-            }, $order->items);
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'id'              => $order->id,
-                    'orderNumber'     => $order->orderNumber,
-                    'userId'          => $order->userId,
-                    'status'          => $order->status,
-                    'shippingAddress' => $order->shippingAddress,
-                    'items'           => $itemsData,
-                    'voucherId'       => $order->voucherId,
-                    'totalAmount'     => $order->totalAmount,
-                    'discountAmount'  => $order->discountAmount,
-                    'finalPay'        => $order->totalAmount - $order->discountAmount
+                    'id'               => $order->id,
+                    'orderNumber'      => $order->orderNumber,
+                    'status'           => $order->status,
+                    'paymentStatus'    => $order->paymentStatus,
+                    'snapToken'        => $order->snapToken, // <--- Token diserahkan ke frontend
+                    'totalAmount'      => $order->totalAmount,
+                    'shippingCost'     => $order->shippingCost,
+                    'discountAmount'   => $order->discountAmount,
+                    'finalPay'         => $order->getFinalPay()
                 ]
             ], 201);
 
@@ -71,9 +68,10 @@ class OrderingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
-            ], 422); // Gunakan 422 untuk validasi bisnis/voucher gagal
+            ], 422);
         }
     }
+
 
     // 2. Get By User ID (Menggunakan Pola Abstraksi Repositori)
     public function getByCustomer(string $userId): JsonResponse

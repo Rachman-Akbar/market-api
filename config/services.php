@@ -39,4 +39,9 @@ return [
         'auth_enabled' => env('FIREBASE_AUTH_ENABLED', false),
     ],
 
+    'shipping' => [
+        'key' => env('SHIPPING_API_KEY'),
+        'base_url' => env('SHIPPING_BASE_URL'),
+    ],
+
 ];

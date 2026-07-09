@@ -18,8 +18,9 @@ class Address extends Model
         'full_address',
         'city',
         'postal_code',
+        'komerce_destination_id', // <--- TAMBAHKAN INI
         'notes',
-        'latitude',  // <-- Tambahkan ini
+        'latitude',
         'longitude',
         'is_primary',
     ];
@@ -28,10 +29,6 @@ class Address extends Model
         'is_primary' => 'boolean',
     ];
 
-    /**
-     * Domain Validation: Memastikan invariant (aturan bisnis) terpenuhi.
-     * Alamat harus memiliki salah satu pemilik (user atau store), tidak boleh keduanya atau kosong.
-     */
     protected static function booted()
     {
         static::saving(function (Address $address) {
@@ -44,9 +41,6 @@ class Address extends Model
         });
     }
 
-    /**
-     * Domain Logic: Menandai alamat ini sebagai utama berdasarkan scope pemiliknya.
-     */
     public function markAsPrimary(): void
     {
         $query = static::where('id', '!=', $this->id);

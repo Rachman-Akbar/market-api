@@ -7,29 +7,28 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class AddressResource extends JsonResource
 {
-    // App\Domains\Order\Addresses\Presentation\Http\Resources\AddressResource.php
+    public function toArray(Request $request): array
+    {
+        return [
+            'id'                     => $this->id,
+            'user_id'                => $this->user_id,
+            'store_id'               => $this->store_id,
+            'label'                  => $this->label,
+            'recipient_name'         => $this->recipient_name,
+            'phone_number'           => $this->phone_number,
+            'full_address'           => $this->full_address,
+            'city'                   => $this->city,
+            'postal_code'            => $this->postal_code,
+            'notes'                  => $this->notes,
+            'latitude'               => $this->latitude,
+            'longitude'              => $this->longitude,
 
-public function toArray(Request $request): array
-{
-    return [
-        'id'             => $this->id,
-        'user_id'        => $this->user_id,
-        'store_id'       => $this->store_id,
-        'label'          => $this->label,
-        'recipient_name' => $this->recipient_name,
-        'phone_number'   => $this->phone_number,
-        'full_address'   => $this->full_address,
-        'city'           => $this->city,
-        'postal_code'    => $this->postal_code,
-        'notes'          => $this->notes,
+            // KEMBALIKAN KE CONSUMER API / FRONTEND
+            'komerce_destination_id' => $this->komerce_destination_id, // <--- TAMBAHKAN INI
 
-        // TAMBAHKAN DI SINI
-        'latitude'       => $this->latitude,
-        'longitude'      => $this->longitude,
-
-        'is_primary'     => $this->is_primary,
-        'created_at'     => $this->created_at?->toIso8601String(),
-        'updated_at'     => $this->updated_at?->toIso8601String(),
-    ];
-}
+            'is_primary'             => $this->is_primary,
+            'created_at'             => $this->created_at?->toIso8601String(),
+            'updated_at'             => $this->updated_at?->toIso8601String(),
+        ];
+    }
 }
