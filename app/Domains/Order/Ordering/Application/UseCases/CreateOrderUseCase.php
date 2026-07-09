@@ -6,6 +6,7 @@ use App\Domains\Order\Ordering\Domain\Entities\Order;
 use App\Domains\Order\Ordering\Domain\Entities\OrderItem;
 use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
 use App\Domains\Order\Addresses\Domain\Repositories\AddressRepositoryInterface;
+use App\Domains\Order\Ordering\Domain\Services\ShippingCostCalculator; // <--- IMPORT SERVICE BARU
 use App\Domains\Order\Cart\Infrastructure\Persistence\Models\CartModel;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -14,7 +15,8 @@ class CreateOrderUseCase
 {
     public function __construct(
         private OrderRepositoryInterface $orderRepository,
-        private AddressRepositoryInterface $addressRepository // <--- INJECT REPO ADDRESS
+        private AddressRepositoryInterface $addressRepository,
+        private ShippingCostCalculator $shippingCalculator // <--- INJECT SERVICE DI SINI
     ) {}
 
     public function execute(
@@ -26,7 +28,6 @@ class CreateOrderUseCase
         ?string $voucherCode = null
     ): Order {
 
-        // 1. Validasi Input Dasar
         if (empty(trim($userId))) {
             throw new Exception("Sesi Anda telah berakhir. Silakan login kembali.");
         }
@@ -34,7 +35,7 @@ class CreateOrderUseCase
             throw new Exception("Pilih minimal satu produk untuk melakukan checkout.");
         }
 
-        // 2. Ambil data alamat via Repository terabstraksi
+        // Ambil data alamat via Repository
         $addressRow = $this->addressRepository->findByIdAndOwner($addressId, $userId, null);
         if (!$addressRow) {
             throw new Exception("Alamat pengiriman tidak ditemukan.");
@@ -47,7 +48,15 @@ class CreateOrderUseCase
             throw new Exception("Wilayah alamat belum terhubung dengan sistem logistik Komerce.");
         }
 
-        // 3. Query Keranjang Belanja
+        // --- PROSES HITUNG ONGKIR DINAMIS ---
+        // Panggil service kalkulator dengan menyuplai koordinat milik customer
+        $shippingCost = $this->shippingCalculator->calculate(
+            customerLat: (float) $addressRow->latitude,
+            customerLng: (float) $addressRow->longitude
+        );
+        // -------------------------------------
+
+        // Query Keranjang Belanja
         $cart = CartModel::where('user_id', $userId)->first();
         if (!$cart) {
             throw new Exception("Keranjang belanja tidak ditemukan.");
@@ -84,21 +93,13 @@ class CreateOrderUseCase
             );
         }
 
-        // 4. Kalkulasi Ongkir Komerce (Simulasi/Service)
-        // Di sini Anda bisa meng-inject ShippingService. Sementara kita buat mock logis.
-        $shippingCost = $courier === 'jne' ? 15000.00 : 12000.00;
-
-        // 5. Integrasi Voucher Terkunci ke DB
+        // Integrasi Voucher (Ketat DB)
         $voucherId = null;
         $discountAmount = 0.00;
         $cleanVoucherCode = isset($voucherCode) ? trim($voucherCode) : '';
 
         if ($cleanVoucherCode !== '') {
-            $voucher = DB::table('vouchers')
-                ->where('code', strtoupper($cleanVoucherCode))
-                ->lockForUpdate()
-                ->first();
-
+            $voucher = DB::table('vouchers')->where('code', strtoupper($cleanVoucherCode))->lockForUpdate()->first();
             if (!$voucher) {
                 throw new Exception("Voucher tidak dikenali.");
             }
@@ -107,11 +108,9 @@ class CreateOrderUseCase
             if (!$voucher->is_active || $now->isBefore($voucher->starts_at) || $now->isAfter($voucher->ends_at)) {
                 throw new Exception("Voucher sudah kedaluwarsa atau sudah tidak aktif.");
             }
-
             if ($voucher->usage_limit > 0 && $voucher->used_count >= $voucher->usage_limit) {
                 throw new Exception("Maaf, kuota penggunaan voucher ini sudah habis.");
             }
-
             if ($totalAmount < $voucher->min_spend) {
                 throw new Exception("Minimal belanja untuk menggunakan voucher ini adalah Rp" . number_format($voucher->min_spend, 0, ',', '.'));
             }
@@ -128,25 +127,22 @@ class CreateOrderUseCase
             if ($discountAmount > $totalAmount) {
                 $discountAmount = $totalAmount;
             }
-
             $voucherId = $voucher->id;
         }
 
         $orderNumber = 'ORD-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(4)));
-
-        // TODO: Integrasikan MidtransPaymentService Anda di sini untuk generate token asli
         $mockMidtransSnapToken = "snap-token-" . bin2hex(random_bytes(8));
 
-        // 6. Buat Entitas Domain Lengkap Sesuai Struktur Baru
+        // Buat Entitas Domain Utama
         $order = new Order(
             id: null,
             orderNumber: $orderNumber,
             userId: $userId,
             totalAmount: $totalAmount,
-            shippingCost: $shippingCost,
+            shippingCost: $shippingCost, // <--- Sudah Otomatis Dinamis (0 atau 15000)
             discountAmount: $discountAmount,
             status: 'pending',
-            paymentStatus: 'unpaid', // Status awal Midtrans
+            paymentStatus: 'unpaid',
             paymentMethod: $paymentMethod,
             snapToken: $mockMidtransSnapToken,
             shippingAddress: $shippingAddress,

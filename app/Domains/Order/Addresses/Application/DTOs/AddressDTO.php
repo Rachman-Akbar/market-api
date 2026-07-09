@@ -10,13 +10,17 @@ class AddressDTO
         public string $label,
         public string $recipient_name,
         public string $phone_number,
+        public string $country,
+        public string $province,
+        public string $city_or_regency,
+        public string $district,
+        public string $subdistrict,
         public string $full_address,
-        public string $city,
         public string $postal_code,
         public ?string $notes,
-        public ?float $latitude,
-        public ?float $longitude,
-        public ?string $komerce_destination_id = null,
-        public bool $is_primary = false
+        public bool $is_primary,
+        public float $latitude,
+        public float $longitude,
+        public string $komerce_destination_id
     ) {}
 }

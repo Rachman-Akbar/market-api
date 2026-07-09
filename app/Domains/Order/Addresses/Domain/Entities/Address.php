@@ -15,10 +15,14 @@ class Address extends Model
         'label',
         'recipient_name',
         'phone_number',
+        'country',          // <--- TAMBAHKAN
+        'province',         // <--- TAMBAHKAN
+        'city_or_regency',  // <--- TAMBAHKAN
+        'district',         // <--- TAMBAHKAN
+        'subdistrict',      // <--- TAMBAHKAN
         'full_address',
-        'city',
         'postal_code',
-        'komerce_destination_id', // <--- TAMBAHKAN INI
+        'komerce_destination_id',
         'notes',
         'latitude',
         'longitude',

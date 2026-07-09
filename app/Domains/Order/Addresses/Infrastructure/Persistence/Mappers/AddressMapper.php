@@ -8,15 +8,18 @@ class AddressMapper
 {
     public static function fromRequestArray(array $data, ?string $userId = null, ?string $storeId = null): AddressDTO
     {
-        // Masukkan seluruh nilai langsung sebagai argumen constructor DTO
         return new AddressDTO(
             user_id: $userId,
             store_id: $storeId,
             label: $data['label'],
             recipient_name: $data['recipient_name'],
             phone_number: $data['phone_number'],
+            country: $data['country'] ?? 'Indonesia',
+            province: $data['province'],
+            city_or_regency: $data['city_or_regency'],
+            district: $data['district'],
+            subdistrict: $data['subdistrict'],
             full_address: $data['full_address'],
-            city: $data['city'],
             postal_code: $data['postal_code'],
             notes: $data['notes'] ?? null,
             is_primary: (bool) ($data['is_primary'] ?? false),
@@ -34,8 +37,12 @@ class AddressMapper
             'label'                  => $dto->label,
             'recipient_name'         => $dto->recipient_name,
             'phone_number'           => $dto->phone_number,
+            'country'                => $dto->country,
+            'province'               => $dto->province,
+            'city_or_regency'        => $dto->city_or_regency,
+            'district'               => $dto->district,
+            'subdistrict'            => $dto->subdistrict,
             'full_address'           => $dto->full_address,
-            'city'                   => $dto->city,
             'postal_code'            => $dto->postal_code,
             'notes'                  => $dto->notes,
             'is_primary'             => $dto->is_primary,
