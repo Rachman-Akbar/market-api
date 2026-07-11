@@ -6,7 +6,9 @@ namespace App\Domains\Order\Addresses\Presentation\Http\Controllers;
 
 use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Order\Addresses\Application\UseCases\ManageAddressUseCase;
+use App\Domains\Order\Addresses\Application\UseCases\ResolveAddressDestinationUseCase;
 use App\Domains\Order\Addresses\Infrastructure\Persistence\Mappers\AddressMapper;
+use App\Domains\Order\Addresses\Presentation\Http\Requests\ResolveAddressDestinationRequest;
 use App\Domains\Order\Addresses\Presentation\Http\Requests\StoreAddressRequest;
 use App\Domains\Order\Addresses\Presentation\Http\Resources\AddressResource;
 use App\Http\Controllers\Controller;
@@ -18,6 +20,7 @@ final class AddressController extends Controller
 {
     public function __construct(
         private ManageAddressUseCase $useCase,
+        private ResolveAddressDestinationUseCase $resolveDestinationUseCase,
         private UserRepositoryInterface $userRepository
     ) {}
 
@@ -29,6 +32,19 @@ final class AddressController extends Controller
         return AddressResource::collection($addresses)
             ->additional(['success' => true])
             ->response();
+    }
+
+    public function resolveDestination(ResolveAddressDestinationRequest $request): JsonResponse
+    {
+        $destination = $this->resolveDestinationUseCase->execute($request->validated());
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'komerce_destination_id' => $destination->id,
+                'destination' => $destination->toArray(),
+            ],
+        ]);
     }
 
     public function store(StoreAddressRequest $request): JsonResponse

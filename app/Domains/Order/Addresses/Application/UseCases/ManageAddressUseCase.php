@@ -12,11 +12,13 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
-class ManageAddressUseCase
+final class ManageAddressUseCase
 {
     public function __construct(
-        private AddressRepositoryInterface $addressRepository
+        private AddressRepositoryInterface $addressRepository,
+        private ResolveAddressDestinationUseCase $resolveDestinationUseCase
     ) {}
 
     public function listAddresses(?string $userId, ?string $storeId): Collection
@@ -26,6 +28,8 @@ class ManageAddressUseCase
 
     public function createAddress(AddressDTO $dto): Address
     {
+        $this->resolveDestination($dto);
+
         return DB::transaction(function () use ($dto): Address {
             if ($dto->store_id !== null && $this->addressRepository->hasAddresses(null, $dto->store_id)) {
                 throw ValidationException::withMessages([
@@ -52,6 +56,8 @@ class ManageAddressUseCase
 
     public function updateAddress(int $id, AddressDTO $dto): Address
     {
+        $this->resolveDestination($dto);
+
         return DB::transaction(function () use ($id, $dto): Address {
             $address = $this->addressRepository->findByIdAndOwner($id, $dto->user_id, $dto->store_id);
 
@@ -105,5 +111,17 @@ class ManageAddressUseCase
 
             return $deleted;
         });
+    }
+
+    private function resolveDestination(AddressDTO $dto): void
+    {
+        try {
+            $resolved = $this->resolveDestinationUseCase->execute($dto->destinationLookupData());
+            $dto->komerce_destination_id = $resolved->id;
+        } catch (Throwable $exception) {
+            throw ValidationException::withMessages([
+                'address_destination' => [$exception->getMessage()],
+            ]);
+        }
     }
 }
