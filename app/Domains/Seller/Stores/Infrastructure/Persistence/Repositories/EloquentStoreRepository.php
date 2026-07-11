@@ -82,6 +82,7 @@ public function findBySlug(string $slug): ?StoreEntity
 {
     // Gunakan trim untuk menghindari spasi tak kasat mata dari URL
     $model = StoreModel::query()
+        ->with('detail')
         ->where('slug', trim($slug))
         ->first();
 
@@ -113,6 +114,7 @@ public function update(StoreEntity $store, ?array $detailData = null): StoreEnti
         'province'          => $store->province(),
         'address'           => $store->address(),
         'logo'              => $store->logo(),
+        'banner_url'        => $store->bannerUrl(),
         'is_active'         => $store->isActive() ? 1 : 0,
     ]);
 
@@ -237,6 +239,13 @@ public function update(StoreEntity $store, ?array $detailData = null): StoreEnti
             'slug',
             'description',
             'logo',
+            'banner_url',
+            'short_description',
+            'phone',
+            'email',
+            'city',
+            'province',
+            'address',
             'is_active',
             'created_at',
             'updated_at',

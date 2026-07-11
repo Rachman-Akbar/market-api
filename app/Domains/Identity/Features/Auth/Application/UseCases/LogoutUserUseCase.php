@@ -21,14 +21,11 @@ final class LogoutUserUseCase
         if ($type === 'current') {
             $this->userRepository->deleteCurrentToken($user);
         } elseif ($type === 'other') {
-            // Memanggil fungsi dari repository yang sudah kita perbaiki sebelumnya
-            $this->userRepository->logoutOtherDevices($user);
+            $deletedCount = $this->userRepository->logoutOtherDevices($user);
         } elseif ($type === 'all') {
-            // Hapus semua token langsung
             $deletedCount = $user->tokens()->delete();
         }
 
-        // Hapus cache payload user agar saat login lagi datanya fresh
         Cache::forget("auth_payload_{$user->id}");
 
         return (int) $deletedCount;

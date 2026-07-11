@@ -12,11 +12,9 @@ final class StoreMapper
 {
     public static function toEntity(StoreModel $model): Store
     {
-        $detailEntity = null;
-
-        // Jika relasi detail ada isinya, petakan semua kolom ke Entity
-        if ($model->relationLoaded('detail') && $model->detail !== null) {
-            $detailEntity = new StoreDetail(
+        $detail = null;
+        if ($model->relationLoaded('detail') && $model->detail) {
+            $detail = new StoreDetail(
                 id: (int) $model->detail->id,
                 storeId: (int) $model->detail->store_id,
                 ownerName: $model->detail->owner_name,
@@ -31,8 +29,8 @@ final class StoreMapper
                 instagramUrl: $model->detail->instagram_url,
                 tiktokUrl: $model->detail->tiktok_url,
                 websiteUrl: $model->detail->website_url,
-                createdAt: $model->detail->created_at ? (string) $model->detail->created_at : null,
-                updatedAt: $model->detail->updated_at ? (string) $model->detail->updated_at : null
+                createdAt: $model->detail->created_at?->toIso8601String(),
+                updatedAt: $model->detail->updated_at?->toIso8601String()
             );
         }
 
@@ -50,9 +48,29 @@ final class StoreMapper
             address: $model->address,
             isActive: (bool) $model->is_active,
             logo: $model->logo,
-            createdAt: $model->created_at ? (string) $model->created_at : null,
-            updatedAt: $model->updated_at ? (string) $model->updated_at : null,
-            detail: $detailEntity // <-- PASTIKAN DATA INI IKUT DIOPER KE ENTITY UTAMA
+            bannerUrl: $model->banner_url,
+            createdAt: $model->created_at?->toIso8601String(),
+            updatedAt: $model->updated_at?->toIso8601String(),
+            detail: $detail
         );
+    }
+
+    public static function toModel(Store $store): array
+    {
+        return [
+            'user_id' => $store->userId(),
+            'name' => $store->name(),
+            'slug' => $store->slug(),
+            'description' => $store->description(),
+            'short_description' => $store->shortDescription(),
+            'phone' => $store->phone(),
+            'email' => $store->email(),
+            'city' => $store->city(),
+            'province' => $store->province(),
+            'address' => $store->address(),
+            'is_active' => $store->isActive(),
+            'logo' => $store->logo(),
+            'banner_url' => $store->bannerUrl(),
+        ];
     }
 }

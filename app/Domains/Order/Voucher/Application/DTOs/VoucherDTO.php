@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Order\Voucher\Application\DTOs;
 
 class VoucherDTO
@@ -15,6 +17,7 @@ class VoucherDTO
         public string $ends_at,
         public int $usage_limit = 0,
         public ?string $store_id = null,
-        public bool $is_active = true
+        public bool $is_active = true,
+        public ?string $image = null,
     ) {}
 }

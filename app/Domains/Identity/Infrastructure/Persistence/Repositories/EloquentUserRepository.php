@@ -102,19 +102,20 @@ final class EloquentUserRepository implements UserRepositoryInterface
 
     public function delete(string $id): bool
     {
-        // Menggunakan withTrashed() agar data yang sudah ter-soft delete tetap bisa di-hard delete
-        $user = User::withTrashed()->find($id);
-
+        $user = User::find($id);
         if (!$user) {
             return false;
         }
 
         return DB::transaction(function () use ($user): bool {
-            // 1. Bersihkan semua relasi role milik user ini dari tabel pivot user_roles
+            $user->tokens()->delete();
             $user->roles()->detach();
+            DB::table('stores')->where('user_id', $user->id)->update([
+                'is_active' => false,
+                'updated_at' => now(),
+            ]);
 
-            // 2. Hapus permanen user dari database
-            return (bool) $user->forceDelete();
+            return (bool) $user->delete();
         });
     }
 
@@ -135,63 +136,72 @@ final class EloquentUserRepository implements UserRepositoryInterface
     {
         return DB::transaction(function () use ($firebaseUser): User {
             $firebaseUid = trim((string) ($firebaseUser['uid'] ?? $firebaseUser['sub'] ?? ''));
-            $email       = strtolower(trim((string) ($firebaseUser['email'] ?? '')));
+            $email = strtolower(trim((string) ($firebaseUser['email'] ?? '')));
 
             if ($firebaseUid === '' || $email === '') {
-                throw new InvalidArgumentException('Data Firebase UID atau Email tidak valid.');
+                throw new InvalidArgumentException('Data Firebase UID atau email tidak valid.');
             }
 
-            $name            = $firebaseUser['name'] ?? null;
-            $avatar          = $firebaseUser['picture'] ?? null;
+            $providerName = trim((string) ($firebaseUser['name'] ?? ''));
+            $providerAvatar = trim((string) ($firebaseUser['picture'] ?? ''));
             $isEmailVerified = (bool) ($firebaseUser['email_verified'] ?? true);
-
-            // SKENARIO 1: User sudah login via Google sebelumnya
             $user = $this->findByFirebaseUid($firebaseUid);
 
             if ($user !== null) {
-                $user->forceFill([
-                    'email'             => $email,
-                    'name'              => $name ?: $user->name,
-                    'avatar'            => $avatar ?: $user->avatar,
-                    'is_email_verified' => $isEmailVerified,
-                ])->save();
+                $updates = [
+                    'is_email_verified' => $user->is_email_verified || $isEmailVerified,
+                ];
 
+                if (!$user->name && $providerName !== '') {
+                    $updates['name'] = $providerName;
+                }
+
+                if (!$user->avatar && $providerAvatar !== '') {
+                    $updates['avatar'] = $providerAvatar;
+                }
+
+                $user->forceFill($updates)->save();
                 $this->assignRoleByName($user, 'buyer');
+
                 return $user->refresh();
             }
 
-            // SKENARIO 2: User daftar manual, lalu login Google
             $user = $this->findByEmail($email);
 
             if ($user !== null) {
                 if ($user->firebase_uid !== null && $user->firebase_uid !== $firebaseUid) {
-                    throw new LogicException('Email ini telah terhubung dengan metode login Google yang berbeda.');
+                    throw new LogicException('Email ini telah terhubung dengan akun Google yang berbeda.');
                 }
 
-                $user->forceFill([
-                    'firebase_uid'      => $firebaseUid,
-                    'name'              => $user->name ?: $name,
-                    'avatar'            => $user->avatar ?: $avatar,
-                    'is_email_verified' => $isEmailVerified,
-                ])->save();
+                $updates = [
+                    'firebase_uid' => $firebaseUid,
+                    'is_email_verified' => $user->is_email_verified || $isEmailVerified,
+                ];
 
+                if (!$user->name && $providerName !== '') {
+                    $updates['name'] = $providerName;
+                }
+
+                if (!$user->avatar && $providerAvatar !== '') {
+                    $updates['avatar'] = $providerAvatar;
+                }
+
+                $user->forceFill($updates)->save();
                 $this->assignRoleByName($user, 'buyer');
+
                 return $user->refresh();
             }
 
-            // SKENARIO 3: User benar-benar baru
             $user = new User();
             $user->id = (string) Str::uuid();
-
             $user->forceFill([
-                'firebase_uid'      => $firebaseUid,
-                'email'             => $email,
-                'password'          => Hash::make(Str::random(40)),
-                'name'              => $name ?: Str::before($email, '@'),
-                'avatar'            => $avatar,
+                'firebase_uid' => $firebaseUid,
+                'email' => $email,
+                'password' => Hash::make(Str::random(40)),
+                'name' => $providerName !== '' ? $providerName : Str::before($email, '@'),
+                'avatar' => $providerAvatar !== '' ? $providerAvatar : null,
                 'is_email_verified' => $isEmailVerified,
             ]);
-
             $user->save();
             $this->assignRoleByName($user, 'buyer');
 
@@ -271,23 +281,48 @@ final class EloquentUserRepository implements UserRepositoryInterface
     public function registerStore(string $userId, RegisterSellerDTO $dto): int
     {
         return DB::transaction(function () use ($userId, $dto): int {
-            // 1. Tambah data ke tabel stores (is_active otomatis 1)
+            if (DB::table('stores')->where('user_id', $userId)->exists()) {
+                throw new RuntimeException('User ini sudah memiliki toko.');
+            }
+
+            $slug = $dto->slug;
+            $suffix = 1;
+            while (DB::table('stores')->where('slug', $slug)->exists()) {
+                $slug = $dto->slug . '-' . $suffix++;
+            }
+
             $storeId = DB::table('stores')->insertGetId([
-                'user_id'    => $userId,
-                'name'       => $dto->storeName,
-                'slug'       => $dto->slug,
-                'phone'      => $dto->phone,
-                'city'       => $dto->city,
-                'province'   => $dto->province,
-                'address'    => $dto->address,
-                'is_active'  => 1,
+                'user_id' => $userId,
+                'name' => $dto->storeName,
+                'slug' => $slug,
+                'description' => $dto->description,
+                'short_description' => $dto->shortDescription,
+                'phone' => $dto->phone,
+                'email' => $dto->email,
+                'city' => $dto->city,
+                'province' => $dto->province,
+                'address' => $dto->address,
+                'logo' => $dto->logo,
+                'banner_url' => $dto->bannerUrl,
+                'is_active' => 1,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
-            // 2. Tambah data default ke tabel store_details
             DB::table('store_details')->insert([
-                'store_id'   => $storeId,
+                'store_id' => $storeId,
+                'owner_name' => $dto->detail['owner_name'] ?? null,
+                'owner_phone' => $dto->detail['owner_phone'] ?? null,
+                'description' => $dto->detail['description'] ?? null,
+                'shipping_policy' => $dto->detail['shipping_policy'] ?? null,
+                'return_policy' => $dto->detail['return_policy'] ?? null,
+                'open_days' => $dto->detail['open_days'] ?? null,
+                'open_time' => $dto->detail['open_time'] ?? null,
+                'close_time' => $dto->detail['close_time'] ?? null,
+                'whatsapp_url' => $dto->detail['whatsapp_url'] ?? null,
+                'instagram_url' => $dto->detail['instagram_url'] ?? null,
+                'tiktok_url' => $dto->detail['tiktok_url'] ?? null,
+                'website_url' => $dto->detail['website_url'] ?? null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -297,11 +332,15 @@ final class EloquentUserRepository implements UserRepositoryInterface
     }
 
 
-public function logoutOtherDevices(User $user): void
+public function logoutOtherDevices(User $user): int
     {
-        $currentToken = $user->currentAccessToken();
+        $currentTokenId = $user->currentAccessToken()?->id;
+        $query = $user->tokens();
 
-        // Hapus semua token user ini
-        $user->tokens()->where('id', '!=', $currentToken?->id)->delete();
+        if ($currentTokenId !== null) {
+            $query->where('id', '!=', $currentTokenId);
+        }
+
+        return $query->delete();
     }
         }

@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Order\Payment\Infrastructure\Services;
 
-use Exception;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 
-class MidtransService
+final class MidtransService
 {
     private string $serverKey;
     private string $baseUrl;
@@ -13,10 +15,8 @@ class MidtransService
 
     public function __construct()
     {
-        // Membaca langsung dari config/midtrans.php milikmu
         $this->serverKey = (string) config('midtrans.server_key');
         $this->enabledPayments = config('midtrans.enabled_payments');
-
         $this->baseUrl = config('midtrans.is_production')
             ? 'https://app.midtrans.com/snap/v1/'
             : 'https://app.sandbox.midtrans.com/snap/v1/';
@@ -24,37 +24,47 @@ class MidtransService
 
     public function createSnapToken(array $params): string
     {
+        if ($this->serverKey === '') {
+            throw new RuntimeException('MIDTRANS_SERVER_KEY belum dikonfigurasi.');
+        }
+
         $payload = [
             'transaction_details' => [
-                'order_id' => $params['order_id'],
-                'gross_amount' => (int) $params['gross_amount'],
+                'order_id' => (string) $params['order_id'],
+                'gross_amount' => max(1, (int) $params['gross_amount']),
             ],
             'customer_details' => [
-                'user_id' => $params['user_id']
+                'user_id' => (string) $params['user_id'],
+                'first_name' => (string) ($params['customer_name'] ?? 'Customer'),
+                'email' => (string) ($params['customer_email'] ?? ''),
             ],
-            // Mengatur fitur 3DS keamanan kartu kredit dari config
             'credit_card' => [
-                'secure' => (bool) config('midtrans.is_3ds', true)
-            ]
+                'secure' => (bool) config('midtrans.is_3ds', true),
+            ],
         ];
 
-        // Jika enabled_payments di .env diisi, masukkan ke payload Snap
-        if (!is_null($this->enabledPayments)) {
+        if (is_array($this->enabledPayments) && $this->enabledPayments !== []) {
             $payload['enabled_payments'] = $this->enabledPayments;
         }
 
-        $response = Http::withHeaders([
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json',
-        ])
-        ->withBasicAuth($this->serverKey, '')
-        ->post($this->baseUrl . 'transactions', $payload);
+        $response = Http::acceptJson()
+            ->asJson()
+            ->withBasicAuth($this->serverKey, '')
+            ->timeout(20)
+            ->retry(2, 250)
+            ->post($this->baseUrl . 'transactions', $payload);
 
         if ($response->failed()) {
-            $errorMsg = $response->json()['error_messages'][0] ?? 'Gagal membuat transaksi ke Midtrans';
-            throw new Exception("Midtrans Error: " . $errorMsg);
+            $errors = $response->json('error_messages');
+            $message = is_array($errors) && isset($errors[0]) ? (string) $errors[0] : 'Gagal membuat transaksi Midtrans.';
+            throw new RuntimeException($message);
         }
 
-        return $response->json()['token'];
+        $token = $response->json('token');
+        if (!is_string($token) || $token === '') {
+            throw new RuntimeException('Midtrans tidak mengembalikan Snap token.');
+        }
+
+        return $token;
     }
 }

@@ -12,6 +12,8 @@ class EloquentAddressRepository implements AddressRepositoryInterface
     {
         return Address::when($userId, fn($q) => $q->where('user_id', $userId))
             ->when($storeId, fn($q) => $q->where('store_id', $storeId))
+            ->orderByDesc('is_primary')
+            ->latest('id')
             ->get();
     }
 

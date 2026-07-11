@@ -20,6 +20,7 @@ final class StoreData
         public ?string $address,
         public bool $isActive,
         public ?string $logo,
+        public ?string $bannerUrl,
         public ?string $createdAt,
         public ?string $updatedAt,
         public ?StoreDetailData $detail = null,
@@ -41,6 +42,7 @@ final class StoreData
             address: $entity->address(),
             isActive: $entity->isActive(),
             logo: $entity->logo(),
+            bannerUrl: $entity->bannerUrl(),
             createdAt: $entity->createdAt(),
             updatedAt: $entity->updatedAt(),
             detail: method_exists($entity, 'detail') && $entity->detail() 

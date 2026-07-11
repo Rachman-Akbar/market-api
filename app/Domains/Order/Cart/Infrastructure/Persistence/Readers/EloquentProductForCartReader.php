@@ -5,54 +5,76 @@ declare(strict_types=1);
 namespace App\Domains\Order\Cart\Infrastructure\Persistence\Readers;
 
 use App\Domains\Order\Cart\Application\Readers\ProductForCartReaderInterface;
-use App\Domains\Order\Cart\Domain\ValueObjects\VariantDetails;
 use App\Domains\Order\Cart\Domain\ValueObjects\Money;
+use App\Domains\Order\Cart\Domain\ValueObjects\VariantDetails;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 final class EloquentProductForCartReader implements ProductForCartReaderInterface
 {
     public function getVariantStock(int $productVariantId): ?int
     {
-        // Gunakan find() atau where()->first() dan pastikan datanya ada
+        $stock = DB::table('product_variants')->where('id', $productVariantId)->value('stock');
+        return $stock === null ? null : (int) $stock;
+    }
+
+    public function getVariantDetails(int $productVariantId): ?VariantDetails
+    {
+        $select = [
+            'product_variants.id',
+            'product_variants.product_id',
+            'product_variants.name as variant_name',
+            'product_variants.store_id',
+            'product_variants.sku',
+            'product_variants.price',
+            'product_variants.stock',
+            'products.name as product_name',
+            'products.thumbnail',
+            'stores.name as store_name',
+        ];
+
+        $weightColumn = null;
+        foreach (['weight_gram', 'weight', 'berat_gram', 'berat'] as $candidate) {
+            if (Schema::hasColumn('products', $candidate)) {
+                $weightColumn = $candidate;
+                $select[] = "products.{$candidate} as product_weight";
+                break;
+            }
+        }
+
         $variant = DB::table('product_variants')
-            ->where('id', $productVariantId)
+            ->join('products', 'products.id', '=', 'product_variants.product_id')
+            ->join('stores', 'stores.id', '=', 'product_variants.store_id')
+            ->select($select)
+            ->where('product_variants.id', $productVariantId)
             ->first();
 
-        // Jika data tidak ditemukan di DB, ia akan melempar null ke UseCase
         if (!$variant) {
             return null;
         }
 
-        // Paksa konversi ke integer untuk mengantisipasi string dari database
-        return isset($variant->stock) ? (int) $variant->stock : 0;
+        $attributes = DB::table('product_variant_values')
+            ->join('product_attributes', 'product_variant_values.attribute_id', '=', 'product_attributes.id')
+            ->where('product_variant_values.variant_id', $productVariantId)
+            ->pluck('product_variant_values.value', 'product_attributes.name')
+            ->toArray();
+
+        $rawWeight = $weightColumn ? (float) ($variant->product_weight ?? 0) : 0;
+        $weight = $rawWeight > 0 ? (int) ceil($rawWeight) : 1000;
+
+        return new VariantDetails(
+            id: (int) $variant->id,
+            productId: (int) $variant->product_id,
+            name: (string) ($variant->variant_name ?: $variant->product_name),
+            productName: (string) $variant->product_name,
+            storeId: (int) $variant->store_id,
+            storeName: (string) $variant->store_name,
+            sku: (string) $variant->sku,
+            price: new Money((int) $variant->price),
+            stock: (int) $variant->stock,
+            weight: max(1, $weight),
+            thumbnail: $variant->thumbnail ? (string) $variant->thumbnail : null,
+            attributes: $attributes
+        );
     }
-
-public function getVariantDetails(int $productVariantId): ?VariantDetails
-{
-    $variant = DB::table('product_variants')
-        ->where('id', $productVariantId)
-        ->first();
-
-    if (!$variant) {
-        return null;
-    }
-
-    // REVISI: Sesuaikan nama tabel dan kolom sesuai dengan database asli (HeidiSQL)
-    $attributes = DB::table('product_variant_values') // <-- Ubah dari product_variant_attribute_values
-        ->join('product_attributes', 'product_variant_values.attribute_id', '=', 'product_attributes.id') // <-- Ubah dari attributes
-        ->where('product_variant_values.variant_id', $productVariantId) // <-- Kolomnya adalah variant_id, bukan product_variant_id
-        ->pluck('product_variant_values.value', 'product_attributes.name')
-        ->toArray();
-
-    return new VariantDetails(
-    id: (int) $variant->id,
-    productId: (int) $variant->product_id, // Ambil dari kolom product_id di tabel variants
-    name: (string) $variant->name,
-    storeId: (int) $variant->store_id,
-    sku: (string) $variant->sku,
-    price: new Money((int) $variant->price),
-    attributes: $attributes
-);
-}
-
 }

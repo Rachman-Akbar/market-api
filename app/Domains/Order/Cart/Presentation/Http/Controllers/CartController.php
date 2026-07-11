@@ -19,6 +19,7 @@ use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 final class CartController extends Controller
@@ -29,8 +30,7 @@ final class CartController extends Controller
         private readonly UpdateCartItemQuantityUseCase $updateItem,
         private readonly RemoveItemFromCartUseCase $removeItem,
         private readonly ClearCartUseCase $clearCart,
-    ) {
-    }
+    ) {}
 
     public function show(Request $request): JsonResponse
     {
@@ -38,35 +38,22 @@ final class CartController extends Controller
     }
 
     public function store(AddCartItemRequest $request): JsonResponse
-{
-    return $this->respond(fn (): CartSummaryData => $this->handleBulkItems($request));
-}
+    {
+        return $this->respond(fn (): CartSummaryData => DB::transaction(function () use ($request): CartSummaryData {
+            $userId = $this->userId($request);
+            $summary = null;
 
-/**
- * Memproses array items dari request satu per satu
- */
-private function handleBulkItems(AddCartItemRequest $request): CartSummaryData
-{
-    $userId = $this->userId($request);
-    $items = $request->validated('items'); // Ambil array bertingkatnya
+            foreach ($request->validated('items') as $item) {
+                $summary = $this->addItem->execute(new AddCartItemData(
+                    userId: $userId,
+                    productVariantId: (int) $item['product_variant_id'],
+                    quantity: (int) $item['quantity']
+                ));
+            }
 
-    $lastSummary = null;
-
-    foreach ($items as $item) {
-        $lastSummary = $this->addItem->execute(new AddCartItemData(
-            userId: $userId,
-            productVariantId: (int) $item['product_variant_id'], // Membaca id dari dalam array (105, lalu 106)
-            quantity: (int) $item['quantity']
-        ));
+            return $summary ?? $this->getCart->execute($userId);
+        }));
     }
-
-    // Jika karena suatu alasan array kosong, ambil data cart kosong
-    if ($lastSummary === null) {
-        return $this->getCart->execute($userId);
-    }
-
-    return $lastSummary;
-}
 
     public function update(UpdateCartItemRequest $request, int|string $productVariantId): JsonResponse
     {
@@ -93,18 +80,12 @@ private function handleBulkItems(AddCartItemRequest $request): CartSummaryData
     private function respond(callable $callback): JsonResponse
     {
         try {
-            /** @var CartSummaryData $summary */
             $summary = $callback();
-
             return CartResource::make($summary->toArray())->response();
         } catch (DomainException $exception) {
-            return response()->json([
-                'message' => $exception->getMessage(),
-            ], 422);
+            return response()->json(['message' => $exception->getMessage()], 422);
         } catch (RuntimeException $exception) {
-            return response()->json([
-                'message' => $exception->getMessage(),
-            ], 500);
+            return response()->json(['message' => $exception->getMessage()], 422);
         }
     }
 

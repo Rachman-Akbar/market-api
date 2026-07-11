@@ -45,7 +45,7 @@ final readonly class UpdateStoreUseCase
             province: $data['province'] ?? $storeEntity->province(),
             address: $data['address'] ?? $storeEntity->address(),
             logo: $data['logo'] ?? $storeEntity->logo(),
-            
+            bannerUrl: $data['banner_url'] ?? $storeEntity->bannerUrl(),
             isActive: isset($data['is_active']) ? (bool) $data['is_active'] : $storeEntity->isActive()
         );
 

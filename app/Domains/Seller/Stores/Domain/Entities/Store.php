@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Seller\Stores\Domain\Entities;
 
-// Import entity StoreDetail jika berada di namespace yang sama atau berbeda
-// use App\Domains\Seller\Stores\Domain\Entities\StoreDetail;
-
 final class Store
 {
     public function __construct(
@@ -23,9 +20,10 @@ final class Store
         private ?string $address,
         private bool $isActive,
         private ?string $logo,
+        private ?string $bannerUrl,
         private ?string $createdAt,
         private ?string $updatedAt,
-        private ?StoreDetail $detail = null // 1. TAMBAHKAN: Menyimpan data relasi detail toko
+        private ?StoreDetail $detail = null
     ) {}
 
     public function id(): int { return $this->id; }
@@ -41,10 +39,9 @@ final class Store
     public function address(): ?string { return $this->address; }
     public function isActive(): bool { return $this->isActive; }
     public function logo(): ?string { return $this->logo; }
+    public function bannerUrl(): ?string { return $this->bannerUrl; }
     public function createdAt(): ?string { return $this->createdAt; }
     public function updatedAt(): ?string { return $this->updatedAt; }
-    
-    // 2. TAMBAHKAN: Getter untuk mengambil data detail agar bisa dibaca oleh DTO / Resource
     public function detail(): ?StoreDetail { return $this->detail; }
 
     public function updateDetails(
@@ -58,6 +55,7 @@ final class Store
         ?string $province,
         ?string $address,
         ?string $logo,
+        ?string $bannerUrl,
         bool $isActive
     ): void {
         $this->name = $name;
@@ -70,6 +68,7 @@ final class Store
         $this->province = $province;
         $this->address = $address;
         $this->logo = $logo;
+        $this->bannerUrl = $bannerUrl;
         $this->isActive = $isActive;
     }
 }

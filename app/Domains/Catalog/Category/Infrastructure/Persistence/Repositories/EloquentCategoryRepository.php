@@ -9,11 +9,12 @@ use App\Domains\Catalog\Category\Domain\Repositories\CategoryRepositoryInterface
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Mappers\CategoryMapper;
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
+use Illuminate\Support\Facades\Cache;
 
 final class EloquentCategoryRepository implements CategoryRepositoryInterface
 {
+    private const CACHE_TTL = 1800;
+
     public function findById(int $id): ?Category
     {
         $model = CategoryModel::query()
@@ -65,28 +66,20 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
 
     public function listTree(): array
     {
-        $models = CategoryModel::query()
-            ->where('level', '<=', 3)
-            ->orderBy('level')
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
+        $rows = Cache::remember('catalog_categories_tree_rows_v2', self::CACHE_TTL, function () {
+            return $this->categoryRows(false);
+        });
 
-        return $this->buildTree($models);
+        return $this->buildTreeFromRows($rows);
     }
 
     public function listMenuTree(): array
     {
-        $models = CategoryModel::query()
-            ->where('level', '<=', 3)
-            ->where('is_active', true)
-            ->where('is_visible_in_menu', true)
-            ->orderBy('level')
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
+        $rows = Cache::remember('catalog_categories_menu_rows_v2', self::CACHE_TTL, function () {
+            return $this->categoryRows(true);
+        });
 
-        return $this->buildTree($models);
+        return $this->buildTreeFromRows($rows);
     }
 
     public function findChildrenByParentId(int $parentId): array
@@ -159,6 +152,7 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         $model->icon_url = $category->iconUrl();
 
         $model->save();
+        $this->clearCache();
 
         return CategoryMapper::toEntity(
             $model->refresh()->load('childrenTree')
@@ -173,7 +167,13 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
             return false;
         }
 
-        return (bool) $model->delete();
+        $deleted = (bool) $model->delete();
+
+        if ($deleted) {
+            $this->clearCache();
+        }
+
+        return $deleted;
     }
 
     private function toEntity(?CategoryModel $model): ?Category
@@ -186,13 +186,80 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         return trim(rawurldecode($path), '/');
     }
 
+    private function categoryRows(bool $menuOnly): array
+    {
+        return CategoryModel::query()
+            ->select([
+                'id',
+                'catalog_group_id',
+                'parent_id',
+                'level',
+                'sort_order',
+                'is_active',
+                'is_visible_in_menu',
+                'name',
+                'slug',
+                'full_slug',
+                'image_url',
+                'icon_url',
+            ])
+            ->withCount('products')
+            ->where('level', '<=', 3)
+            ->when($menuOnly, function ($query) {
+                $query
+                    ->where('is_active', true)
+                    ->where('is_visible_in_menu', true);
+            })
+            ->orderBy('level')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (CategoryModel $model) => [
+                'id' => (int) $model->id,
+                'catalog_group_id' => (int) $model->catalog_group_id,
+                'parent_id' => $model->parent_id !== null ? (int) $model->parent_id : null,
+                'level' => (int) $model->level,
+                'sort_order' => (int) $model->sort_order,
+                'is_active' => (bool) $model->is_active,
+                'is_visible_in_menu' => (bool) $model->is_visible_in_menu,
+                'name' => (string) $model->name,
+                'slug' => (string) $model->slug,
+                'full_slug' => (string) $model->full_slug,
+                'image_url' => $model->image_url,
+                'icon_url' => $model->icon_url,
+                'products_count' => (int) ($model->products_count ?? 0),
+            ])
+            ->all();
+    }
+
     private function buildTree(Collection $models): array
+    {
+        return $this->buildTreeFromRows(
+            $models->map(fn (CategoryModel $model) => [
+                'id' => (int) $model->id,
+                'catalog_group_id' => (int) $model->catalog_group_id,
+                'parent_id' => $model->parent_id !== null ? (int) $model->parent_id : null,
+                'level' => (int) $model->level,
+                'sort_order' => (int) $model->sort_order,
+                'is_active' => (bool) $model->is_active,
+                'is_visible_in_menu' => (bool) $model->is_visible_in_menu,
+                'name' => (string) $model->name,
+                'slug' => (string) $model->slug,
+                'full_slug' => (string) $model->full_slug,
+                'image_url' => $model->image_url,
+                'icon_url' => $model->icon_url,
+                'products_count' => (int) ($model->products_count ?? 0),
+            ])->all()
+        );
+    }
+
+    private function buildTreeFromRows(array $rows): array
     {
         $entities = [];
         $roots = [];
 
-        foreach ($models as $model) {
-            $entities[(int) $model->id] = CategoryMapper::toEntity($model);
+        foreach ($rows as $row) {
+            $entities[(int) $row['id']] = CategoryMapper::toEntityFromArray($row);
         }
 
         foreach ($entities as $entity) {
@@ -200,7 +267,6 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
 
             if ($parentId !== null && isset($entities[$parentId])) {
                 $entities[$parentId]->addChild($entity);
-
                 continue;
             }
 
@@ -210,9 +276,9 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         return $roots;
     }
 
-    public function products(): HasMany
-{
-    return $this->hasMany(ProductModel::class, 'primary_category_id');
+    private function clearCache(): void
+    {
+        Cache::forget('catalog_categories_tree_rows_v2');
+        Cache::forget('catalog_categories_menu_rows_v2');
+    }
 }
-
-   }

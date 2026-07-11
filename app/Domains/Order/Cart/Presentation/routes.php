@@ -15,10 +15,10 @@ Route::middleware(['auth:sanctum'])
         Route::post('/items', [CartController::class, 'store'])
             ->name('items.store');
 
-        Route::patch('/items/{productId}', [CartController::class, 'update'])
+        Route::patch('/items/{productVariantId}', [CartController::class, 'update'])
             ->name('items.update');
 
-        Route::delete('/items/{productId}', [CartController::class, 'destroy'])
+        Route::delete('/items/{productVariantId}', [CartController::class, 'destroy'])
             ->name('items.destroy');
 
         Route::delete('/', [CartController::class, 'clear'])

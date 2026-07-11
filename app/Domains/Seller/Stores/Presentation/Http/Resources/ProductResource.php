@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Stores\Presentation\Http\Resources;
+namespace App\Domains\Seller\Stores\Presentation\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;

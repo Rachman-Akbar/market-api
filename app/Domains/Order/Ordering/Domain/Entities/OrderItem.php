@@ -9,6 +9,7 @@ final class OrderItem
     public function __construct(
         public ?int $id,
         public int $productId,
+        public int $variantId,
         public int $storeId,
         public string $productName,
         public string $sku,

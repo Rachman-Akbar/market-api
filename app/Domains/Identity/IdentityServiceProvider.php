@@ -8,32 +8,34 @@ use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Identity\Infrastructure\Middleware\FirebaseTokenVerifier;
 use App\Domains\Identity\Infrastructure\Persistence\Repositories\EloquentUserRepository;
 use Illuminate\Support\ServiceProvider;
-use Kreait\Firebase\Factory; // Tambahkan ini
-use Kreait\Firebase\Auth;    // Pastikan ini di-import
+use Kreait\Firebase\Factory;
+use RuntimeException;
 
-class IdentityServiceProvider extends ServiceProvider
+final class IdentityServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Bind Interface ke Implementation
         $this->app->bind(UserRepositoryInterface::class, EloquentUserRepository::class);
 
-        // Perbaikan di sini: Gunakan Factory untuk membuat instance Kreait\Firebase\Auth
-        $this->app->bind(FirebaseTokenVerifier::class, function ($app) {
-    // base_path() akan menggabungkan path dari root project dengan nilai di .env
-    $credentialsPath = base_path(env('FIREBASE_CREDENTIALS'));
+        $this->app->singleton(FirebaseTokenVerifier::class, function (): FirebaseTokenVerifier {
+            $configuredPath = trim((string) env('FIREBASE_CREDENTIALS', ''));
+            if ($configuredPath === '') {
+                throw new RuntimeException('FIREBASE_CREDENTIALS belum dikonfigurasi.');
+            }
 
-    $firebaseAuth = (new \Kreait\Firebase\Factory)
-        ->withServiceAccount($credentialsPath)
-        ->createAuth();
+            $isAbsolute = str_starts_with($configuredPath, DIRECTORY_SEPARATOR)
+                || preg_match('/^[A-Za-z]:[\\\\\/]/', $configuredPath) === 1;
+            $credentialsPath = $isAbsolute ? $configuredPath : base_path($configuredPath);
 
-    return new FirebaseTokenVerifier($firebaseAuth);
-});
+            if (!is_file($credentialsPath) || !is_readable($credentialsPath)) {
+                throw new RuntimeException('File Firebase credentials tidak ditemukan atau tidak dapat dibaca.');
+            }
 
-    }
+            $firebaseAuth = (new Factory())
+                ->withServiceAccount($credentialsPath)
+                ->createAuth();
 
-    public function boot(): void
-    {
-        //
+            return new FirebaseTokenVerifier($firebaseAuth);
+        });
     }
 }

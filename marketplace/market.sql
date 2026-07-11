@@ -22,32 +22,36 @@ USE `kishamarket`;
 -- Dumping structure for table kishamarket.addresses
 CREATE TABLE IF NOT EXISTS `addresses` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `user_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `store_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `store_id` bigint unsigned DEFAULT NULL,
+  `country` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `province` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `city_or_regency` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `district` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subdistrict` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `postal_code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `full_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notes` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `label` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `recipient_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `phone_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `full_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `city` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `postal_code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `notes` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone_number` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `latitude` decimal(10,8) NOT NULL,
   `longitude` decimal(11,8) NOT NULL,
-  `is_primary` tinyint(1) NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
+  `komerce_destination_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_primary` tinyint(1) DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `unique_buyer_address` (`user_id`,`label`,`full_address`(255)),
-  UNIQUE KEY `unique_seller_address` (`store_id`,`label`,`full_address`(255)),
-  KEY `addresses_user_id_index` (`user_id`),
-  KEY `addresses_store_id_index` (`store_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `fk_addresses_user_id` (`user_id`),
+  KEY `fk_addresses_store_id` (`store_id`),
+  CONSTRAINT `fk_addresses_store_id` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_addresses_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.addresses: ~3 rows (approximately)
-INSERT IGNORE INTO `addresses` (`id`, `user_id`, `store_id`, `label`, `recipient_name`, `phone_number`, `full_address`, `city`, `postal_code`, `notes`, `latitude`, `longitude`, `is_primary`, `created_at`, `updated_at`) VALUES
-	(14, '32394b22-956f-4161-a45c-da7ded058428', NULL, 'Rumah Utama', 'John Doe', '081234567890', 'Jl. Merdeka No. 123, RT 01/RW 02, Kecamatan Kebayoran Baru', 'Jakarta Selatan', '12110', NULL, -6.22972800, 106.80572100, 0, '2026-07-02 20:38:14', '2026-07-02 23:16:52'),
-	(15, NULL, '35', 'Rumah Utama', 'John Doe', '081234567890', 'Jl. Merdeka No. 123, RT 01/RW 02, Kecamatan Kebayoran Baru', 'Jakarta Selatan', '12110', NULL, -6.22972800, 106.80572100, 1, '2026-07-02 20:39:27', '2026-07-02 20:39:27'),
-	(17, '32394b22-956f-4161-a45c-da7ded058428', NULL, 'Rumah Utama', 'John Doe', '081234567890', 'Mahakam Ulu, East Kalimantan, Kalimantan, 75767, Indonesia', 'East Kalimantan', '75767', NULL, 0.67564352, 114.61486816, 1, '2026-07-02 23:16:52', '2026-07-02 23:16:52');
+-- Dumping data for table kishamarket.addresses: ~2 rows (approximately)
+INSERT IGNORE INTO `addresses` (`id`, `user_id`, `store_id`, `country`, `province`, `city_or_regency`, `district`, `subdistrict`, `postal_code`, `full_address`, `notes`, `label`, `recipient_name`, `phone_number`, `latitude`, `longitude`, `komerce_destination_id`, `is_primary`, `created_at`, `updated_at`) VALUES
+	(2, NULL, 35, 'Indonesia', 'East Java', 'Sidoarjo', 'Prambon', 'Cangkringturi', '61264', 'Cangkringturi, Prambon, Sidoarjo, East Java, 61264, Indonesia', NULL, 'Rumah Utama', 'John Doe', '081234567890', -7.45949647, 112.59939194, '31761264', 1, '2026-07-08 20:38:43', '2026-07-08 20:38:43'),
+	(4, '32394b22-956f-4161-a45c-da7ded058428', NULL, 'Indonesia', 'East Java', 'Sidoarjo', 'Wonoayu', 'Simo Angin Angin', '61264', 'Simo Angin Angin, Wonoayu, Sidoarjo, East Java, 61264, Indonesia', NULL, 'Rumah Utama', 'John Doe', '081234567890', -7.43932629, 112.60052919, '31761264', 1, '2026-07-08 20:43:30', '2026-07-08 20:43:30');
 
 -- Dumping structure for table kishamarket.banners
 CREATE TABLE IF NOT EXISTS `banners` (
@@ -62,7 +66,7 @@ CREATE TABLE IF NOT EXISTS `banners` (
   KEY `idx_shop_banners_store` (`store_id`,`is_active`,`sort_order`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.banners: ~2 rows (approximately)
+-- Dumping data for table kishamarket.banners: ~1 rows (approximately)
 INSERT IGNORE INTO `banners` (`id`, `store_id`, `image_url`, `sort_order`, `is_active`, `created_at`, `updated_at`) VALUES
 	(1, 27, 'https://cdn.marketplace.com/stores/store-1/dekorasi-banner-1.jpg', 1, 1, '2026-06-21 20:34:35', '2026-06-21 20:34:35'),
 	(3, 27, 'https://cdn.marketplace.com/stores/store-1/dekorasi-banner-1.jpg', 1, 1, '2026-06-22 23:47:31', '2026-06-22 23:47:31');
@@ -76,11 +80,7 @@ CREATE TABLE IF NOT EXISTS `cache` (
   KEY `cache_expiration_index` (`expiration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.cache: ~3 rows (approximately)
-INSERT IGNORE INTO `cache` (`key`, `value`, `expiration`) VALUES
-	('marketapi-cache-catalog_group_3_categories', 'O:29:"Illuminate\\Support\\Collection":2:{s:8:"\0*\0items";a:3:{i:0;O:53:"App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category":14:{s:57:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0id";i:69;s:69:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0catalogGroupId";i:3;s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0parentId";N;s:59:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0name";s:4:"ensk";s:59:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0slug";s:4:"ensk";s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0fullSlug";s:4:"ensk";s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0imageUrl";N;s:62:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0iconUrl";N;s:60:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0level";i:1;s:64:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0sortOrder";i:1;s:68:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0productsCount";i:0;s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0isActive";b:1;s:70:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0isVisibleInMenu";b:1;s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0children";a:0:{}}i:1;O:53:"App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category":14:{s:57:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0id";i:72;s:69:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0catalogGroupId";i:3;s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0parentId";N;s:59:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0name";s:4:"ensk";s:59:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0slug";s:9:"enaHZahsk";s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0fullSlug";s:9:"enaHZahsk";s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0imageUrl";s:75:"https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile";s:62:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0iconUrl";s:75:"https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile";s:60:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0level";i:1;s:64:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0sortOrder";i:1;s:68:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0productsCount";i:0;s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0isActive";b:1;s:70:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0isVisibleInMenu";b:1;s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0children";a:0:{}}i:2;O:53:"App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category":14:{s:57:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0id";i:73;s:69:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0catalogGroupId";i:3;s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0parentId";N;s:59:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0name";s:4:"ensk";s:59:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0slug";s:23:"enaHZsxabshasbhasbhahsk";s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0fullSlug";s:23:"enaHZsxabshasbhasbhahsk";s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0imageUrl";s:75:"https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile";s:62:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0iconUrl";s:75:"https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile";s:60:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0level";i:1;s:64:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0sortOrder";i:1;s:68:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0productsCount";i:0;s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0isActive";b:1;s:70:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0isVisibleInMenu";b:1;s:63:"\0App\\Domains\\Catalog\\Category\\Domain\\Entities\\Category\0children";a:0:{}}}s:28:"\0*\0escapeWhenCastingToString";b:0;}', 1783399589),
-	('marketapi-cache-catalog_group_8_categories', 'O:39:"Illuminate\\Database\\Eloquent\\Collection":2:{s:8:"\0*\0items";a:0:{}s:28:"\0*\0escapeWhenCastingToString";b:0;}', 1783399590),
-	('marketapi-cache-catalog_groups_active_v5', 'a:2:{i:0;a:5:{s:2:"id";i:3;s:4:"name";s:13:"Gadget & Elek";s:4:"slug";s:25:"gadget-elektronik-updated";s:9:"is_active";b:1;s:10:"categories";a:3:{i:0;a:14:{s:2:"id";i:69;s:16:"catalog_group_id";i:3;s:9:"parent_id";N;s:4:"name";s:4:"ensk";s:4:"slug";s:4:"ensk";s:9:"full_slug";s:4:"ensk";s:9:"image_url";N;s:8:"icon_url";N;s:5:"level";i:1;s:10:"sort_order";i:1;s:14:"products_count";i:0;s:9:"is_active";b:1;s:18:"is_visible_in_menu";b:1;s:8:"children";a:0:{}}i:1;a:14:{s:2:"id";i:72;s:16:"catalog_group_id";i:3;s:9:"parent_id";N;s:4:"name";s:4:"ensk";s:4:"slug";s:9:"enaHZahsk";s:9:"full_slug";s:9:"enaHZahsk";s:9:"image_url";s:75:"https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile";s:8:"icon_url";s:75:"https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile";s:5:"level";i:1;s:10:"sort_order";i:1;s:14:"products_count";i:0;s:9:"is_active";b:1;s:18:"is_visible_in_menu";b:1;s:8:"children";a:0:{}}i:2;a:14:{s:2:"id";i:73;s:16:"catalog_group_id";i:3;s:9:"parent_id";N;s:4:"name";s:4:"ensk";s:4:"slug";s:23:"enaHZsxabshasbhasbhahsk";s:9:"full_slug";s:23:"enaHZsxabshasbhasbhahsk";s:9:"image_url";s:75:"https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile";s:8:"icon_url";s:75:"https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile";s:5:"level";i:1;s:10:"sort_order";i:1;s:14:"products_count";i:0;s:9:"is_active";b:1;s:18:"is_visible_in_menu";b:1;s:8:"children";a:0:{}}}}i:1;a:5:{s:2:"id";i:8;s:4:"name";s:10:"hjkjhkjh &";s:4:"slug";s:5:"hjhjk";s:9:"is_active";b:1;s:10:"categories";a:0:{}}}', 1783399099);
+-- Dumping data for table kishamarket.cache: ~0 rows (approximately)
 
 -- Dumping structure for table kishamarket.cache_locks
 CREATE TABLE IF NOT EXISTS `cache_locks` (
@@ -120,12 +120,12 @@ CREATE TABLE IF NOT EXISTS `cart_items` (
   UNIQUE KEY `cart_items_cart_id_variant_id_unique` (`cart_id`,`product_variant_id`),
   KEY `cart_items_variant_id_index` (`product_variant_id`),
   CONSTRAINT `cart_items_cart_id_foreign` FOREIGN KEY (`cart_id`) REFERENCES `carts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=40 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.cart_items: ~2 rows (approximately)
+-- Dumping data for table kishamarket.cart_items: ~1 rows (approximately)
 INSERT IGNORE INTO `cart_items` (`id`, `cart_id`, `product_variant_id`, `quantity`, `created_at`, `updated_at`) VALUES
-	(15, 2, 106, 3, '2026-06-28 19:11:04', '2026-06-28 19:11:04'),
-	(26, 3, 12, 2, '2026-07-01 01:20:55', '2026-07-01 01:20:55');
+	(15, 2, 2, 3, '2026-06-28 19:11:04', '2026-06-28 19:11:04'),
+	(39, 3, 3, 3, '2026-07-09 01:03:49', '2026-07-09 01:03:49');
 
 -- Dumping structure for table kishamarket.catalog_groups
 CREATE TABLE IF NOT EXISTS `catalog_groups` (
@@ -141,8 +141,9 @@ CREATE TABLE IF NOT EXISTS `catalog_groups` (
 
 -- Dumping data for table kishamarket.catalog_groups: ~2 rows (approximately)
 INSERT IGNORE INTO `catalog_groups` (`id`, `name`, `slug`, `is_active`, `created_at`, `updated_at`) VALUES
-	(3, 'Gadget & Elek', 'gadget-elektronik-updated', 1, '2026-06-05 07:25:43', '2026-06-05 07:31:51'),
-	(8, 'hjkjhkjh &', 'hjhjk', 1, '2026-06-15 23:00:24', '2026-06-15 23:00:24');
+	(1, 'Elektronik & Gadget', 'elektronik-gadget', 1, '2026-07-07 04:46:44', '2026-07-07 04:46:44'),
+	(2, 'Fashion & Pakaian', 'fashion-pakaian', 1, '2026-07-07 04:46:44', '2026-07-07 04:46:44'),
+	(3, 'Home & Living', 'home-living', 1, '2026-07-07 04:46:44', '2026-07-07 04:46:44');
 
 -- Dumping structure for table kishamarket.categories
 CREATE TABLE IF NOT EXISTS `categories` (
@@ -165,13 +166,20 @@ CREATE TABLE IF NOT EXISTS `categories` (
   KEY `fk_categories_parent` (`parent_id`),
   CONSTRAINT `fk_categories_catalog_group` FOREIGN KEY (`catalog_group_id`) REFERENCES `catalog_groups` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_categories_parent` FOREIGN KEY (`parent_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=74 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=78 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.categories: ~3 rows (approximately)
+-- Dumping data for table kishamarket.categories: ~10 rows (approximately)
 INSERT IGNORE INTO `categories` (`id`, `catalog_group_id`, `parent_id`, `level`, `sort_order`, `is_active`, `is_visible_in_menu`, `name`, `slug`, `full_slug`, `image_url`, `icon_url`, `created_at`, `updated_at`) VALUES
-	(69, 3, NULL, 1, 1, 1, 1, 'ensk', 'ensk', 'ensk', NULL, NULL, '2026-06-15 23:44:39', '2026-06-16 00:26:41'),
-	(72, 3, NULL, 1, 1, 1, 1, 'ensk', 'enaHZahsk', 'enaHZahsk', 'https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile', 'https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile', '2026-06-24 19:33:42', '2026-06-24 19:33:42'),
-	(73, 3, NULL, 1, 1, 1, 1, 'ensk', 'enaHZsxabshasbhasbhahsk', 'enaHZsxabshasbhasbhahsk', 'https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile', 'https://play.google.com/store/apps/details?id=co.uk.imbranding.imakeprofile', '2026-06-29 01:41:48', '2026-06-29 01:41:48');
+	(1, 1, NULL, 1, 1, 1, 1, 'Komputer & Laptop', 'komputer-laptop', 'komputer-laptop', 'https://picsum.photos/200/300', 'icon-laptop.png', '2026-07-07 04:46:44', '2026-07-07 04:46:44'),
+	(2, 2, NULL, 1, 2, 1, 1, 'Pakaian Pria', 'pakaian-pria', 'pakaian-pria', 'https://picsum.photos/200/300', 'icon-man.png', '2026-07-07 04:46:44', '2026-07-07 04:46:44'),
+	(3, 1, 4, 3, 1, 1, 1, 'Laptop Gaming', 'laptop-gaming', 'komputer-laptop/laptop-gaming', 'https://picsum.photos/200/300', 'icon-gaming.png', '2026-07-07 04:46:44', '2026-07-07 04:46:44'),
+	(4, 2, 2, 2, 1, 1, 1, 'Kaos & Polo', 'kaos-polo', 'pakaian-pria/kaos-polo', 'https://picsum.photos/200/300', 'icon-shirt.png', '2026-07-07 04:46:44', '2026-07-07 04:46:44'),
+	(5, 3, NULL, 1, 1, 1, 1, 'Dekorasi Rumah', 'dekorasi-rumah', 'dekorasi-rumah', NULL, NULL, '2026-07-07 04:54:48', '2026-07-07 04:54:48'),
+	(6, 3, 5, 2, 1, 1, 1, 'Jam Dinding', 'jam-dinding', 'dekorasi-rumah/jam-dinding', NULL, NULL, '2026-07-07 04:54:48', '2026-07-07 04:54:48'),
+	(74, 1, 3, 3, 1, 1, 1, 'Laptop Asus ROG', 'laptop-asus-rog', 'komputer-laptop/laptop-gaming/laptop-asus-rog', NULL, NULL, NULL, NULL),
+	(75, 1, 3, 3, 2, 1, 1, 'Laptop MSI', 'laptop-msi', 'komputer-laptop/laptop-gaming/laptop-msi', NULL, NULL, NULL, NULL),
+	(76, 2, 4, 3, 1, 1, 1, 'Kaos Polos Cotton Combed', 'kaos-polos-cotton-combed', 'pakaian-pria/kaos-polo/kaos-polos-cotton-combed', NULL, NULL, NULL, NULL),
+	(77, 2, 4, 3, 2, 1, 1, 'Polo Shirt Bordir', 'polo-shirt-bordir', 'pakaian-pria/kaos-polo/polo-shirt-bordir', NULL, NULL, NULL, NULL);
 
 -- Dumping structure for table kishamarket.failed_jobs
 CREATE TABLE IF NOT EXISTS `failed_jobs` (
@@ -233,48 +241,69 @@ CREATE TABLE IF NOT EXISTS `migrations` (
 -- Dumping structure for table kishamarket.orders
 CREATE TABLE IF NOT EXISTS `orders` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `order_number` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `user_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `order_number` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `voucher_id` bigint unsigned DEFAULT NULL,
   `total_amount` decimal(12,2) NOT NULL DEFAULT '0.00',
   `discount_amount` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `status` enum('pending','processing','shipped','delivered','cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `shipping_address` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
+  `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `payment_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'unpaid',
+  `payment_method` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `midtrans_snap_token` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `shipping_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `orders_order_number_unique` (`order_number`),
-  KEY `orders_user_id_index` (`user_id`),
-  KEY `orders_voucher_id_foreign` (`voucher_id`),
-  CONSTRAINT `orders_voucher_id_foreign` FOREIGN KEY (`voucher_id`) REFERENCES `vouchers` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE KEY `order_number` (`order_number`),
+  KEY `fk_orders_user_id` (`user_id`),
+  CONSTRAINT `fk_orders_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.orders: ~1 rows (approximately)
-INSERT IGNORE INTO `orders` (`id`, `order_number`, `user_id`, `voucher_id`, `total_amount`, `discount_amount`, `status`, `shipping_address`, `created_at`, `updated_at`) VALUES
-	(20, 'ORD-20260701-9D5FC664', '32394b22-956f-4161-a45c-da7ded058428', 1, 300000.00, 15990.00, 'pending', 'Jl. Raya Boulevard No. 45, Cluster Lavender', '2026-07-01 01:24:14', '2026-07-01 01:24:14');
+-- Dumping data for table kishamarket.orders: ~4 rows (approximately)
+INSERT IGNORE INTO `orders` (`id`, `order_number`, `user_id`, `voucher_id`, `total_amount`, `discount_amount`, `status`, `payment_status`, `payment_method`, `midtrans_snap_token`, `shipping_address`, `created_at`, `updated_at`) VALUES
+	(4, 'ORD-20260709-146381CF', '32394b22-956f-4161-a45c-da7ded058428', NULL, 135000.00, 0.00, 'pending', 'unpaid', 'tunai_toko', NULL, 'Ambil Sendiri di Toko Utama', '2026-07-08 23:58:17', '2026-07-08 23:58:17'),
+	(5, 'ORD-20260709-F2067DE6', '32394b22-956f-4161-a45c-da7ded058428', NULL, 39000000.00, 0.00, 'pending', 'unpaid', 'tunai_toko', NULL, 'Ambil Sendiri di Toko Utama', '2026-07-09 00:07:09', '2026-07-09 00:07:09'),
+	(6, 'ORD-20260709-7401449C', '32394b22-956f-4161-a45c-da7ded058428', NULL, 39000000.00, 0.00, 'pending', 'unpaid', 'tunai_toko', NULL, 'Ambil Sendiri di Toko Utama', '2026-07-09 00:09:03', '2026-07-09 00:09:03'),
+	(7, 'ORD-20260709-6907FDCE', '32394b22-956f-4161-a45c-da7ded058428', NULL, 135000.00, 0.00, 'pending', 'unpaid', 'tunai_toko', NULL, 'Ambil Sendiri di Toko Utama', '2026-07-09 00:09:37', '2026-07-09 00:09:37'),
+	(8, 'ORD-20260709-4C8160F0', '32394b22-956f-4161-a45c-da7ded058428', NULL, 39000000.00, 0.00, 'pending', 'unpaid', 'tunai_toko', NULL, 'Ambil Sendiri di Toko Utama', '2026-07-09 00:31:33', '2026-07-09 00:31:33'),
+	(9, 'ORD-20260709-AFB341F9', '32394b22-956f-4161-a45c-da7ded058428', NULL, 270000.00, 0.00, 'pending', 'unpaid', 'tunai_toko', NULL, 'Ambil Sendiri di Toko Utama', '2026-07-09 00:35:47', '2026-07-09 00:35:47'),
+	(10, 'ORD-20260709-A0D47620', '32394b22-956f-4161-a45c-da7ded058428', NULL, 78025000.00, 0.00, 'pending', 'unpaid', 'transfer_manual', NULL, 'Simo Angin Angin, Wonoayu, Sidoarjo, East Java, 61264, Indonesia, Sidoarjo 61264', '2026-07-09 00:36:13', '2026-07-09 00:36:13'),
+	(11, 'ORD-20260709-8D6D1F0F', '32394b22-956f-4161-a45c-da7ded058428', NULL, 150000.00, 0.00, 'pending', 'unpaid', 'transfer_manual', NULL, 'Simo Angin Angin, Wonoayu, Sidoarjo, East Java, 61264, Indonesia, Sidoarjo 61264', '2026-07-09 00:36:48', '2026-07-09 00:36:48'),
+	(12, 'ORD-20260709-C3D6DE76', '32394b22-956f-4161-a45c-da7ded058428', NULL, 39015000.00, 0.00, 'pending', 'unpaid', 'midtrans', '68de5bf5-ca4b-40dd-9709-09ee0cd720f1', 'Simo Angin Angin, Wonoayu, Sidoarjo, East Java, 61264, Indonesia, Sidoarjo 61264', '2026-07-09 00:37:30', '2026-07-09 00:37:30'),
+	(13, 'ORD-20260709-33F01E33', '32394b22-956f-4161-a45c-da7ded058428', NULL, 150000.00, 0.00, 'pending', 'unpaid', 'midtrans', 'b12a8b07-a892-4921-9727-3ad2615c5558', 'Simo Angin Angin, Wonoayu, Sidoarjo, East Java, 61264, Indonesia, Sidoarjo 61264', '2026-07-09 00:43:57', '2026-07-09 00:43:57'),
+	(14, 'ORD-20260709-11824DCD', '32394b22-956f-4161-a45c-da7ded058428', NULL, 39015000.00, 0.00, 'pending', 'unpaid', 'midtrans', 'fcb6f7de-7c28-4079-8aeb-3594f3d7734b', 'Simo Angin Angin, Wonoayu, Sidoarjo, East Java, 61264, Indonesia, Sidoarjo 61264', '2026-07-09 01:03:58', '2026-07-09 01:03:58');
 
 -- Dumping structure for table kishamarket.order_items
 CREATE TABLE IF NOT EXISTS `order_items` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `order_id` bigint unsigned NOT NULL,
+  `sub_order_id` bigint unsigned NOT NULL,
   `product_id` bigint unsigned NOT NULL,
-  `store_id` bigint unsigned NOT NULL,
-  `product_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `sku` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `product_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sku` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `price` decimal(12,2) NOT NULL,
-  `quantity` int NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
+  `quantity` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `order_items_store_id_index` (`store_id`),
-  KEY `order_items_product_id_index` (`product_id`),
-  KEY `order_items_order_id_foreign` (`order_id`),
-  CONSTRAINT `order_items_order_id_foreign` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `fk_order_items_sub_order` (`sub_order_id`),
+  KEY `fk_order_items_product` (`product_id`),
+  CONSTRAINT `fk_order_items_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`),
+  CONSTRAINT `fk_order_items_sub_order` FOREIGN KEY (`sub_order_id`) REFERENCES `sub_orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.order_items: ~1 rows (approximately)
-INSERT IGNORE INTO `order_items` (`id`, `order_id`, `product_id`, `store_id`, `product_name`, `sku`, `price`, `quantity`, `created_at`, `updated_at`) VALUES
-	(23, 20, 11, 20, 'Produk Varian ID 11', 'SKU-VAR-11', 100000.00, 3, '2026-07-01 01:24:14', '2026-07-01 01:24:14');
+-- Dumping data for table kishamarket.order_items: ~4 rows (approximately)
+INSERT IGNORE INTO `order_items` (`id`, `sub_order_id`, `product_id`, `product_name`, `sku`, `price`, `quantity`, `created_at`, `updated_at`) VALUES
+	(2, 4, 2, 'Hitam - L', 'TSHIRT-BLK-L', 45000.00, 3, '2026-07-08 23:58:17', '2026-07-08 23:58:17'),
+	(3, 5, 1, 'RAM 16GB / SSD 512GB', 'ROG-G14-RAM16', 19500000.00, 2, '2026-07-09 00:07:09', '2026-07-09 00:07:09'),
+	(4, 6, 1, 'RAM 16GB / SSD 512GB', 'ROG-G14-RAM16', 19500000.00, 2, '2026-07-09 00:09:03', '2026-07-09 00:09:03'),
+	(5, 7, 2, 'Hitam - L', 'TSHIRT-BLK-L', 45000.00, 3, '2026-07-09 00:09:37', '2026-07-09 00:09:37'),
+	(6, 8, 1, 'RAM 16GB / SSD 512GB', 'ROG-G14-RAM16', 19500000.00, 2, '2026-07-09 00:31:33', '2026-07-09 00:31:33'),
+	(7, 9, 2, 'Hitam - L', 'TSHIRT-BLK-L', 45000.00, 6, '2026-07-09 00:35:48', '2026-07-09 00:35:48'),
+	(8, 10, 1, 'RAM 16GB / SSD 512GB', 'ROG-G14-RAM16', 19500000.00, 4, '2026-07-09 00:36:13', '2026-07-09 00:36:13'),
+	(9, 11, 2, 'Hitam - L', 'TSHIRT-BLK-L', 45000.00, 3, '2026-07-09 00:36:48', '2026-07-09 00:36:48'),
+	(10, 12, 1, 'RAM 16GB / SSD 512GB', 'ROG-G14-RAM16', 19500000.00, 2, '2026-07-09 00:37:30', '2026-07-09 00:37:30'),
+	(11, 13, 2, 'Hitam - L', 'TSHIRT-BLK-L', 45000.00, 3, '2026-07-09 00:43:57', '2026-07-09 00:43:57'),
+	(12, 14, 1, 'RAM 16GB / SSD 512GB', 'ROG-G14-RAM16', 19500000.00, 2, '2026-07-09 01:03:58', '2026-07-09 01:03:58');
 
 -- Dumping structure for table kishamarket.password_reset_tokens
 CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
@@ -285,6 +314,24 @@ CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Dumping data for table kishamarket.password_reset_tokens: ~0 rows (approximately)
+
+-- Dumping structure for table kishamarket.payments
+CREATE TABLE IF NOT EXISTS `payments` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `order_number` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `transaction_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `payment_method` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `amount` decimal(12,2) NOT NULL,
+  `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `payload` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_payments_order_number` (`order_number`),
+  CONSTRAINT `fk_payments_order_number` FOREIGN KEY (`order_number`) REFERENCES `orders` (`order_number`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table kishamarket.payments: ~0 rows (approximately)
 
 -- Dumping structure for table kishamarket.personal_access_tokens
 CREATE TABLE IF NOT EXISTS `personal_access_tokens` (
@@ -302,7 +349,7 @@ CREATE TABLE IF NOT EXISTS `personal_access_tokens` (
   UNIQUE KEY `personal_access_tokens_token_unique` (`token`),
   KEY `personal_access_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`),
   KEY `personal_access_tokens_expires_at_index` (`expires_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=172 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=178 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Dumping data for table kishamarket.personal_access_tokens: ~96 rows (approximately)
 INSERT IGNORE INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `name`, `token`, `abilities`, `last_used_at`, `expires_at`, `created_at`, `updated_at`) VALUES
@@ -397,11 +444,16 @@ INSERT IGNORE INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_
 	(157, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'Laptop-Asus', '1eff7fe581905bcd1182c05f53d75d717dafde159f788a80abc451784194baa4', '["access-api","active-role:seller"]', '2026-06-29 01:34:34', NULL, '2026-06-29 01:33:15', '2026-06-29 01:34:34'),
 	(159, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'Laptop-Asus', 'f4e23d5c45ae9ec001820c6500f8b34f4f7b088bbaef9f4e3e6263b1c5be5d06', '["access-api","active-role:seller"]', '2026-06-29 02:24:51', NULL, '2026-06-29 01:36:59', '2026-06-29 02:24:51'),
 	(161, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'Laptop-Asus', '094c54f8388592627a8fba0668e9179939576c2f0bdbd34375ba51ae4cff07b4', '["access-api","active-role:seller"]', '2026-07-06 21:23:20', NULL, '2026-06-29 05:55:17', '2026-07-06 21:23:20'),
-	(162, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'iPhone 15 Pro', 'dd558e77efc682f943c3502313981bcdc80e3ddfbe665aeeb2573eadb507a8b4', '["access-api","active-role:buyer"]', '2026-07-01 01:24:14', NULL, '2026-06-30 21:05:56', '2026-07-01 01:24:14'),
+	(162, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'iPhone 15 Pro', 'dd558e77efc682f943c3502313981bcdc80e3ddfbe665aeeb2573eadb507a8b4', '["access-api","active-role:buyer"]', '2026-07-08 19:16:31', NULL, '2026-06-30 21:05:56', '2026-07-08 19:16:31'),
 	(164, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'Laptop-Asus', '59cf3717b4e47384488ceebbf4247857b2e7517c23a957ad169575d76c4afddf', '["access-api","active-role:seller"]', '2026-07-02 20:39:38', NULL, '2026-07-02 20:38:57', '2026-07-02 20:39:38'),
 	(165, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'iPhone 15 Pro', '63ebfb37b3c4964b4325abb1e7e163ecc76b02dd9351a09c719f1be5e8aea06c', '["access-api","active-role:buyer"]', '2026-07-02 23:16:52', NULL, '2026-07-02 23:15:56', '2026-07-02 23:16:52'),
 	(168, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'Laptop-Asus', 'f0fdec1280a1445f9a48ecf1c16d0df61b3c4cf17600935f14a157f6ebac5566', '["access-api","active-role:admin"]', '2026-07-03 02:26:21', NULL, '2026-07-03 02:25:50', '2026-07-03 02:26:21'),
-	(171, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'Laptop-Asus', 'a3cb38c7a22e3f5d1326bd4d6ea07c2ea162d0922d9303cd0ed3a44de64ea6cf', '["access-api","active-role:seller"]', '2026-07-03 02:31:06', NULL, '2026-07-03 02:30:50', '2026-07-03 02:31:06');
+	(171, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'Laptop-Asus', 'a3cb38c7a22e3f5d1326bd4d6ea07c2ea162d0922d9303cd0ed3a44de64ea6cf', '["access-api","active-role:seller"]', '2026-07-03 02:31:06', NULL, '2026-07-03 02:30:50', '2026-07-03 02:31:06'),
+	(172, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'iPhone 15 Pro', 'f39c25a722b55467ba193ceacfbb059197b048a67932a9dd06fab786250c9fd3', '["access-api","active-role:buyer"]', NULL, NULL, '2026-07-08 00:51:02', '2026-07-08 00:51:02'),
+	(173, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'iPhone 15 Pro', '67e51cf2377ea01f61a9b9a9cd8bc9ab79df6af6ff3c22f9fd0c28dcb0b752d0', '["access-api","active-role:buyer"]', NULL, NULL, '2026-07-08 00:53:32', '2026-07-08 00:53:32'),
+	(175, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'Laptop-Asus', '7ccf0271f8cea38e500a0cdc7d2ab19e61f42d3407f4aca2e7bb83faa70cfcc3', '["access-api","active-role:seller"]', '2026-07-08 20:38:43', NULL, '2026-07-08 20:26:51', '2026-07-08 20:38:43'),
+	(176, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'iPhone 15 Pro', '8927d38ec6b18d05f7d76fe95473da63aba8caebe9200e390f362b9a43c69826', '["access-api","active-role:buyer"]', '2026-07-08 20:43:30', NULL, '2026-07-08 20:42:39', '2026-07-08 20:43:30'),
+	(177, 'App\\Domains\\Identity\\Domain\\Entities\\User', '32394b22-956f-4161-a45c-da7ded058428', 'iPhone 15 Pro', '146974f5e7cd815c4f253290053e2618e774e492e361f99cc4b735cb4503122b', '["access-api","active-role:buyer"]', '2026-07-09 01:03:55', NULL, '2026-07-08 21:34:28', '2026-07-09 01:03:55');
 
 -- Dumping structure for table kishamarket.products
 CREATE TABLE IF NOT EXISTS `products` (
@@ -425,14 +477,10 @@ CREATE TABLE IF NOT EXISTS `products` (
   CONSTRAINT `fk_products_store` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.products: ~6 rows (approximately)
+-- Dumping data for table kishamarket.products: ~2 rows (approximately)
 INSERT IGNORE INTO `products` (`id`, `store_id`, `primary_category_id`, `name`, `slug`, `description`, `brand`, `thumbnail`, `status`, `is_active`, `created_at`, `updated_at`) VALUES
-	(1, 35, 69, 'Kemeja Flanel dwcjdw', 'kemeja-flanel-premiujjjm-kjaxkjakjunisex', 'Kemeja flanel berkualitas tinggi dengan bahan katun 100% yang nyaman digunakan sehari-hari.', 'OxCloth', NULL, 'published', 1, '2026-06-29 06:03:40', '2026-06-29 06:10:25'),
-	(3, 35, 69, 'Kemeja Flanel Premiumssjjs', 'kemeja-flanel-premium-kjaxkjakjunisex', 'Kemeja flanel berkualitas tinggi dengan bahan katun 100% yang nyaman digunakan sehari-hari.', 'OxCloth', NULL, 'published', 1, '2026-06-29 06:08:18', '2026-06-29 06:08:18'),
-	(5, 35, 69, 'Kemeja Flanel dwcjxb zdw', 'kemeja-flanel-premiuxxxjjjm-kjaxkjakjunisex', 'Kemeja flanel berkualitas tinggi dengan bahan katun 100% yang nyaman digunakan sehari-hari.', 'OxCloth', NULL, 'published', 1, '2026-06-29 06:22:53', '2026-06-29 06:22:53'),
-	(6, 35, 69, 'Kemeja Flanel dwcsqkjswkjjsjdw', 'kemeja-flanel-premdkjjbkiujjjm-kjaxkjakjunisex', 'Kemejshshka flanel berkualitas tinggi dengan bahan katun 100% yang nyaman digunakan sehari-hari.', 'OxCloth', NULL, 'published', 1, '2026-06-29 06:24:24', '2026-06-29 06:24:48'),
-	(8, 35, 69, 'Kemeja Flanel dwcsqkjswkjjsbjkjkjdw', 'kemeja-flanel-dwcsqkjswkjjsbjkjkjdw', 'Kemejshshka flanel berkualitas tinggi dengan bahan katun 100% yang nyaman digunakan sehari-hari.', 'OxCloth', NULL, 'published', 1, '2026-06-29 06:25:34', '2026-06-29 06:25:34'),
-	(9, 35, 69, 'Sepatu Running Aero', 'sepatu-running-aero', NULL, 'AeroStride', NULL, 'draft', 1, '2026-06-29 06:27:01', '2026-06-29 06:27:01');
+	(1, 35, 3, 'Asus ROG Zephyrus G14', 'asus-rog-zephyrus-g14', 'Laptop gaming tipis dan bertenaga tinggi dengan prosesor generasi terbaru.', 'Asus', 'https://picsum.photos/200/200', 'published', 1, '2026-07-07 04:48:45', '2026-07-07 04:48:45'),
+	(2, 35, 74, 'Kaos Polos Cotton Combed 30s', 'kaos-polos-cotton-combed-30s', 'Kaos polos premium bahan katun combed 30s, adem dan nyaman dipakai seharian.', 'BasicWear', 'https://picsum.photos/200/200', 'published', 1, '2026-07-07 04:48:45', '2026-07-08 02:01:48');
 
 -- Dumping structure for table kishamarket.product_attributes
 CREATE TABLE IF NOT EXISTS `product_attributes` (
@@ -444,11 +492,12 @@ CREATE TABLE IF NOT EXISTS `product_attributes` (
   UNIQUE KEY `attributes_slug_unique` (`slug`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.product_attributes: ~3 rows (approximately)
+-- Dumping data for table kishamarket.product_attributes: ~4 rows (approximately)
 INSERT IGNORE INTO `product_attributes` (`id`, `name`, `slug`, `type`) VALUES
-	(1, 'Warna', 'warna', 'select'),
-	(3, 'Wadhbrna', 'wadhbrna', 'select'),
-	(4, 'Kemeja Flanel Premium - Ukuran XL', 'kemeja-flanel-premium-ukuran-xl', 'select');
+	(1, 'Bahan', 'bahan', 'text'),
+	(2, 'Ukuran', 'ukuran', 'select'),
+	(3, 'Warna', 'warna', 'select'),
+	(4, 'Kapasitas RAM', 'kapasitas-ram', 'select');
 
 -- Dumping structure for table kishamarket.product_attribute_values
 CREATE TABLE IF NOT EXISTS `product_attribute_values` (
@@ -461,9 +510,12 @@ CREATE TABLE IF NOT EXISTS `product_attribute_values` (
   KEY `fk_pav_attribute` (`attribute_id`),
   CONSTRAINT `fk_pav_attribute` FOREIGN KEY (`attribute_id`) REFERENCES `product_attributes` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_pav_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.product_attribute_values: ~0 rows (approximately)
+-- Dumping data for table kishamarket.product_attribute_values: ~2 rows (approximately)
+INSERT IGNORE INTO `product_attribute_values` (`id`, `product_id`, `attribute_id`, `value`) VALUES
+	(1, 1, 1, 'Aluminium Chassis'),
+	(2, 2, 1, '100% Katun Combed 30s');
 
 -- Dumping structure for table kishamarket.product_categories
 CREATE TABLE IF NOT EXISTS `product_categories` (
@@ -476,14 +528,12 @@ CREATE TABLE IF NOT EXISTS `product_categories` (
   CONSTRAINT `fk_pc_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.product_categories: ~6 rows (approximately)
+-- Dumping data for table kishamarket.product_categories: ~4 rows (approximately)
 INSERT IGNORE INTO `product_categories` (`product_id`, `category_id`, `is_primary`) VALUES
-	(1, 69, 1),
-	(3, 69, 1),
-	(5, 69, 1),
-	(6, 69, 1),
-	(8, 69, 1),
-	(9, 69, 1);
+	(1, 1, 0),
+	(1, 76, 1),
+	(2, 76, 0),
+	(2, 77, 1);
 
 -- Dumping structure for table kishamarket.product_images
 CREATE TABLE IF NOT EXISTS `product_images` (
@@ -499,9 +549,13 @@ CREATE TABLE IF NOT EXISTS `product_images` (
   KEY `product_images_product_id_is_primary_index` (`product_id`,`is_primary`),
   KEY `idx_product_images_sort_order` (`product_id`,`sort_order`),
   CONSTRAINT `product_images_product_id_foreign` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.product_images: ~0 rows (approximately)
+-- Dumping data for table kishamarket.product_images: ~3 rows (approximately)
+INSERT IGNORE INTO `product_images` (`id`, `product_id`, `url`, `alt_text`, `is_primary`, `sort_order`, `created_at`, `updated_at`) VALUES
+	(1, 1, 'https://picsum.photos/500/500?random=1', 'Tampak Depan Asus ROG', 1, 0, '2026-07-07 04:48:45', '2026-07-07 04:48:45'),
+	(2, 1, 'https://picsum.photos/500/500?random=2', 'Tampak Samping Asus ROG', 0, 1, '2026-07-07 04:48:45', '2026-07-07 04:48:45'),
+	(3, 2, 'https://picsum.photos/500/500?random=3', 'Kaos Hitam Depan', 1, 0, '2026-07-07 04:48:45', '2026-07-07 04:48:45');
 
 -- Dumping structure for table kishamarket.product_variants
 CREATE TABLE IF NOT EXISTS `product_variants` (
@@ -524,20 +578,12 @@ CREATE TABLE IF NOT EXISTS `product_variants` (
   CONSTRAINT `fk_variants_store` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.product_variants: ~12 rows (approximately)
+-- Dumping data for table kishamarket.product_variants: ~4 rows (approximately)
 INSERT IGNORE INTO `product_variants` (`id`, `product_id`, `store_id`, `sku`, `name`, `price`, `stock`, `is_default`, `created_at`, `updated_at`) VALUES
-	(1, 1, 35, 'KEMEJA-FLANEL-PREMIUM-OXCLOTH-CAT69-260629-0001', 'Kemeja Flanel Premium', 0.00, 0, 1, '2026-06-29 06:03:40', '2026-06-29 06:03:40'),
-	(2, 3, 35, 'KEMEJA-FLANEL-PREMIUMSSJJS-OXCLOTH-CAT69-260629-0001', 'Kemeja Flanel Premiumssjjs', 0.00, 0, 1, '2026-06-29 06:08:18', '2026-06-29 06:08:18'),
-	(3, 5, 35, 'KEMEJA-FLANEL-DWCJXB-ZDW-OXCLOTH-CAT69-260629-0001', 'Kemeja Flanel dwcjxb zdw', 0.00, 0, 1, '2026-06-29 06:22:53', '2026-06-29 06:22:53'),
-	(4, 6, 35, 'KEMEJA-FLANEL-DWCSQKJSWKJJSJDW-OXCLOTH-C-260629-0001', 'Kemeja Flanel dwcsqkjswkjjsjdw', 700000.00, 90, 1, '2026-06-29 06:24:24', '2026-06-29 06:24:24'),
-	(5, 8, 35, 'KEMEJA-FLANEL-DWCSQKJSWKJJSBJKJKJDW-OXCL-260629-0001', 'Kemeja Flanel dwcsqkjswkjjsbjkjkjdw', 700000.00, 90, 1, '2026-06-29 06:25:34', '2026-06-29 06:25:34'),
-	(6, 9, 35, 'AERO-RUN-RED-41', 'Sepatu Running Aero - Merah - Ukuran 41', 450000.00, 25, 1, '2026-06-29 06:27:01', '2026-06-29 06:27:01'),
-	(7, 9, 35, 'AERO-RUN-RED-42', 'Sepatu Running Aero - Merah - Ukuran 42', 450000.00, 15, 0, '2026-06-29 06:27:01', '2026-06-29 06:27:01'),
-	(8, 9, 35, 'AERO-RUN-BLK-41', 'Sepatu Running Aero - Hitam - Ukuran 41', 475000.00, 10, 0, '2026-06-29 06:27:01', '2026-06-29 06:27:01'),
-	(9, 1, 35, 'FLNL-PRM-XL', 'Kemeja Flanel Premium - Ukuran XL', 195000.00, 20, 0, '2026-06-29 06:34:04', '2026-06-29 06:34:04'),
-	(10, 1, 35, 'KEMEJA-FLANEL-DWCJDW-XL-MERAH-260629-0001', 'Kemeja Flanel dwcjdw - XL - Merah', 195000.00, 20, 0, '2026-06-29 06:51:48', '2026-06-29 06:51:48'),
-	(11, 1, 35, 'KEMEJA-FLANEL-DWCJDW-XLL-MERAH-260629-0001', 'Kemeja Flanel dwcjdw - XLL - Merah', 195000.00, 290, 0, '2026-06-29 06:52:13', '2026-06-29 06:52:13'),
-	(12, 1, 35, 'KEMEJA-FLANEL-DWCJDW-XLL-MERHHHAH-260629-0001', 'Kemeja Flanel dwcjdw - XLL - Merhhhah', 195000.00, 290, 0, '2026-06-29 06:52:39', '2026-06-29 06:52:39');
+	(1, 1, 35, 'ROG-G14-RAM16', 'RAM 16GB / SSD 512GB', 19500000.00, 10, 1, '2026-07-07 04:48:45', '2026-07-07 04:48:45'),
+	(2, 1, 35, 'ROG-G14-RAM32', 'RAM 32GB / SSD 1TB', 24000000.00, 5, 0, '2026-07-07 04:48:45', '2026-07-07 04:48:45'),
+	(3, 2, 35, 'TSHIRT-BLK-L', 'Hitam - L', 45000.00, 50, 1, '2026-07-07 04:48:45', '2026-07-07 04:48:45'),
+	(4, 2, 35, 'TSHIRT-RED-XL', 'Merah - XL', 47000.00, 30, 0, '2026-07-07 04:48:45', '2026-07-07 04:48:45');
 
 -- Dumping structure for table kishamarket.product_variant_values
 CREATE TABLE IF NOT EXISTS `product_variant_values` (
@@ -552,15 +598,14 @@ CREATE TABLE IF NOT EXISTS `product_variant_values` (
   CONSTRAINT `fk_pvv_variant` FOREIGN KEY (`variant_id`) REFERENCES `product_variants` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.product_variant_values: ~7 rows (approximately)
+-- Dumping data for table kishamarket.product_variant_values: ~6 rows (approximately)
 INSERT IGNORE INTO `product_variant_values` (`id`, `variant_id`, `attribute_id`, `value`) VALUES
-	(1, 9, 3, 'XL'),
-	(2, 10, 3, 'XL'),
-	(3, 10, 4, 'Merah'),
-	(4, 11, 3, 'XLL'),
-	(5, 11, 4, 'Merah'),
-	(8, 12, 3, 'XLL'),
-	(9, 12, 4, 'hitam');
+	(1, 1, 4, '16GB'),
+	(2, 2, 4, '32GB'),
+	(3, 3, 3, 'Hitam'),
+	(4, 3, 2, 'L'),
+	(5, 4, 3, 'Merah'),
+	(6, 4, 2, 'XL');
 
 -- Dumping structure for table kishamarket.promotions
 CREATE TABLE IF NOT EXISTS `promotions` (
@@ -590,7 +635,7 @@ CREATE TABLE IF NOT EXISTS `roles` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.roles: ~3 rows (approximately)
+-- Dumping data for table kishamarket.roles: ~2 rows (approximately)
 INSERT IGNORE INTO `roles` (`id`, `name`, `created_at`) VALUES
 	(1, 'Buyer', '2026-06-04 12:34:54'),
 	(2, 'Seller', '2026-06-04 12:34:54'),
@@ -609,32 +654,28 @@ CREATE TABLE IF NOT EXISTS `sessions` (
   KEY `sessions_last_activity_index` (`last_activity`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.sessions: ~24 rows (approximately)
+-- Dumping data for table kishamarket.sessions: ~1 rows (approximately)
 INSERT IGNORE INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) VALUES
-	('1f6tTR9OuTMcQZv76vr2JU1ocZrxf4JFOIp8Wodg', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJoY0hMR2ExT3ZzT0hGYlFUOGRjMW5CQTc1aHFQSzNWc2FNTlh2UEkwIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1776670743),
-	('1jR37R7PdJSvCsdSpDd2I8YFbCfKFnPqLbTWbBtf', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJPaXROVlU4cWU4T0NRdDJtUFhIcVJ5YzVCVGZjNFdhUFhCamxDeGxBIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LW1hcCIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1783043049),
-	('26XeoyiM8jkSAWcKI7aZWbsqcaIkSg9WRtaMT3Mz', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiIwVGdpdm1NZjdOeU1lc3dWT3g4QjlQUzlaY1J1RFk0QzQ3NnNrdDRIIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782354896),
-	('2keNjE4FWnRDyKxWV5Nhw0qgZVHD9WvSbSnBgN2T', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJEQnlSengwa3o2TzF4cjc1V1ZHOEJlM2ZBR0JIVWhGdzQ0bnFNRHB2IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL21hcmtldC1hcGkudGVzdCIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1779616974),
-	('3KggZokKfEESIs0oRvRGJx5YvsreeM67aCoPQBQ9', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36 Edg/149.0.0.0', 'eyJfdG9rZW4iOiJlcGx5eDN2ZTRRU2t3RzF3WGNOS0I3aVpab2M0MWNTV25kYnlLQVRpIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782351234),
-	('4730JiHxljFc7uNiZ5zkXgqSdtAfpXRyBm1KmNto', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJpWnU2Y3ZPeDB6aTYxcllMWmZXTk5hemFjUTVrajcyS2lVd1F5ejAzIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782355012),
-	('7P5kKjWQ9eCWguVCAtYzmDzC5hKSMTdbqG2Gv10z', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36 Edg/149.0.0.0', 'eyJfdG9rZW4iOiJybWtmdUpaMHFiQnhKZ21LUmdnY2JJNU5OaTJNcnljSGVHYUVKV1lEIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782351229),
-	('7ph2vpardSC9DDHmAbFy3HRdJApcxzg59oQBADJg', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36 Edg/149.0.0.0', 'eyJfdG9rZW4iOiJtSmRTeVdOUVpaOGNuNXk2d3IzWHg1MXYyd3hKM0pGclZsOGExNnVwIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1783043019),
-	('8TMJ3oJz9hof632empJFEOgKaPJlZIlwf0iqVUuE', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiI4Zmk0TmV5TkkwU0NEMDhzZE1QVUtEbXhZQUJ3YWUzTVNhVHFsenQyIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LW1hcCIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1783044420),
-	('Bbb8sn4ccPNnF0UpSjnDHi835aBV5OGtC5JDbqZe', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJKSDVpOERSV3VCdDJuSUVDaG9Ec1VzTGM4V05EbHY1ckd5MTlvSG9pIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL21hcmtldC1hcGkudGVzdCIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1779542384),
-	('ev7s5JCNVWA5f8AxwpPF5ZXobCByfzw6e9EujaV1', NULL, '127.0.0.1', 'PostmanRuntime/7.37.3', 'eyJfdG9rZW4iOiJhNnlVTWxUUGl1TDdyMTlzYTFCcVNVZnBVQ2JqRGEycW5qUllXeWNvIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1776664754),
-	('HeAnjVmCnXKXlA0LbCaJhvCZl9pJ1S5IJyWdpEgU', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJ4TURydk90T282UGJCWlNBTTR3d0JjeDBsWENadm5Ia291YUlZUWlKIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782351250),
-	('HP33qdWDpAtr2cqwRW6ItY5kIAN4hMcFD7Kn5IM3', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJmaEkya3dtWlltS2lYeVlyd0JBZFp3YWY3Z1B0TXV5UlNMTEZGcXhnIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1777269692),
-	('HXMVHcjZGU2EM47dYUiwMmHWZ7prmW1CWhVydwdL', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiI3OHk4QkJFSmNqTEFjeG5XdTM5bldENHdUdHVEYW9zaHVBSEl2YnVxIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LW1hcCIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1783059380),
-	('KTvSNNdtAJc8r9gJb2HRCVeeo7Nz84jJsuDFcPMx', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiI3ekUwQUpvTFlXQ094R1BxcEwybVBKTEVXRHFPZGlTSG9sUHZkWU5PIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC9zYW5jdHVtXC9jc3JmLWNvb2tpZSIsInJvdXRlIjoic2FuY3R1bS5jc3JmLWNvb2tpZSJ9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1779631378),
-	('Mq9X09SFRjZ8XOwJsI9cJnfKhLPbeLWYK09N9XD1', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJ3YU5IVHBCblpNM1l0ckJiZER4VmJlTHhRdW1DMkFGeHRBNDJUMVBEIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LW1hcCIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1783043669),
-	('MzWUUhb023v7FhmvXzq0FBPwLwtq94QtLJcy4MYm', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJLTE81ZWpyOEJYVHlSR1lpeDJ5YnpzMkpqN1RXTTNKdzVENURXNHEyIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LW1hcCIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1783044296),
-	('OOeClB6Boiq4wHlSWaWi0l0ZvrwJVz26MIG0Oca7', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJyQzZ5R2oySkRFQ25Sd0hzMWlvd043WTFmVTdGR2VZaHpYSkhVaEk1IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LW1hcCIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1783049828),
-	('R9gPnyuxuzuQOXy9OWlSxKdiv8TgWjbKkRcchcDW', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJHbTJSV2FNMnNCWDhkaXU4N1dvOGNaUlp3WGFvQlI4V0VPTTlmSFl6IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL21hcmtldC1hcGkudGVzdCIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1779510889),
-	('roV0NSRVI84goonXBmbWjScGWZtgCHolVHN1m7jr', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJPTFIwUldaVWNOa3FDWHB6VnR3OHowQjhBdURMUjY2Mm52SzNIa0U1IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782351667),
-	('Scl8HU7PJqj8HlaJBQWAgNksUxuy9O0MyJrVaynN', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiI2cFhLVFFtQ2wzOUVQbFdrZkFoaUptd2JtdXN5R0dOT0pwUmt1OXRSIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1776670741),
-	('TGFQSfz9zNriU4KhYcfKiscu176v6XoZMsZ9rOGX', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', 'eyJfdG9rZW4iOiJxeFFXOTU2OWJldmFYdldUUXFGQWtHUndSWWs4S3N4SEJucDlkYWYyIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1779257821),
-	('WjLyNWOF1Grkl5A8OnFex9fIE5HfQFHFvEpQb4YA', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJ1cU1rQkxSUExoWGRlUk05YkJIR1NIbllHMWVMbTRoblFFa0pyNXBZIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782351725),
-	('XutD4k1ElmM6xit3Z5C2atiINiJQTncbo5WLd6VG', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36 Edg/149.0.0.0', 'eyJfdG9rZW4iOiI4eFVrRm9nVFJEZ21QMGQxbmhnRzJDT2UwN0l4Wlg0TjVWVmtpU25aIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1782351232);
+	('Rb3v3BZZXpHWmyEp2jTciDQPPQgxVTz7xwjgFQh5', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJRV0ZPUUJQNkZvQXR4ZkRiaTUzQlFJeHFhRzY0a29wMURFeWxUZWpUIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LWNoZWNrb3V0Iiwicm91dGUiOiJjaGVja291dC50ZXN0In0sIl9mbGFzaCI6eyJvbGQiOltdLCJuZXciOltdfX0=', 1783578467),
+	('vrp9oz92eL9CYiqMMVoay4gzdpPbAO4kRe9oSx2j', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJIdUxiVnlud2hjaTMwTEFuWk05aHlpWWhEZ3Z6SzFBdEdNNzhyZGNLIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1783564671),
+	('xLWsbQehQh3ApeWQ4kbg5OvGTE4UdvGSOWlIwS0a', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiI5SmkxWEg5VUM3UG5uUXo2QnZZVktabFdGNTlrMTEwT3djUnhROHV2IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwXC90ZXN0LWZpcmViYXNlLWxvZ2luIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1783500968);
+
+-- Dumping structure for table kishamarket.shipping_settings
+CREATE TABLE IF NOT EXISTS `shipping_settings` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `store_id` bigint unsigned NOT NULL,
+  `store_latitude` decimal(10,8) NOT NULL,
+  `store_longitude` decimal(11,8) NOT NULL,
+  `free_shipping_max_distance` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `default_flat_rate` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_shipping_settings_store` (`store_id`),
+  CONSTRAINT `fk_shipping_settings_store` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table kishamarket.shipping_settings: ~0 rows (approximately)
 
 -- Dumping structure for table kishamarket.stores
 CREATE TABLE IF NOT EXISTS `stores` (
@@ -659,7 +700,7 @@ CREATE TABLE IF NOT EXISTS `stores` (
   CONSTRAINT `stores_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.stores: ~1 rows (approximately)
+-- Dumping data for table kishamarket.stores: ~0 rows (approximately)
 INSERT IGNORE INTO `stores` (`id`, `user_id`, `name`, `slug`, `description`, `short_description`, `phone`, `email`, `city`, `province`, `address`, `is_active`, `logo`, `created_at`, `updated_at`) VALUES
 	(35, '32394b22-956f-4161-a45c-da7ded058428', 'Elekdjkdjkdkjtronik', 'elekdjkdjkdkjtronik', NULL, NULL, '081234567890', NULL, 'Sidoarjo', 'Jawa Timur', 'Jl. Raya Gedangan No. 12', 1, NULL, '2026-06-28 20:16:29', '2026-06-28 20:16:29');
 
@@ -686,9 +727,45 @@ CREATE TABLE IF NOT EXISTS `store_details` (
   CONSTRAINT `fk_store_details_store` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.store_details: ~1 rows (approximately)
+-- Dumping data for table kishamarket.store_details: ~0 rows (approximately)
 INSERT IGNORE INTO `store_details` (`id`, `store_id`, `owner_name`, `owner_phone`, `description`, `shipping_policy`, `return_policy`, `open_days`, `open_time`, `close_time`, `whatsapp_url`, `instagram_url`, `tiktok_url`, `website_url`, `created_at`, `updated_at`) VALUES
 	(6, 35, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-06-28 20:16:29', '2026-06-28 20:16:29');
+
+-- Dumping structure for table kishamarket.sub_orders
+CREATE TABLE IF NOT EXISTS `sub_orders` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `order_id` bigint unsigned NOT NULL,
+  `store_id` bigint unsigned NOT NULL,
+  `sub_order_number` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `total_items_price` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `shipping_cost` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `courier` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `destination_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `tracking_number` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `sub_order_number` (`sub_order_number`),
+  KEY `fk_sub_orders_parent` (`order_id`),
+  KEY `fk_sub_orders_store` (`store_id`),
+  CONSTRAINT `fk_sub_orders_parent` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_sub_orders_store` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table kishamarket.sub_orders: ~10 rows (approximately)
+INSERT IGNORE INTO `sub_orders` (`id`, `order_id`, `store_id`, `sub_order_number`, `total_items_price`, `shipping_cost`, `courier`, `destination_id`, `status`, `tracking_number`, `created_at`, `updated_at`) VALUES
+	(4, 4, 35, 'ORD-20260709-146381CF-S35', 135000.00, 0.00, 'ambil_sendiri', 'STORE-PICKUP', 'pending', NULL, '2026-07-08 23:58:17', '2026-07-08 23:58:17'),
+	(5, 5, 35, 'ORD-20260709-F2067DE6-S35', 39000000.00, 0.00, 'ambil_sendiri', 'STORE-PICKUP', 'pending', NULL, '2026-07-09 00:07:09', '2026-07-09 00:07:09'),
+	(6, 6, 35, 'ORD-20260709-7401449C-S35', 39000000.00, 0.00, 'ambil_sendiri', 'STORE-PICKUP', 'pending', NULL, '2026-07-09 00:09:03', '2026-07-09 00:09:03'),
+	(7, 7, 35, 'ORD-20260709-6907FDCE-S35', 135000.00, 0.00, 'ambil_sendiri', 'STORE-PICKUP', 'pending', NULL, '2026-07-09 00:09:37', '2026-07-09 00:09:37'),
+	(8, 8, 35, 'ORD-20260709-4C8160F0-S35', 39000000.00, 0.00, 'ambil_sendiri', 'STORE-PICKUP', 'pending', NULL, '2026-07-09 00:31:33', '2026-07-09 00:31:33'),
+	(9, 9, 35, 'ORD-20260709-AFB341F9-S35', 270000.00, 0.00, 'ambil_sendiri', 'STORE-PICKUP', 'pending', NULL, '2026-07-09 00:35:48', '2026-07-09 00:35:48'),
+	(10, 10, 35, 'ORD-20260709-A0D47620-S35', 78000000.00, 25000.00, 'express', '31761264', 'pending', NULL, '2026-07-09 00:36:13', '2026-07-09 00:36:13'),
+	(11, 11, 35, 'ORD-20260709-8D6D1F0F-S35', 135000.00, 15000.00, 'jne', '31761264', 'pending', NULL, '2026-07-09 00:36:48', '2026-07-09 00:36:48'),
+	(12, 12, 35, 'ORD-20260709-C3D6DE76-S35', 39000000.00, 15000.00, 'jne', '31761264', 'pending', NULL, '2026-07-09 00:37:30', '2026-07-09 00:37:30'),
+	(13, 13, 35, 'ORD-20260709-33F01E33-S35', 135000.00, 15000.00, 'jne', '31761264', 'pending', NULL, '2026-07-09 00:43:57', '2026-07-09 00:43:57'),
+	(14, 14, 35, 'ORD-20260709-11824DCD-S35', 39000000.00, 15000.00, 'jne', '31761264', 'pending', NULL, '2026-07-09 01:03:58', '2026-07-09 01:03:58');
 
 -- Dumping structure for table kishamarket.users
 CREATE TABLE IF NOT EXISTS `users` (
@@ -778,7 +855,7 @@ CREATE TABLE IF NOT EXISTS `wishlists` (
   KEY `idx_wishlists_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.wishlists: ~1 rows (approximately)
+-- Dumping data for table kishamarket.wishlists: ~0 rows (approximately)
 INSERT IGNORE INTO `wishlists` (`id`, `user_id`, `name`, `created_at`, `updated_at`) VALUES
 	('99f1ba3d-5472-4338-87c7-cb36455b99b8', 'fe55a239-8462-4e8f-99e1-3755faa6507a', 'Utama', '2026-06-25 01:26:01', '2026-06-25 01:26:01');
 
@@ -795,9 +872,61 @@ CREATE TABLE IF NOT EXISTS `wishlist_items` (
   CONSTRAINT `fk_wi_wishlist` FOREIGN KEY (`wishlist_id`) REFERENCES `wishlists` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table kishamarket.wishlist_items: ~1 rows (approximately)
+-- Dumping data for table kishamarket.wishlist_items: ~0 rows (approximately)
 INSERT IGNORE INTO `wishlist_items` (`id`, `wishlist_id`, `product_id`, `added_at`) VALUES
 	(9, '99f1ba3d-5472-4338-87c7-cb36455b99b8', 10, '2026-06-25 01:26:01');
+
+-- Dumping structure for trigger kishamarket.before_category_update
+SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+DELIMITER //
+CREATE TRIGGER `before_category_update` BEFORE UPDATE ON `categories` FOR EACH ROW BEGIN
+    -- Menggunakan NOT (OLD <=> NEW) sebagai pengganti IS DISTINCT FROM yang aman untuk nilai NULL
+    IF NOT (OLD.parent_id <=> NEW.parent_id) THEN
+        IF NEW.parent_id IS NULL THEN
+            -- Jika parent_id diubah jadi NULL, otomatis turunkan ke level 1
+            SET NEW.level = 1;
+        ELSE
+            -- Jika diubah ke parent baru, set level sesuai level parent + 1
+            SET NEW.level = (SELECT level FROM categories WHERE id = NEW.parent_id) + 1;
+        END IF;
+    END IF;
+END//
+DELIMITER ;
+SET SQL_MODE=@OLDTMP_SQL_MODE;
+
+-- Dumping structure for trigger kishamarket.tg_addresses_validate_owner_insert
+SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+DELIMITER //
+CREATE TRIGGER `tg_addresses_validate_owner_insert` BEFORE INSERT ON `addresses` FOR EACH ROW BEGIN
+    IF (NEW.user_id IS NOT NULL AND NEW.store_id IS NOT NULL) THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Gagal: Alamat tidak boleh memiliki user_id dan store_id sekaligus.';
+    END IF;
+    
+    IF (NEW.user_id IS NULL AND NEW.store_id IS NULL) THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Gagal: Alamat harus dikaitkan dengan kelayakan salah satu owner (user_id atau store_id).';
+    END IF;
+END//
+DELIMITER ;
+SET SQL_MODE=@OLDTMP_SQL_MODE;
+
+-- Dumping structure for trigger kishamarket.tg_addresses_validate_owner_update
+SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+DELIMITER //
+CREATE TRIGGER `tg_addresses_validate_owner_update` BEFORE UPDATE ON `addresses` FOR EACH ROW BEGIN
+    IF (NEW.user_id IS NOT NULL AND NEW.store_id IS NOT NULL) THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Gagal: Alamat tidak boleh memiliki user_id dan store_id sekaligus.';
+    END IF;
+    
+    IF (NEW.user_id IS NULL AND NEW.store_id IS NULL) THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Gagal: Alamat harus dikaitkan dengan kelayakan salah satu owner (user_id atau store_id).';
+    END IF;
+END//
+DELIMITER ;
+SET SQL_MODE=@OLDTMP_SQL_MODE;
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;

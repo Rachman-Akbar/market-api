@@ -22,4 +22,9 @@ class SubOrderModel extends Model
     {
         return $this->hasMany(OrderItemModel::class, 'sub_order_id');
     }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(\App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel::class, 'store_id');
+    }
 }

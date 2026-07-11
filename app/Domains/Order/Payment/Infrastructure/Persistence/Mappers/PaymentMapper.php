@@ -16,7 +16,7 @@ final class PaymentMapper
             paymentMethod: $model->payment_method,
             amount: $model->amount,
             status: $model->status,
-            payload: $model->payload
+            payload: is_array($model->payload) ? $model->payload : (json_decode((string) $model->payload, true) ?: null)
         );
     }
 

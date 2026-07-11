@@ -1,42 +1,35 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Order\Payment\Presentation\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use App\Domains\Order\Payment\Application\UseCases\HandleMidtransWebhookUseCase;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
-class MidtransWebhookController extends Controller
+final class MidtransWebhookController extends Controller
 {
-    public function __construct(
-        private HandleMidtransWebhookUseCase $webhookUseCase
-    ) {}
+    public function __construct(private HandleMidtransWebhookUseCase $webhookUseCase) {}
 
     public function handleNotification(Request $request): JsonResponse
     {
         try {
-            $payload = $request->all();
-
-            // Eksekusi Logika Bisnis & Validasi Keamanan
-            $this->webhookUseCase->execute($payload);
-
-            // Midtrans hanya butuh HTTP status 200 OK sebagai tanda notifikasi berhasil diterima
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Midtrans notification handled and verified successfully.'
-            ], 200);
-
-        } catch (\Exception $e) {
-            // Tulis error ke log laravel agar Anda bisa menelusuri jika ada kegagalan manipulasi signature
-            Log::error('Midtrans Webhook Error: ' . $e->getMessage(), [
-                'payload' => $request->all()
+            $this->webhookUseCase->execute($request->all());
+            return response()->json(['success' => true, 'message' => 'Notifikasi Midtrans berhasil diproses.']);
+        } catch (Throwable $exception) {
+            Log::warning('Midtrans webhook rejected', [
+                'message' => $exception->getMessage(),
+                'order_id' => $request->input('order_id'),
+                'transaction_status' => $request->input('transaction_status'),
             ]);
 
             return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage()
+                'success' => false,
+                'message' => $exception->getMessage(),
             ], 400);
         }
     }

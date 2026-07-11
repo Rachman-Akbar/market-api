@@ -15,6 +15,7 @@ Route::prefix('auth')
         Route::post('/password-register', [AuthController::class, 'passwordRegister'])->name('password-register');
         Route::post('/password-login', [AuthController::class, 'passwordLogin'])->name('password-login');
         Route::post('/firebase-login', [AuthController::class, 'firebaseLogin'])->middleware(ValidateFirebaseToken::class)->name('firebase-login');
+        Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->name('forgot-password');
 
         // --- Protected Routes ---
         Route::middleware(['auth:sanctum'])->group(function (): void {

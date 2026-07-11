@@ -6,9 +6,6 @@ namespace App\Domains\Order\Ordering\Domain\Entities;
 
 final class Order
 {
-    /**
-     * @param SubOrder[] $subOrders
-     */
     public function __construct(
         public ?int $id,
         public string $orderNumber,
@@ -16,22 +13,22 @@ final class Order
         public ?int $voucherId,
         public float $totalAmount,
         public float $discountAmount,
+        public float $shippingDiscountAmount,
         public string $status,
         public string $paymentStatus,
         public ?string $paymentMethod,
         public ?string $snapToken,
         public string $shippingAddress,
-        public array $subOrders = [] // Menampung koleksi pecahan toko
+        public array $subOrders = [],
+        public ?string $createdAt = null,
+        public ?string $updatedAt = null
     ) {}
 
     public function getFinalPay(): float
     {
-        return max(0.00, ($this->totalAmount - $this->discountAmount));
+        return max(0.0, $this->totalAmount - $this->discountAmount - $this->shippingDiscountAmount);
     }
 
-    /**
-     * Helper untuk mendapatkan ongkir spesifik milik suatu toko
-     */
     public function getShippingCostByStore(int $storeId): float
     {
         foreach ($this->subOrders as $subOrder) {
@@ -39,19 +36,6 @@ final class Order
                 return $subOrder->shippingCost;
             }
         }
-        return 0.00;
-    }
-
-    /**
-     * Helper untuk mendapatkan kurir spesifik milik suatu toko
-     */
-    public function getCourierByStore(int $storeId): ?string
-    {
-        foreach ($this->subOrders as $subOrder) {
-            if ($subOrder->storeId === $storeId) {
-                return $subOrder->courier;
-            }
-        }
-        return null;
+        return 0.0;
     }
 }

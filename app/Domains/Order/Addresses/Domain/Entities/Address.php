@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Order\Addresses\Domain\Entities;
 
 use Illuminate\Database\Eloquent\Model;
@@ -15,11 +17,11 @@ class Address extends Model
         'label',
         'recipient_name',
         'phone_number',
-        'country',          // <--- TAMBAHKAN
-        'province',         // <--- TAMBAHKAN
-        'city_or_regency',  // <--- TAMBAHKAN
-        'district',         // <--- TAMBAHKAN
-        'subdistrict',      // <--- TAMBAHKAN
+        'country',
+        'province',
+        'city_or_regency',
+        'district',
+        'subdistrict',
         'full_address',
         'postal_code',
         'komerce_destination_id',
@@ -31,23 +33,38 @@ class Address extends Model
 
     protected $casts = [
         'is_primary' => 'boolean',
+        'latitude' => 'float',
+        'longitude' => 'float',
     ];
 
-    protected static function booted()
+    protected static function booted(): void
     {
-        static::saving(function (Address $address) {
-            if (empty($address->user_id) && empty($address->store_id)) {
-                throw new InvalidArgumentException("Alamat harus dikaitkan dengan user_id atau store_id.");
+        static::saving(function (Address $address): void {
+            $hasUser = $address->user_id !== null && $address->user_id !== '';
+            $hasStore = $address->store_id !== null && $address->store_id !== '';
+
+            if ($hasUser === $hasStore) {
+                throw new InvalidArgumentException('Alamat harus dimiliki tepat oleh satu user atau satu toko.');
             }
-            if (!empty($address->user_id) && !empty($address->store_id)) {
-                throw new InvalidArgumentException("Alamat tidak boleh memiliki user_id dan store_id sekaligus.");
+
+            if ($hasStore) {
+                $duplicate = static::query()
+                    ->where('store_id', $address->store_id)
+                    ->when($address->exists, fn ($query) => $query->where($address->getKeyName(), '<>', $address->getKey()))
+                    ->exists();
+
+                if ($duplicate) {
+                    throw new InvalidArgumentException('Satu toko hanya boleh memiliki satu alamat.');
+                }
+
+                $address->is_primary = true;
             }
         });
     }
 
     public function markAsPrimary(): void
     {
-        $query = static::where('id', '!=', $this->id);
+        $query = static::query()->whereKeyNot($this->getKey());
 
         if ($this->user_id) {
             $query->where('user_id', $this->user_id);
@@ -56,6 +73,6 @@ class Address extends Model
         }
 
         $query->update(['is_primary' => false]);
-        $this->update(['is_primary' => true]);
+        $this->forceFill(['is_primary' => true])->saveQuietly();
     }
 }

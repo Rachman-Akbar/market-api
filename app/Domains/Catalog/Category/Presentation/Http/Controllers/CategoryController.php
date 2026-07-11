@@ -4,20 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Category\Presentation\Http\Controllers;
 
+use App\Domains\Catalog\Category\Application\Queries\GetCategoryByIdQuery;
 use App\Domains\Catalog\Category\Application\Queries\GetCategoryByPathQuery;
 use App\Domains\Catalog\Category\Application\Queries\GetHeaderMenuQuery;
 use App\Domains\Catalog\Category\Application\Queries\ListCategoryMenuQuery;
 use App\Domains\Catalog\Category\Application\Queries\ListCategoryQuery;
 use App\Domains\Catalog\Category\Application\Queries\ListProductsByCategoryPathQuery;
-
 use App\Domains\Catalog\Category\Application\UseCases\CreateCategoryUseCase;
 use App\Domains\Catalog\Category\Application\UseCases\DeleteCategoryUseCase;
 use App\Domains\Catalog\Category\Application\UseCases\UpdateCategoryUseCase;
-
 use App\Domains\Catalog\Category\Presentation\Http\Requests\CategoryRequest;
 use App\Domains\Catalog\Category\Presentation\Http\Resources\CategoryResource;
 use App\Domains\Catalog\CatalogGroup\Presentation\Http\Resources\CatalogGroupResource;
-use App\Domains\Catalog\Category\Application\Queries\GetCategoryByIdQuery;
 use App\Domains\Catalog\Product\Presentation\Http\Resources\ProductResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -151,12 +149,11 @@ final class CategoryController extends Controller
         string $path,
         Request $request,
         ListProductsByCategoryPathQuery $query
-    ): JsonResponse {
+    ) {
         $products = $query->execute($path, $request->all());
 
-        return response()->json([
+        return ProductResource::collection($products)->additional([
             'success' => true,
-            'data' => ProductResource::collection($products),
         ]);
     }
 
@@ -168,4 +165,3 @@ final class CategoryController extends Controller
         ], 422);
     }
 }
-

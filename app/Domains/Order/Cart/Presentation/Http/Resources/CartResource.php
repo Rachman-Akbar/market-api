@@ -9,17 +9,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 final class CartResource extends JsonResource
 {
-    /**
-     * @return array<string, mixed>
-     */
     public function toArray(Request $request): array
     {
         return [
-            'data' => [
-                'items'       => CartItemResource::collection($this->resource['items'] ?? []),
-                'total_items' => $this->resource['total_items'] ?? 0,
-                'total_price' => $this->resource['total_price'] ?? 0,
-            ]
+            'items' => CartItemResource::collection($this->resource['items'] ?? []),
+            'total_items' => $this->resource['total_items'] ?? 0,
+            'total_price' => $this->resource['total_price'] ?? 0,
         ];
     }
 }

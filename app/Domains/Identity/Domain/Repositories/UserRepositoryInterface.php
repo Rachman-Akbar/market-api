@@ -39,5 +39,5 @@ interface UserRepositoryInterface
     /**
      * Mengeluarkan semua sesi perangkat lain kecuali perangkat saat ini.
      */
-    public function logoutOtherDevices(User $user): void;
+    public function logoutOtherDevices(User $user): int;
 }

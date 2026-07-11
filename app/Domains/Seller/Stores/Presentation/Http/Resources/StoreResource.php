@@ -14,22 +14,23 @@ final class StoreResource extends JsonResource
         $store = $this->resource;
 
         return [
-            'id'                => $store->id,
-            'user_id'           => $store->userId,
-            'name'              => $store->name,
-            'slug'              => $store->slug,
-            'description'       => $store->description,
+            'id' => $store->id,
+            'user_id' => $store->userId,
+            'name' => $store->name,
+            'slug' => $store->slug,
+            'description' => $store->description,
             'short_description' => $store->shortDescription,
-            'phone'             => $store->phone,
-            'email'             => $store->email,
-            'city'              => $store->city,
-            'province'          => $store->province,
-            'address'           => $store->address,
-            'is_active'         => $store->isActive,
-            'logo'              => $store->logo,
-            'detail'            => $store->detail ? new StoreDetailResource($store->detail) : null,
-            'created_at'        => $store->createdAt,
-            'updated_at'        => $store->updatedAt,
+            'phone' => $store->phone,
+            'email' => $store->email,
+            'city' => $store->city,
+            'province' => $store->province,
+            'address' => $store->address,
+            'is_active' => $store->isActive,
+            'logo' => $store->logo,
+            'banner_url' => $store->bannerUrl,
+            'detail' => $store->detail ? new StoreDetailResource($store->detail) : null,
+            'created_at' => $store->createdAt,
+            'updated_at' => $store->updatedAt,
         ];
     }
 }

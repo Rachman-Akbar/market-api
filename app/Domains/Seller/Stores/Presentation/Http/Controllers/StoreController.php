@@ -4,160 +4,132 @@ declare(strict_types=1);
 
 namespace App\Domains\Seller\Stores\Presentation\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-
-// Queries
-use App\Domains\Seller\Stores\Application\Queries\ListStoreQuery;
-use App\Domains\Seller\Stores\Application\Queries\GetStoreQuery;
-use App\Domains\Seller\Stores\Application\Queries\GetStoreBySlugQuery;
+use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Seller\Stores\Application\Queries\GetStoreByIdQuery;
+use App\Domains\Seller\Stores\Application\Queries\GetStoreBySlugQuery;
 use App\Domains\Seller\Stores\Application\Queries\ListProductByStoreSlugQuery;
-
-// Use Cases
+use App\Domains\Seller\Stores\Application\Queries\ListStoreQuery;
 use App\Domains\Seller\Stores\Application\UseCases\CreateStoreUseCase;
 use App\Domains\Seller\Stores\Application\UseCases\UpdateStoreUseCase;
-
-// Resources
-use App\Domains\Seller\Stores\Presentation\Http\Resources\StoreResource;
 use App\Domains\Seller\Stores\Presentation\Http\Resources\StoreListResource;
-use App\Domains\Catalog\Product\Presentation\Http\Resources\ProductResource;
+use App\Domains\Seller\Stores\Presentation\Http\Resources\StoreResource;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Arr;
 
 final class StoreController extends Controller
 {
-    // 1. Deklarasi Properti Dependensi
-    private ListProductByStoreSlugQuery $listProductByStoreSlugQuery;
-    private GetStoreByIdQuery $getStoreByIdQuery;
-
-    // 2. Constructor untuk Dependency Injection
     public function __construct(
-        ListProductByStoreSlugQuery $listProductByStoreSlugQuery,
-        GetStoreByIdQuery $getStoreByIdQuery
-    ) {
-        $this->listProductByStoreSlugQuery = $listProductByStoreSlugQuery;
-        $this->getStoreByIdQuery = $getStoreByIdQuery;
-    }
+        private ListProductByStoreSlugQuery $listProductByStoreSlugQuery,
+        private GetStoreByIdQuery $getStoreByIdQuery,
+        private UserRepositoryInterface $userRepository
+    ) {}
 
-    /**
-     * GET /stores (Menampilkan Semua Toko)
-     */
     public function index(Request $request, ListStoreQuery $query): AnonymousResourceCollection
     {
-        $stores = $query->execute($request->query());
-        return StoreListResource::collection($stores);
+        return StoreListResource::collection($query->execute($request->query()));
     }
 
-    /**
-     * GET /stores/slug/{slug} (Mencari Toko berdasarkan Slug)
-     */
     public function showBySlug(string $slug, GetStoreBySlugQuery $query): StoreResource
     {
         $store = $query->execute($slug);
-        abort_if(! $store, 404, 'Store not found.');
-
+        abort_if(!$store, 404, 'Store not found.');
         return new StoreResource($store);
     }
 
-    /**
-     * GET /stores/{id} (Mencari Toko berdasarkan ID)
-     */
-public function showById(int $id): JsonResponse
-{
-    $store = $this->getStoreByIdQuery->execute($id);
+    public function showById(int $id): StoreResource
+    {
+        $store = $this->getStoreByIdQuery->execute($id);
+        abort_if(!$store, 404, 'Store dengan ID tersebut tidak ditemukan.');
+        return new StoreResource($store);
+    }
 
-    abort_if(! $store, 404, 'Store dengan ID tersebut tidak ditemukan.');
-
-    // Ubah objek Entity menjadi array menggunakan Mapper sebelum dijadikan JSON
-    $storeArray = \App\Domains\Seller\Stores\Infrastructure\Persistence\Mappers\StoreMapper::toModel($store);
-
-    return response()->json($storeArray);
-}
-    /**
-     * GET /stores/{slug}/products (List Produk Berdasarkan Slug Toko)
-     */
     public function productsBySlug(Request $request, string $slug): JsonResponse
     {
-        $filters = $request->only(['per_page', 'page', 'search']);
-        $products = $this->listProductByStoreSlugQuery->execute($slug, $filters);
-
-        return response()->json($products);
+        return response()->json($this->listProductByStoreSlugQuery->execute(
+            $slug,
+            $request->only(['per_page', 'page', 'search'])
+        ));
     }
 
-    /**
-     * POST /stores (Mendaftar/Membuat Toko Baru)
-     */
     public function registerStore(Request $request, CreateStoreUseCase $useCase): JsonResponse
     {
-        $validated = $request->validate([
-            'store_name' => 'required|string|max:255',
-            'phone'      => 'nullable|string',
-            'city'       => 'nullable|string',
-            'province'   => 'nullable|string',
-            'address'    => 'nullable|string',
-        ]);
+        $validated = $request->validate($this->rules(true));
+        $validated = $this->storeUploads($request, $validated);
+        $validated['detail'] = $this->detailData($validated);
 
-        $userId = (string) $request->user()->id;
-        $deviceName = $request->header('X-Device-Name') ?? 'web';
+        $store = $useCase->execute((string) $request->user()->id, $validated, $request->header('X-Device-Name'));
 
-        $storeData = $useCase->execute($userId, $validated, $deviceName);
-
-        return response()->json([
-            'message' => 'Store registered successfully',
-            'data'    => [
-                'id'        => $storeData->id,
-                'user_id'   => $storeData->userId,
-                'name'      => $storeData->name,
-                'slug'      => $storeData->slug,
-                'is_active' => $storeData->isActive
-            ]
-        ], 201);
+        return (new StoreResource($store))
+            ->additional(['message' => 'Store registered successfully'])
+            ->response()
+            ->setStatusCode(201);
     }
 
-    /**
-     * PUT/PATCH /stores/{id} (Mengupdate Informasi Toko)
-     */
-public function updateStore(int $id, Request $request, UpdateStoreUseCase $useCase): JsonResponse
-{
-    $validated = $request->validate([
-        // Validasi Toko Utama
-        'store_name'        => 'nullable|string|max:255',
-        'description'       => 'nullable|string',
-        'short_description' => 'nullable|string|max:255',
-        'phone'             => 'nullable|string|max:30',
-        'email'             => 'nullable|email|max:120',
-        'city'              => 'nullable|string|max:80',
-        'province'          => 'nullable|string|max:80',
-        'address'           => 'nullable|string',
-        'logo'              => 'nullable|string',
-        'is_active'         => 'nullable|boolean',
+    public function updateStore(int $id, Request $request, UpdateStoreUseCase $useCase): JsonResponse
+    {
+        $validated = $request->validate($this->rules(false));
+        $validated = $this->storeUploads($request, $validated);
+        $detail = $this->detailData($validated);
+        if ($detail) {
+            $validated['detail'] = $detail;
+        }
 
-        // FIX LENGKAP: Daftarkan semua field untuk tabel store_details di sini
-        'detail'                 => 'nullable|array',
-        'detail.owner_name'      => 'nullable|string|max:120',
-        'detail.owner_phone'     => 'nullable|string|max:30',
-        'detail.description'     => 'nullable|string',
-        'detail.shipping_policy' => 'nullable|string',
-        'detail.return_policy'   => 'nullable|string',
-        'detail.open_days'       => 'nullable|string|max:120',
-        'detail.open_time'       => 'nullable|string|max:10',
-        'detail.close_time'      => 'nullable|string|max:10',
-        'detail.whatsapp_url'    => 'nullable|string|max:255',
-        'detail.instagram_url'   => 'nullable|string|max:255',
-        'detail.tiktok_url'      => 'nullable|string|max:255',
-        'detail.website_url'     => 'nullable|string|max:255',
-    ]);
+        $role = (string) ($this->userRepository->getActiveRoleFromCurrentToken($request->user()) ?: 'buyer');
+        $store = $useCase->execute($id, (string) $request->user()->id, $role, $validated);
 
-    $currentUserId = (string) $request->user()->id;
-    $role = (string) $request->user()->role; 
+        return (new StoreResource($store))
+            ->additional(['message' => 'Store updated successfully'])
+            ->response();
+    }
 
-    // Jalankan UseCase
-    $storeData = $useCase->execute($id, $currentUserId, $role, $validated);
+    private function rules(bool $creating): array
+    {
+        $required = $creating ? 'required' : 'sometimes';
+        return [
+            'store_name' => [$required, 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'short_description' => ['nullable', 'string', 'max:255'],
+            'phone' => [$creating ? 'required' : 'nullable', 'string', 'max:30'],
+            'email' => ['nullable', 'email', 'max:120'],
+            'city' => [$creating ? 'required' : 'nullable', 'string', 'max:80'],
+            'province' => [$creating ? 'required' : 'nullable', 'string', 'max:80'],
+            'address' => [$creating ? 'required' : 'nullable', 'string'],
+            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'banner' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'is_active' => ['nullable', 'boolean'],
+            'detail' => ['nullable', 'array'],
+            'detail.owner_name' => ['nullable', 'string', 'max:120'],
+            'detail.owner_phone' => ['nullable', 'string', 'max:30'],
+            'detail.description' => ['nullable', 'string'],
+            'detail.shipping_policy' => ['nullable', 'string'],
+            'detail.return_policy' => ['nullable', 'string'],
+            'detail.open_days' => ['nullable', 'string', 'max:120'],
+            'detail.open_time' => ['nullable', 'date_format:H:i'],
+            'detail.close_time' => ['nullable', 'date_format:H:i'],
+            'detail.whatsapp_url' => ['nullable', 'url', 'max:255'],
+            'detail.instagram_url' => ['nullable', 'url', 'max:255'],
+            'detail.tiktok_url' => ['nullable', 'url', 'max:255'],
+            'detail.website_url' => ['nullable', 'url', 'max:255'],
+        ];
+    }
 
-    return response()->json([
-        'message' => 'Store updated successfully',
-        'data'    => new \App\Domains\Seller\Stores\Presentation\Http\Resources\StoreResource($storeData)
-    ], 200);
-}
+    private function storeUploads(Request $request, array $validated): array
+    {
+        if ($request->hasFile('logo')) {
+            $validated['logo'] = $request->file('logo')->store('stores/logos', 'public');
+        }
+        if ($request->hasFile('banner')) {
+            $validated['banner_url'] = $request->file('banner')->store('stores/banners', 'public');
+        }
+        unset($validated['banner']);
+        return $validated;
+    }
+
+    private function detailData(array $validated): array
+    {
+        return Arr::where($validated['detail'] ?? [], fn($value) => $value !== null && $value !== '');
+    }
 }

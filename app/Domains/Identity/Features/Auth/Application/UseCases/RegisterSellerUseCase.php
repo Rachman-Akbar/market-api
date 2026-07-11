@@ -25,7 +25,6 @@ final readonly class RegisterSellerUseCase
         }
 
         return DB::transaction(function () use ($user, $data, $deviceName) {
-            // 1. Buat DTO untuk Toko
             $dto = new RegisterSellerDTO(
                 storeName: trim($data['store_name']),
                 slug: Str::slug($data['store_name']) . '-' . Str::random(5),
@@ -35,17 +34,14 @@ final readonly class RegisterSellerUseCase
                 address: $data['address'] ?? null
             );
 
-            // 2. Buat Toko di Database (Otomatis Aktif)
             $this->userRepository->registerStore($user->id, $dto);
 
-            // 3. Assign Role 'seller' ke user
             $this->userRepository->assignRoleByName($user, 'seller');
 
-            // 4. Terbitkan token baru dengan active-role: seller
             $token = $this->issueToken->execute($user, $deviceName ?? 'marketplace-web', 'seller');
 
             return [
-                ...$this->payload->execute($user->refresh()),
+                ...$this->payload->execute($user->refresh(), 'seller'),
                 'token_type'   => 'Bearer',
                 'access_token' => $token,
                 'api_token'    => $token,
