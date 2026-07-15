@@ -21,7 +21,17 @@ class ShippingCostCalculator
         }
 
         if ($courier === 'express') {
+            if (!$this->hasCompleteCoordinates($context)) {
+                throw new InvalidArgumentException('Koordinat asal atau tujuan belum lengkap.');
+            }
+
             return $this->expressCalculator->calculate($context);
+        }
+
+        if (!$this->hasCompleteDestinationIds($context)) {
+            throw new InvalidArgumentException(
+                'RajaOngkir belum tersedia karena destination ID asal atau tujuan belum ditemukan.'
+            );
         }
 
         return $this->rajaOngkirCalculator->calculate($context + [
@@ -34,13 +44,15 @@ class ShippingCostCalculator
     {
         $options = [];
 
-        try {
-            $options = $this->rajaOngkirCalculator->options($context);
-        } catch (\Throwable $exception) {
-            $context['shipping_warning'] = $exception->getMessage();
+        if ($this->hasCompleteDestinationIds($context)) {
+            try {
+                $options = $this->rajaOngkirCalculator->options($context);
+            } catch (\Throwable $exception) {
+                $context['shipping_warning'] = $exception->getMessage();
+            }
         }
 
-        if (isset($context['origin_latitude'], $context['origin_longitude'], $context['latitude'], $context['longitude'])) {
+        if ($this->hasCompleteCoordinates($context)) {
             $cost = $this->expressCalculator->calculate($context);
             $distance = $this->expressCalculator->distanceInKilometers(
                 (float) $context['origin_latitude'],
@@ -74,5 +86,27 @@ class ShippingCostCalculator
         }
 
         return collect($options)->sortBy('cost')->values()->all();
+    }
+
+    private function hasCompleteDestinationIds(array $context): bool
+    {
+        return trim((string) ($context['origin_destination_id'] ?? '')) !== ''
+            && trim((string) ($context['destination_id'] ?? '')) !== '';
+    }
+
+    private function hasCompleteCoordinates(array $context): bool
+    {
+        foreach ([
+            'origin_latitude',
+            'origin_longitude',
+            'latitude',
+            'longitude',
+        ] as $key) {
+            if (!array_key_exists($key, $context) || !is_numeric($context[$key])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

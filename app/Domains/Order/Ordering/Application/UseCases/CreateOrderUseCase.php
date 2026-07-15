@@ -119,9 +119,9 @@ class CreateOrderUseCase
                 $address->province,
                 $address->postal_code,
             ])->filter()->implode(', ');
-            $destinationId = (string) $address->komerce_destination_id;
-
             $quote = $this->shippingOptionsUseCase->execute($userId, $addressId, $ids->all());
+            $address->refresh();
+            $destinationId = trim((string) $address->komerce_destination_id);
             $selectedOption = collect($quote['options'])->first(function (array $option) use ($courier, $service): bool {
                 if (strtolower((string) $option['courier']) !== $courier) {
                     return false;

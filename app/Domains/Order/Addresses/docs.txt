@@ -42,3 +42,9 @@ DB
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+
+
+karena masih belum valid pengambilan komerce_destination_id jadi NULL dlu
+
+    ALTER TABLE addresses
+    MODIFY COLUMN komerce_destination_id VARCHAR(50) NULL;

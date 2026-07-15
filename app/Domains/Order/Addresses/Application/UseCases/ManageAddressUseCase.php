@@ -56,14 +56,14 @@ final class ManageAddressUseCase
 
     public function updateAddress(int $id, AddressDTO $dto): Address
     {
-        $this->resolveDestination($dto);
-
         return DB::transaction(function () use ($id, $dto): Address {
             $address = $this->addressRepository->findByIdAndOwner($id, $dto->user_id, $dto->store_id);
 
             if (!$address) {
                 throw new ModelNotFoundException('Alamat tidak ditemukan atau Anda tidak memiliki akses.');
             }
+
+            $this->resolveDestination($dto, $address);
 
             $wasPrimary = (bool) $address->is_primary;
             $address->fill(AddressMapper::toEntityArray($dto));
@@ -113,15 +113,45 @@ final class ManageAddressUseCase
         });
     }
 
-    private function resolveDestination(AddressDTO $dto): void
+    private function resolveDestination(AddressDTO $dto, ?Address $currentAddress = null): void
     {
         try {
             $resolved = $this->resolveDestinationUseCase->execute($dto->destinationLookupData());
             $dto->komerce_destination_id = $resolved->id;
-        } catch (Throwable $exception) {
-            throw ValidationException::withMessages([
-                'address_destination' => [$exception->getMessage()],
-            ]);
+
+            return;
+        } catch (Throwable) {
         }
+
+        if ($currentAddress !== null && $this->hasSameDestinationData($currentAddress, $dto)) {
+            $currentDestinationId = trim((string) $currentAddress->komerce_destination_id);
+            $dto->komerce_destination_id = $currentDestinationId !== ''
+                ? $currentDestinationId
+                : null;
+
+            return;
+        }
+
+        $dto->komerce_destination_id = null;
+    }
+
+    private function hasSameDestinationData(Address $address, AddressDTO $dto): bool
+    {
+        return $this->normalize((string) $address->country) === $this->normalize($dto->country)
+            && $this->normalize((string) $address->province) === $this->normalize($dto->province)
+            && $this->normalize((string) $address->city_or_regency) === $this->normalize($dto->city_or_regency)
+            && $this->normalize((string) $address->district) === $this->normalize($dto->district)
+            && $this->normalize((string) $address->subdistrict) === $this->normalize($dto->subdistrict)
+            && $this->normalizePostalCode((string) $address->postal_code) === $this->normalizePostalCode($dto->postal_code);
+    }
+
+    private function normalize(string $value): string
+    {
+        return mb_strtolower(trim(preg_replace('/\s+/', ' ', $value) ?? $value));
+    }
+
+    private function normalizePostalCode(string $value): string
+    {
+        return preg_replace('/\D+/', '', $value) ?? '';
     }
 }
