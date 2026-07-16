@@ -9,6 +9,7 @@ use App\Domains\Order\Ordering\Domain\Entities\Order;
 use App\Domains\Order\Ordering\Domain\Entities\OrderItem;
 use App\Domains\Order\Ordering\Domain\Entities\SubOrder;
 use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
+use App\Domains\Order\Ordering\Domain\Services\ShippingCostCalculator;
 use App\Domains\Order\Payment\Domain\Entities\Payment;
 use App\Domains\Order\Payment\Domain\Repositories\PaymentRepositoryInterface;
 use App\Domains\Order\Payment\Infrastructure\Services\MidtransService;
@@ -22,6 +23,7 @@ class CreateOrderUseCase
         private AddressRepositoryInterface $addressRepository,
         private ProductForCartReaderInterface $productReader,
         private GetShippingOptionsUseCase $shippingOptionsUseCase,
+        private ShippingCostCalculator $shippingCalculator,
         private MidtransService $midtransService,
         private PaymentRepositoryInterface $paymentRepository
     ) {}
@@ -81,8 +83,11 @@ class CreateOrderUseCase
             ];
         }
 
-        $courier = strtolower(trim($courier));
+        $courier = $this->shippingCalculator->normalizeCourier($courier);
         $service = $service ? strtoupper(trim($service)) : null;
+        if ($courier === 'haversine' && in_array($service, [null, 'INTERNAL', 'EXPRESS', 'LOCAL'], true)) {
+            $service = 'HAVERSINE';
+        }
         $paymentMethod = strtolower(trim($paymentMethod));
 
         if ($paymentMethod === 'tunai_toko' && $courier !== 'ambil_sendiri') {
@@ -123,7 +128,7 @@ class CreateOrderUseCase
             $address->refresh();
             $destinationId = trim((string) $address->komerce_destination_id);
             $selectedOption = collect($quote['options'])->first(function (array $option) use ($courier, $service): bool {
-                if (strtolower((string) $option['courier']) !== $courier) {
+                if ($this->shippingCalculator->normalizeCourier((string) $option['courier']) !== $courier) {
                     return false;
                 }
                 return !$service || strtoupper((string) $option['service']) === $service;
