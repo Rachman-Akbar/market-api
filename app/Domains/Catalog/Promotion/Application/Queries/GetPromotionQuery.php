@@ -1,31 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\Promotion\Application\Queries;
 
-use App\Domains\Catalog\Promotion\Domain\Repositories\PromotionRepositoryInterface;
 use App\Domains\Catalog\Promotion\Application\Dtos\PromotionData;
+use App\Domains\Catalog\Promotion\Domain\Repositories\PromotionRepositoryInterface;
 
-class GetPromotionQuery
+final class GetPromotionQuery
 {
-    public function __construct(
-        private PromotionRepositoryInterface $repository
-    ) {}
+    public function __construct(private PromotionRepositoryInterface $repository) {}
 
-    public function execute(): array
+    public function execute(array $filters = [], bool $includeInactive = false): array
     {
-        $entities = $this->repository->getAllActive();
+        return array_map(
+            fn ($entity): PromotionData => PromotionData::fromArray($entity->toArray()),
+            $this->repository->getAll($filters, $includeInactive)
+        );
+    }
 
-        return array_map(function ($entity) {
-            return new PromotionData(
-                id: $entity->id,
-                imageUrl: $entity->imageUrl,
-                mobileImageUrl: $entity->mobileImageUrl,
-                clickAction: $entity->clickAction,
-                targetId: $entity->targetId,
-                targetUrl: $entity->targetUrl,
-                sortOrder: $entity->sortOrder,
-                isActive: $entity->isActive
-            );
-        }, $entities);
+    public function executeForSeller(int $storeId, array $filters = []): array
+    {
+        return array_map(
+            fn ($entity): PromotionData => PromotionData::fromArray($entity->toArray()),
+            $this->repository->getByStoreId($storeId, $filters, true)
+        );
     }
 }

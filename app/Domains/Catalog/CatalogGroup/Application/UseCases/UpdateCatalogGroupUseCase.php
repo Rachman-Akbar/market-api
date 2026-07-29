@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\CatalogGroup\Application\UseCases;
 
 use App\Domains\Catalog\CatalogGroup\Application\Dtos\CatalogGroupData;
 use App\Domains\Catalog\CatalogGroup\Domain\Entities\CatalogGroup;
 use App\Domains\Catalog\CatalogGroup\Domain\Repositories\CatalogGroupRepositoryInterface;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 final class UpdateCatalogGroupUseCase
 {
@@ -15,15 +18,19 @@ final class UpdateCatalogGroupUseCase
 
     public function execute(int $id, CatalogGroupData $data): ?CatalogGroup
     {
-        $catalogGroup = $this->repository->findById($id);
+        $catalogGroup = $this->repository->findById($id, true);
 
         if (! $catalogGroup) {
             return null;
         }
 
         $name = $data->hasName()
-            ? (string) $data->name()
+            ? Str::lower(trim((string) $data->name()))
             : $catalogGroup->name();
+
+        if ($this->repository->nameExists($name, $id)) {
+            throw new InvalidArgumentException('Nama kelompok katalog sudah digunakan.');
+        }
 
         $slug = match (true) {
             $data->hasSlug() => $data->slug() ?: Str::slug($name),
@@ -31,14 +38,12 @@ final class UpdateCatalogGroupUseCase
             default => $catalogGroup->slug(),
         };
 
-        $isActive = $data->hasIsActive()
-            ? (bool) $data->isActive()
-            : $catalogGroup->isActive();
-
         $catalogGroup->updateData([
             'name' => $name,
             'slug' => $slug,
-            'is_active' => $isActive,
+            'is_active' => $data->hasIsActive()
+                ? (bool) $data->isActive()
+                : $catalogGroup->isActive(),
         ]);
 
         return $this->repository->save($catalogGroup);

@@ -4,9 +4,16 @@ declare(strict_types=1);
 
 namespace App\Domains\Identity;
 
-use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
-use App\Domains\Identity\Infrastructure\Middleware\FirebaseTokenVerifier;
-use App\Domains\Identity\Infrastructure\Persistence\Repositories\EloquentUserRepository;
+use App\Domains\Identity\Auth\Infrastructure\Middleware\FirebaseTokenVerifier;
+use App\Domains\Identity\User\Domain\Repositories\RoleRepositoryInterface;
+use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
+use App\Domains\Identity\User\Infrastructure\Middleware\EnsureActiveRole;
+use App\Domains\Identity\User\Infrastructure\Middleware\EnsureActiveUser;
+use App\Domains\Identity\User\Infrastructure\Middleware\EnsureEmailIsVerified;
+use App\Domains\Identity\User\Infrastructure\Middleware\EnsureUserHasRole;
+use App\Domains\Identity\User\Infrastructure\Persistence\Repositories\EloquentRoleRepository;
+use App\Domains\Identity\User\Infrastructure\Persistence\Repositories\EloquentUserRepository;
+use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 use Kreait\Firebase\Factory;
 use RuntimeException;
@@ -16,9 +23,11 @@ final class IdentityServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(UserRepositoryInterface::class, EloquentUserRepository::class);
+        $this->app->bind(RoleRepositoryInterface::class, EloquentRoleRepository::class);
 
         $this->app->singleton(FirebaseTokenVerifier::class, function (): FirebaseTokenVerifier {
             $configuredPath = trim((string) env('FIREBASE_CREDENTIALS', ''));
+
             if ($configuredPath === '') {
                 throw new RuntimeException('FIREBASE_CREDENTIALS belum dikonfigurasi.');
             }
@@ -37,5 +46,13 @@ final class IdentityServiceProvider extends ServiceProvider
 
             return new FirebaseTokenVerifier($firebaseAuth);
         });
+    }
+
+    public function boot(Router $router): void
+    {
+        $router->aliasMiddleware('active.user', EnsureActiveUser::class);
+        $router->aliasMiddleware('active.role', EnsureActiveRole::class);
+        $router->aliasMiddleware('role', EnsureUserHasRole::class);
+        $router->aliasMiddleware('verified.email', EnsureEmailIsVerified::class);
     }
 }

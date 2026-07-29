@@ -12,8 +12,8 @@ final class ListCategoryQuery
         private CategoryRepositoryInterface $repository
     ) {}
 
-    public function execute(): array
+    public function execute(bool $includeInactive = false): array
     {
-        return $this->repository->listTree();
+        return $this->repository->listTree($includeInactive);
     }
 }

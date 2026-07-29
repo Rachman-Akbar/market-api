@@ -1,18 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\Banner\Application\Queries;
 
-use App\Domains\Catalog\Banner\Domain\Repositories\BannerRepositoryInterface;
 use App\Domains\Catalog\Banner\Application\Dtos\BannerData;
+use App\Domains\Catalog\Banner\Domain\Repositories\BannerRepositoryInterface;
 
-class GetBannerQuery
+final class GetBannerQuery
 {
-    public function __construct(private BannerRepositoryInterface $repository) {}
+    public function __construct(
+        private BannerRepositoryInterface $repository
+    ) {}
 
-    public function execute(int $storeId): array
+    public function executeAll(array $filters = []): array
     {
-        $entities = $this->repository->getByStoreId($storeId);
+        return array_map(
+            fn ($entity): BannerData => BannerData::fromArray($entity->toArray()),
+            $this->repository->getAll($filters)
+        );
+    }
 
-        return array_map(fn($entity) => BannerData::fromArray($entity->toArray()), $entities);
+    public function execute(int $storeId, bool $includeInactive = false): array
+    {
+        return array_map(
+            fn ($entity): BannerData => BannerData::fromArray($entity->toArray()),
+            $this->repository->getByStoreId($storeId, $includeInactive)
+        );
     }
 }

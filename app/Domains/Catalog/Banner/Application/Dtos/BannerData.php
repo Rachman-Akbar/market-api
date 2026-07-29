@@ -1,12 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\Banner\Application\Dtos;
 
-class BannerData
+use Illuminate\Support\Str;
+
+final class BannerData
 {
     public function __construct(
         public ?int $id,
         public int $storeId,
+        public string $name,
         public string $imageUrl,
         public int $sortOrder,
         public bool $isActive
@@ -15,9 +20,10 @@ class BannerData
     public static function fromArray(array $data): self
     {
         return new self(
-            id: $data['id'] ?? null,
-            storeId: (int) ($data['store_id']),
-            imageUrl: $data['image_url'],
+            id: isset($data['id']) ? (int) $data['id'] : null,
+            storeId: (int) ($data['store_id'] ?? 27),
+            name: Str::lower(trim((string) ($data['name'] ?? 'banner'))),
+            imageUrl: (string) $data['image_url'],
             sortOrder: (int) ($data['sort_order'] ?? 0),
             isActive: (bool) ($data['is_active'] ?? true)
         );
@@ -26,11 +32,12 @@ class BannerData
     public function toArray(): array
     {
         return [
-            'id'         => $this->id,
-            'store_id'   => $this->storeId,
-            'image_url'  => $this->imageUrl,
+            'id' => $this->id,
+            'store_id' => $this->storeId,
+            'name' => $this->name,
+            'image_url' => $this->imageUrl,
             'sort_order' => $this->sortOrder,
-            'is_active'  => $this->isActive,
+            'is_active' => $this->isActive,
         ];
     }
 }

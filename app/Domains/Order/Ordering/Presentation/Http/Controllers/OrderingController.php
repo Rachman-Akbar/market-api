@@ -2,7 +2,7 @@
 
 namespace App\Domains\Order\Ordering\Presentation\Http\Controllers;
 
-use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
+use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Order\Ordering\Application\UseCases\CancelOrderUseCase;
 use App\Domains\Order\Ordering\Application\UseCases\CreateOrderUseCase;
 use App\Domains\Order\Ordering\Application\UseCases\GetOrdersUseCase;

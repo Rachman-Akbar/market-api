@@ -20,8 +20,8 @@ final class UpdateCategoryUseCase
 
     public function execute(int $id, CategoryData $data): ?Category
     {
-        return DB::transaction(function () use ($id, $data) {
-            $category = $this->repository->findById($id);
+        return DB::transaction(function () use ($id, $data): ?Category {
+            $category = $this->repository->findById($id, true);
 
             if (! $category) {
                 return null;
@@ -45,34 +45,55 @@ final class UpdateCategoryUseCase
                         throw new InvalidArgumentException('Kategori tidak bisa dipindahkan ke child miliknya sendiri.');
                     }
 
-                    $newParent = $this->repository->findById($newParentId);
+                    $newParent = $this->repository->findById($newParentId, true);
 
                     if (! $newParent) {
                         throw new InvalidArgumentException('Parent category baru tidak ditemukan.');
                     }
                 }
 
-                $subtreeDepth = $this->repository->maxDepthFrom((int) $category->id());
-
-                $this->hierarchyPolicy->assertCanMove($category, $newParent, $subtreeDepth);
+                $this->hierarchyPolicy->assertCanMove(
+                    $category,
+                    $newParent,
+                    $this->repository->maxDepthFrom((int) $category->id())
+                );
             }
 
             $currentParent = null;
 
             if (! $parentTouched && $category->parentId() !== null && array_key_exists('slug', $payload)) {
-                $currentParent = $this->repository->findById((int) $category->parentId());
+                $currentParent = $this->repository->findById((int) $category->parentId(), true);
             }
 
-            $hierarchyParent = $parentTouched ? $newParent : $currentParent;
+            $resultingParent = $parentTouched ? $newParent : $currentParent;
+            $resultingParentId = $parentTouched ? $newParent?->id() : $category->parentId();
+            $resultingCatalogGroupId = $newParent?->catalogGroupId()
+                ?? (isset($payload['catalog_group_id']) ? (int) $payload['catalog_group_id'] : $category->catalogGroupId());
+            $resultingName = (string) ($payload['name'] ?? $category->name());
 
-            $category->updateData($payload, $hierarchyParent);
+            if ($this->repository->nameExistsInParent(
+                $resultingCatalogGroupId,
+                $resultingParentId,
+                $resultingName,
+                (int) $category->id()
+            )) {
+                throw new InvalidArgumentException('Nama kategori sudah digunakan pada parent yang sama.');
+            }
 
+            $resultingLevel = $resultingParent ? $resultingParent->level() + 1 : 1;
+
+            if ($resultingLevel !== 3) {
+                $payload['image_url'] = null;
+                $payload['icon_url'] = null;
+            }
+
+            $category->updateData($payload, $resultingParent);
             $updatedCategory = $this->repository->save($category);
 
             if (
-                $parentChanged ||
-                array_key_exists('slug', $payload) ||
-                array_key_exists('catalog_group_id', $payload)
+                $parentChanged
+                || array_key_exists('slug', $payload)
+                || array_key_exists('catalog_group_id', $payload)
             ) {
                 $this->updateChildrenHierarchies($updatedCategory);
             }
@@ -83,13 +104,11 @@ final class UpdateCategoryUseCase
 
     private function updateChildrenHierarchies(Category $parent): void
     {
-        $children = $this->repository->findChildrenByParentId((int) $parent->id());
+        $children = $this->repository->findChildrenByParentId((int) $parent->id(), true);
 
         foreach ($children as $child) {
             $child->updateData([], $parent);
-
             $savedChild = $this->repository->save($child);
-
             $this->updateChildrenHierarchies($savedChild);
         }
     }

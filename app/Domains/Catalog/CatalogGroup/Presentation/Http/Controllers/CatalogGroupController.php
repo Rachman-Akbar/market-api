@@ -20,11 +20,21 @@ use App\Domains\Catalog\CatalogGroup\Presentation\Http\Requests\CatalogGroupRequ
 use App\Domains\Catalog\CatalogGroup\Presentation\Http\Resources\CatalogGroupResource;
 use App\Domains\Catalog\Category\Presentation\Http\Resources\CategoryResource;
 
-class CatalogGroupController extends Controller
+final class CatalogGroupController extends Controller
 {
     public function index(GetCatalogGroupsQuery $query): JsonResponse
     {
         $groups = $query->execute();
+
+        return response()->json([
+            'success' => true,
+            'data' => CatalogGroupResource::collection($groups),
+        ]);
+    }
+
+    public function manage(GetCatalogGroupsQuery $query): JsonResponse
+    {
+        $groups = $query->execute([], true);
 
         return response()->json([
             'success' => true,

@@ -6,6 +6,7 @@ namespace App\Domains\Catalog\Product\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 final class StoreProductAttributeRequest extends FormRequest
 {
@@ -14,10 +15,27 @@ final class StoreProductAttributeRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $data = [];
+
+        if ($this->has('name')) {
+            $data['name'] = Str::lower(trim((string) $this->input('name')));
+        }
+
+        if ($this->has('slug')) {
+            $data['slug'] = Str::slug((string) $this->input('slug'));
+        } elseif ($this->has('name')) {
+            $data['slug'] = Str::slug((string) $data['name']);
+        }
+
+        $this->merge($data);
+    }
+
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', 'unique:product_attributes,name'],
             'slug' => ['nullable', 'string', 'max:255', 'unique:product_attributes,slug'],
             'type' => ['nullable', 'string', 'max:50', Rule::in(['select', 'text', 'number', 'color'])],
         ];

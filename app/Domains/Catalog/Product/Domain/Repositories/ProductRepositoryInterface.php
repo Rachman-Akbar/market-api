@@ -4,38 +4,37 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Product\Domain\Repositories;
 
-use Illuminate\Support\Collection;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use App\Domains\Catalog\Product\Domain\Entities\Product;
+use Illuminate\Support\Collection;
 
 interface ProductRepositoryInterface
 {
-    public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator;
+    public function getAll(array $filters = []): Collection;
 
-    public function findById(int $id): ?Product;
+    public function findById(int $id, bool $includeInactive = false): ?Product;
 
-    public function findBySlug(string $slug): ?Product;
+    public function findBySlug(string $slug, bool $includeInactive = false): ?Product;
+
+    public function nameExistsForStore(string $name, int $storeId, ?int $ignoreId = null): bool;
 
     public function findPublishedByStoreId(int $storeId): Collection;
 
     public function findPublishedByCategorySlug(
         string $categorySlug,
-        array $filters = [],
-        int $perPage = 15
-    ): LengthAwarePaginator;
+        array $filters = []
+    ): Collection;
 
     public function findPublishedByCategoryPath(
         string $path,
         array $filters,
-        bool $includeDescendants,
-        int $perPage
-    ): LengthAwarePaginator;
+        bool $includeDescendants
+    ): Collection;
 
-    public function paginateByCategory(
+    public function findByCategory(
         int $categoryId,
         array $filters,
         bool $includeDescendants
-    ): LengthAwarePaginator;
+    ): Collection;
 
     public function save(Product $product): Product;
 

@@ -4,53 +4,74 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Product\Presentation\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\DB;
 use App\Domains\Catalog\Product\Application\Query\Product\GetProductQuery;
 use App\Domains\Catalog\Product\Application\Query\ProductVariant\GetProductVariantQuery;
 use App\Domains\Catalog\Product\Application\Query\ProductVariant\ListProductVariantsQuery;
 use App\Domains\Catalog\Product\Application\UseCases\ProductVariant\CreateProductVariantUseCase;
-use App\Domains\Catalog\Product\Application\UseCases\ProductVariant\UpdateProductVariantUseCase;
 use App\Domains\Catalog\Product\Application\UseCases\ProductVariant\DeleteProductVariantUseCase;
+use App\Domains\Catalog\Product\Application\UseCases\ProductVariant\UpdateProductVariantUseCase;
 use App\Domains\Catalog\Product\Presentation\Http\Requests\StoreProductVariantRequest;
 use App\Domains\Catalog\Product\Presentation\Http\Requests\UpdateProductVariantRequest;
 use App\Domains\Catalog\Product\Presentation\Http\Resources\ProductVariantResource;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 
 final class ProductVariantController extends Controller
 {
-    // --- PUBLIC ROUTE ---
-    public function publicIndex(Request $request, int $productId, GetProductQuery $productQuery, ListProductVariantsQuery $query)
-    {
+    public function publicIndex(
+        Request $request,
+        int $productId,
+        GetProductQuery $productQuery,
+        ListProductVariantsQuery $query
+    ) {
         $product = $productQuery->execute($productId);
+
         if (! $product) {
             return response()->json(['message' => 'Product not found.'], 404);
         }
 
-        $variants = $query->execute($productId, $request->all());
-        return ProductVariantResource::collection($variants);
+        return ProductVariantResource::collection(
+            $query->execute($productId, $request->all())
+        );
     }
 
-    // --- PROTECTED ROUTES (SELLER ONLY) ---
-    public function index(Request $request, int $productId, GetProductQuery $productQuery, ListProductVariantsQuery $query)
-    {
+    public function index(
+        Request $request,
+        int $productId,
+        GetProductQuery $productQuery,
+        ListProductVariantsQuery $query
+    ) {
         $this->assertSellerProduct($request, $productId, $productQuery);
-        $variants = $query->execute($productId, $request->all());
-        return ProductVariantResource::collection($variants);
+
+        return ProductVariantResource::collection(
+            $query->execute($productId, $request->all())
+        );
     }
 
-    public function store(StoreProductVariantRequest $request, int $productId, GetProductQuery $productQuery, CreateProductVariantUseCase $useCase)
-    {
+    public function store(
+        StoreProductVariantRequest $request,
+        int $productId,
+        GetProductQuery $productQuery,
+        CreateProductVariantUseCase $useCase
+    ): ProductVariantResource {
         $this->assertSellerProduct($request, $productId, $productQuery);
-        $variant = $useCase->execute($productId, $request->validated());
-        return new ProductVariantResource($variant);
+
+        return new ProductVariantResource(
+            $useCase->execute($productId, $request->validated())
+        );
     }
 
-    public function show(Request $request, int $productId, int $variantId, GetProductQuery $productQuery, GetProductVariantQuery $query)
-    {
+    public function show(
+        Request $request,
+        int $productId,
+        int $variantId,
+        GetProductQuery $productQuery,
+        GetProductVariantQuery $query
+    ) {
         $this->assertSellerProduct($request, $productId, $productQuery);
-
         $variant = $query->execute($variantId);
+
         if (! $variant || $variant->productId() !== $productId) {
             return response()->json(['message' => 'Product variant not found.'], 404);
         }
@@ -58,47 +79,64 @@ final class ProductVariantController extends Controller
         return new ProductVariantResource($variant);
     }
 
-    public function update(UpdateProductVariantRequest $request, int $productId, int $variantId, GetProductQuery $productQuery, GetProductVariantQuery $query, UpdateProductVariantUseCase $useCase)
-    {
+    public function update(
+        UpdateProductVariantRequest $request,
+        int $productId,
+        int $variantId,
+        GetProductQuery $productQuery,
+        GetProductVariantQuery $query,
+        UpdateProductVariantUseCase $useCase
+    ) {
         $this->assertSellerProduct($request, $productId, $productQuery);
-
         $variant = $query->execute($variantId);
+
         if (! $variant || $variant->productId() !== $productId) {
             return response()->json(['message' => 'Product variant not found.'], 404);
         }
 
-        $updated = $useCase->execute($variantId, $request->validated());
-        return new ProductVariantResource($updated);
+        return new ProductVariantResource(
+            $useCase->execute($variantId, $request->validated())
+        );
     }
 
-    public function destroy(Request $request, int $productId, int $variantId, GetProductQuery $productQuery, GetProductVariantQuery $query, DeleteProductVariantUseCase $useCase)
-    {
+    public function destroy(
+        Request $request,
+        int $productId,
+        int $variantId,
+        GetProductQuery $productQuery,
+        GetProductVariantQuery $query,
+        DeleteProductVariantUseCase $useCase
+    ) {
         $this->assertSellerProduct($request, $productId, $productQuery);
-
         $variant = $query->execute($variantId);
+
         if (! $variant || $variant->productId() !== $productId) {
             return response()->json(['message' => 'Product variant not found.'], 404);
         }
 
         $useCase->execute($variantId);
+
         return response()->json(['message' => 'Product variant deleted successfully.']);
     }
 
-    // --- HELPER METHOD ---
-    private function assertSellerProduct(Request $request, int $productId, GetProductQuery $query): void
-    {
-        $product = $query->execute($productId);
+    private function assertSellerProduct(
+        Request $request,
+        int $productId,
+        GetProductQuery $query
+    ): void {
+        $product = $query->execute($productId, true);
         abort_if(! $product, 404, 'Product not found.');
 
         $user = $request->user();
         abort_if(! $user, 401, 'Unauthenticated.');
 
-        // Mencari storeId milik user saat ini dari DB untuk validasi kepemilikan produk induk
-        $sellerStoreId = DB::table('stores')->where('user_id', (string) $user->getAuthIdentifier())->value('id');
-        
+        $sellerStoreId = DB::table('stores')
+            ->where('user_id', (string) $user->getAuthIdentifier())
+            ->value('id');
+
         abort_if(
-            $product->storeId() !== ($sellerStoreId ? (int) $sellerStoreId : null), 
-            303, 
+            $product->storeId() !== ($sellerStoreId ? (int) $sellerStoreId : null),
+            303,
             'Forbidden. This product does not belong to your store.'
         );
     }

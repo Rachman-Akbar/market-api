@@ -10,8 +10,8 @@ final class GetCatalogGroupsQuery
         private CatalogGroupRepositoryInterface $repository
     ) {}
 
-    public function execute(array $filters = [])
+    public function execute(array $filters = [], bool $includeInactive = false)
     {
-        return $this->repository->getAll($filters);
+        return $this->repository->getAll($filters, $includeInactive);
     }
 }

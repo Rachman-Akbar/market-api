@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\CatalogGroup\Application\UseCases;
 
 use App\Domains\Catalog\CatalogGroup\Application\Dtos\CatalogGroupData;
 use App\Domains\Catalog\CatalogGroup\Domain\Entities\CatalogGroup;
 use App\Domains\Catalog\CatalogGroup\Domain\Repositories\CatalogGroupRepositoryInterface;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 final class CreateCatalogGroupUseCase
 {
@@ -15,17 +18,17 @@ final class CreateCatalogGroupUseCase
 
     public function execute(CatalogGroupData $data): CatalogGroup
     {
-        $name = $data->name();
-        $slug = $data->slug() ?: Str::slug((string) $name);
-        $isActive = $data->isActive() ?? true;
+        $name = Str::lower(trim((string) $data->name()));
 
-        $catalogGroup = new CatalogGroup(
+        if ($this->repository->nameExists($name)) {
+            throw new InvalidArgumentException('Nama kelompok katalog sudah digunakan.');
+        }
+
+        return $this->repository->save(new CatalogGroup(
             id: null,
-            name: (string) $name,
-            slug: $slug,
-            isActive: $isActive
-        );
-
-        return $this->repository->save($catalogGroup);
+            name: $name,
+            slug: $data->slug() ?: Str::slug($name),
+            isActive: $data->isActive() ?? true
+        ));
     }
 }

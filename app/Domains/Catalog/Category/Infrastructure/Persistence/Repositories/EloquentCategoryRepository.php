@@ -8,23 +8,22 @@ use App\Domains\Catalog\Category\Domain\Entities\Category;
 use App\Domains\Catalog\Category\Domain\Repositories\CategoryRepositoryInterface;
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Mappers\CategoryMapper;
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 final class EloquentCategoryRepository implements CategoryRepositoryInterface
 {
-    private const CACHE_TTL = 1800;
-
-    public function findById(int $id): ?Category
+    public function findById(int $id, bool $includeInactive = false): ?Category
     {
-        $model = CategoryModel::query()
-            ->with('childrenTree')
+        $model = $this->query($includeInactive)
+            ->with(['childrenTree' => fn ($query) => $includeInactive ? $query : $query->active()])
             ->find($id);
 
-        return $this->toEntity($model);
+        return $model ? CategoryMapper::toEntity($model) : null;
     }
 
-    public function findBySlug(string $slug): ?Category
+    public function findBySlug(string $slug, bool $includeInactive = false): ?Category
     {
         $slug = $this->normalizePath($slug);
 
@@ -32,15 +31,15 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
             return null;
         }
 
-        $model = CategoryModel::query()
-            ->with('childrenTree')
+        $model = $this->query($includeInactive)
+            ->with(['childrenTree' => fn ($query) => $includeInactive ? $query : $query->active()])
             ->where('slug', $slug)
             ->first();
 
-        return $this->toEntity($model);
+        return $model ? CategoryMapper::toEntity($model) : null;
     }
 
-    public function findByPath(string $path): ?Category
+    public function findByPath(string $path, bool $includeInactive = false): ?Category
     {
         $path = $this->normalizePath($path);
 
@@ -48,48 +47,47 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
             return null;
         }
 
-        $model = CategoryModel::query()
-            ->with('childrenTree')
-            ->where('full_slug', $path)
-            ->when(! str_contains($path, '/'), function ($query) use ($path) {
-                $query->orWhere('slug', $path);
+        $model = $this->query($includeInactive)
+            ->with(['childrenTree' => fn ($query) => $includeInactive ? $query : $query->active()])
+            ->where(function (Builder $query) use ($path): void {
+                $query->where('full_slug', $path);
+
+                if (! str_contains($path, '/')) {
+                    $query->orWhere('slug', $path);
+                }
             })
             ->first();
 
-        return $this->toEntity($model);
+        return $model ? CategoryMapper::toEntity($model) : null;
     }
 
-    public function findByFullSlug(string $fullSlug): ?Category
+    public function findByFullSlug(string $fullSlug, bool $includeInactive = false): ?Category
     {
-        return $this->findByPath($fullSlug);
+        return $this->findByPath($fullSlug, $includeInactive);
     }
 
-    public function listTree(): array
+    public function listTree(bool $includeInactive = false): array
     {
-        $rows = Cache::remember('catalog_categories_tree_rows_v2', self::CACHE_TTL, function () {
-            return $this->categoryRows(false);
-        });
-
-        return $this->buildTreeFromRows($rows);
+        return $this->buildTreeFromRows(
+            $this->categoryRows(false, $includeInactive)
+        );
     }
 
     public function listMenuTree(): array
     {
-        $rows = Cache::remember('catalog_categories_menu_rows_v2', self::CACHE_TTL, function () {
-            return $this->categoryRows(true);
-        });
-
-        return $this->buildTreeFromRows($rows);
+        return $this->buildTreeFromRows(
+            $this->categoryRows(true, false)
+        );
     }
 
-    public function findChildrenByParentId(int $parentId): array
+    public function findChildrenByParentId(int $parentId, bool $includeInactive = true): array
     {
-        return CategoryModel::query()
+        return $this->query($includeInactive)
             ->where('parent_id', $parentId)
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
-            ->map(fn (CategoryModel $model) => CategoryMapper::toEntity($model))
+            ->map(fn (CategoryModel $model): Category => CategoryMapper::toEntity($model))
             ->all();
     }
 
@@ -117,7 +115,7 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         $childIds = CategoryModel::query()
             ->where('parent_id', $categoryId)
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn (mixed $id): int => (int) $id)
             ->all();
 
         if ($childIds === []) {
@@ -133,6 +131,24 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         return $maxDepth;
     }
 
+    public function nameExistsInParent(
+        int $catalogGroupId,
+        ?int $parentId,
+        string $name,
+        ?int $ignoreId = null
+    ): bool {
+        return CategoryModel::withTrashed()
+            ->where('catalog_group_id', $catalogGroupId)
+            ->when(
+                $parentId === null,
+                fn (Builder $query) => $query->whereNull('parent_id'),
+                fn (Builder $query) => $query->where('parent_id', $parentId)
+            )
+            ->where('name', Str::lower(trim($name)))
+            ->when($ignoreId !== null, fn (Builder $query) => $query->whereKeyNot($ignoreId))
+            ->exists();
+    }
+
     public function save(Category $category): Category
     {
         $model = $category->id()
@@ -141,6 +157,7 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
 
         $model->catalog_group_id = $category->catalogGroupId();
         $model->parent_id = $category->parentId();
+        $model->parent_scope_id = $category->parentId() ?? 0;
         $model->level = $category->level();
         $model->sort_order = $category->sortOrder();
         $model->is_active = $category->isActive();
@@ -150,8 +167,8 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         $model->full_slug = $category->fullSlug();
         $model->image_url = $category->imageUrl();
         $model->icon_url = $category->iconUrl();
-
         $model->save();
+
         $this->clearCache();
 
         return CategoryMapper::toEntity(
@@ -176,9 +193,17 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         return $deleted;
     }
 
-    private function toEntity(?CategoryModel $model): ?Category
+    private function query(bool $includeInactive): Builder
     {
-        return $model ? CategoryMapper::toEntity($model) : null;
+        $query = CategoryModel::query();
+
+        if ($includeInactive) {
+            return $query;
+        }
+
+        return $query
+            ->active()
+            ->whereHas('catalogGroup', fn (Builder $groupQuery) => $groupQuery->active());
     }
 
     private function normalizePath(string $path): string
@@ -186,9 +211,9 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
         return trim(rawurldecode($path), '/');
     }
 
-    private function categoryRows(bool $menuOnly): array
+    private function categoryRows(bool $menuOnly, bool $includeInactive): array
     {
-        return CategoryModel::query()
+        return $this->query($includeInactive)
             ->select([
                 'id',
                 'catalog_group_id',
@@ -203,18 +228,21 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
                 'image_url',
                 'icon_url',
             ])
-            ->withCount('products')
+            ->withCount([
+                'products' => fn ($query) => $includeInactive
+                    ? $query
+                    : $query
+                        ->where('products.is_active', true)
+                        ->where('products.status', 'published')
+                        ->whereHas('store', fn (Builder $storeQuery) => $storeQuery->where('status', 'approved')->where('is_active', true)),
+            ])
             ->where('level', '<=', 3)
-            ->when($menuOnly, function ($query) {
-                $query
-                    ->where('is_active', true)
-                    ->where('is_visible_in_menu', true);
-            })
+            ->when($menuOnly, fn (Builder $query) => $query->where('is_visible_in_menu', true))
             ->orderBy('level')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
-            ->map(fn (CategoryModel $model) => [
+            ->map(fn (CategoryModel $model): array => [
                 'id' => (int) $model->id,
                 'catalog_group_id' => (int) $model->catalog_group_id,
                 'parent_id' => $model->parent_id !== null ? (int) $model->parent_id : null,
@@ -230,27 +258,6 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
                 'products_count' => (int) ($model->products_count ?? 0),
             ])
             ->all();
-    }
-
-    private function buildTree(Collection $models): array
-    {
-        return $this->buildTreeFromRows(
-            $models->map(fn (CategoryModel $model) => [
-                'id' => (int) $model->id,
-                'catalog_group_id' => (int) $model->catalog_group_id,
-                'parent_id' => $model->parent_id !== null ? (int) $model->parent_id : null,
-                'level' => (int) $model->level,
-                'sort_order' => (int) $model->sort_order,
-                'is_active' => (bool) $model->is_active,
-                'is_visible_in_menu' => (bool) $model->is_visible_in_menu,
-                'name' => (string) $model->name,
-                'slug' => (string) $model->slug,
-                'full_slug' => (string) $model->full_slug,
-                'image_url' => $model->image_url,
-                'icon_url' => $model->icon_url,
-                'products_count' => (int) ($model->products_count ?? 0),
-            ])->all()
-        );
     }
 
     private function buildTreeFromRows(array $rows): array
@@ -278,7 +285,8 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
 
     private function clearCache(): void
     {
-        Cache::forget('catalog_categories_tree_rows_v2');
-        Cache::forget('catalog_categories_menu_rows_v2');
+        Cache::forget('catalog_categories_tree_rows_manage_v3');
+        Cache::forget('catalog_categories_tree_rows_active_v3');
+        Cache::forget('catalog_categories_menu_rows_active_v3');
     }
 }

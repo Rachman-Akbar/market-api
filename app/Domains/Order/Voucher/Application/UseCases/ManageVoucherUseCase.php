@@ -11,22 +11,20 @@ use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 
-class ManageVoucherUseCase
+final class ManageVoucherUseCase
 {
-    public function __construct(
-        private VoucherRepositoryInterface $voucherRepository
-    ) {}
+    public function __construct(private VoucherRepositoryInterface $voucherRepository) {}
 
     public function listVouchers(array $filters = []): Collection
     {
         return $this->voucherRepository->getAll($filters);
     }
 
-    public function showVoucher(int $id): Voucher
+    public function showVoucher(int $id, bool $includeInactive = true): Voucher
     {
-        $voucher = $this->voucherRepository->findById($id);
+        $voucher = $this->voucherRepository->findById($id, $includeInactive);
 
-        if (!$voucher) {
+        if (! $voucher) {
             throw new ModelNotFoundException('Voucher tidak ditemukan.');
         }
 
@@ -35,14 +33,15 @@ class ManageVoucherUseCase
 
     public function createVoucher(VoucherDTO $dto): Voucher
     {
-        if ($this->voucherRepository->findByCode($dto->code)) {
-            throw new Exception("Kode voucher '{$dto->code}' sudah digunakan.");
-        }
+        $this->assertUnique($dto);
 
-        $voucher = new Voucher([
-            'code' => strtoupper($dto->code),
+        return $this->voucherRepository->save(new Voucher([
+            'store_id' => $dto->store_id,
+            'voucher_scope' => $dto->voucher_scope,
+            'code' => $dto->code,
             'name' => $dto->name,
             'image' => $dto->image,
+            'discount_target' => $dto->discount_target,
             'discount_type' => $dto->discount_type,
             'discount_value' => $dto->discount_value,
             'min_spend' => $dto->min_spend,
@@ -51,26 +50,21 @@ class ManageVoucherUseCase
             'ends_at' => $dto->ends_at,
             'usage_limit' => $dto->usage_limit,
             'used_count' => 0,
-            'store_id' => $dto->store_id,
             'is_active' => $dto->is_active,
-        ]);
-
-        return $this->voucherRepository->save($voucher);
+        ]));
     }
 
     public function updateVoucher(int $id, VoucherDTO $dto): Voucher
     {
-        $voucher = $this->showVoucher($id);
-        $existing = $this->voucherRepository->findByCode($dto->code);
-
-        if ($existing && $existing->id !== $id) {
-            throw new Exception("Kode voucher '{$dto->code}' sudah digunakan oleh voucher lain.");
-        }
-
+        $voucher = $this->showVoucher($id, true);
+        $this->assertUnique($dto, $id);
         $voucher->fill([
-            'code' => strtoupper($dto->code),
+            'store_id' => $dto->store_id,
+            'voucher_scope' => $dto->voucher_scope,
+            'code' => $dto->code,
             'name' => $dto->name,
             'image' => $dto->image ?? $voucher->image,
+            'discount_target' => $dto->discount_target,
             'discount_type' => $dto->discount_type,
             'discount_value' => $dto->discount_value,
             'min_spend' => $dto->min_spend,
@@ -78,7 +72,6 @@ class ManageVoucherUseCase
             'starts_at' => $dto->starts_at,
             'ends_at' => $dto->ends_at,
             'usage_limit' => $dto->usage_limit,
-            'store_id' => $dto->store_id,
             'is_active' => $dto->is_active,
         ]);
 
@@ -87,6 +80,17 @@ class ManageVoucherUseCase
 
     public function deleteVoucher(int $id): bool
     {
-        return $this->voucherRepository->delete($this->showVoucher($id));
+        return $this->voucherRepository->delete($this->showVoucher($id, true));
+    }
+
+    private function assertUnique(VoucherDTO $dto, ?int $ignoreId = null): void
+    {
+        if ($this->voucherRepository->codeExists($dto->code, $ignoreId)) {
+            throw new Exception("Kode voucher '{$dto->code}' sudah digunakan.");
+        }
+
+        if ($this->voucherRepository->nameExists($dto->name, $ignoreId)) {
+            throw new Exception("Nama voucher '{$dto->name}' sudah digunakan.");
+        }
     }
 }

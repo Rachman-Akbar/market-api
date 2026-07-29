@@ -10,9 +10,9 @@ final class GetCatalogGroupIdQuery
         private CatalogGroupRepositoryInterface $repository
     ) {}
 
-    public function execute(int $id)
+    public function execute(int $id, bool $includeInactive = false)
     {
-        return $this->repository->findById($id);
+        return $this->repository->findById($id, $includeInactive);
     }
 }
 

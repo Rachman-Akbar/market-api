@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
 
-class VoucherResource extends JsonResource
+final class VoucherResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
@@ -26,6 +26,8 @@ class VoucherResource extends JsonResource
             'name' => $this->name,
             'image' => $this->image,
             'imageUrl' => $imageUrl,
+            'voucherScope' => $this->voucher_scope,
+            'discountTarget' => $this->discount_target,
             'discountType' => $this->discount_type,
             'discountValue' => $this->discount_value,
             'minSpend' => $this->min_spend,
@@ -35,6 +37,7 @@ class VoucherResource extends JsonResource
             'usageLimit' => $this->usage_limit,
             'usedCount' => $this->used_count,
             'storeId' => $this->store_id,
+            'storeName' => $this->relationLoaded('store') ? $this->store?->name : null,
             'isActive' => $this->is_active,
             'createdAt' => $this->created_at?->toDateTimeString(),
         ];

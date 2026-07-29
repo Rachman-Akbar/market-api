@@ -6,7 +6,7 @@ namespace App\Domains\Catalog\Category\Application\Queries;
 
 use App\Domains\Catalog\Category\Domain\Repositories\CategoryRepositoryInterface;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final class ListProductsByCategoryPathQuery
@@ -17,7 +17,7 @@ final class ListProductsByCategoryPathQuery
     ) {
     }
 
-    public function execute(string $path, array $filters = []): LengthAwarePaginator
+    public function execute(string $path, array $filters = []): Collection
     {
         $category = $this->categoryRepository->findByPath($path);
 
@@ -30,7 +30,7 @@ final class ListProductsByCategoryPathQuery
             FILTER_VALIDATE_BOOLEAN
         );
 
-        return $this->productRepository->paginateByCategory(
+        return $this->productRepository->findByCategory(
             categoryId: $category->id(),
             filters: $filters,
             includeDescendants: $includeDescendants

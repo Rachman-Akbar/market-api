@@ -17,6 +17,7 @@ use App\Domains\Catalog\Product\Application\UseCases\Product\DeleteProductUseCas
 use App\Domains\Catalog\Product\Presentation\Http\Requests\StoreProductRequest;
 use App\Domains\Catalog\Product\Presentation\Http\Requests\UpdateProductRequest;
 use App\Domains\Catalog\Product\Presentation\Http\Resources\ProductResource;
+use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
 
 final class ProductController extends Controller
 {
@@ -32,7 +33,6 @@ final class ProductController extends Controller
         return $storeId ? (int) $storeId : null;
     }
 
-    // --- PUBLIC ROUTES ---
     public function index(Request $request, ListProductsQuery $query)
     {
         return ProductResource::collection($query->execute($request->all()));
@@ -56,7 +56,6 @@ final class ProductController extends Controller
         return new ProductResource($product);
     }
 
-    // --- PROTECTED ROUTES (SELLER ONLY) ---
     public function sellerIndex(Request $request, ListSellerProductsQuery $query)
     {
         $sellerId = $this->resolveCurrentSellerId($request);
@@ -72,6 +71,51 @@ final class ProductController extends Controller
         return ProductResource::collection($products);
     }
 
+    public function adminIndex(Request $request, ProductRepositoryInterface $products)
+    {
+        $filters = $request->all();
+        $filters['include_inactive'] = true;
+
+        return ProductResource::collection($products->getAll($filters));
+    }
+
+    public function adminStore(StoreProductRequest $request, CreateProductUseCase $useCase)
+    {
+        try {
+            return new ProductResource($useCase->execute($request->validated()));
+        } catch (\InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function adminUpdate(
+        UpdateProductRequest $request,
+        int $id,
+        GetProductQuery $query,
+        UpdateProductUseCase $useCase
+    ) {
+        if (! $query->execute($id, true)) {
+            return response()->json(['message' => "Produk dengan ID {$id} tidak ditemukan."], 404);
+        }
+
+        try {
+            return new ProductResource($useCase->execute($id, $request->validated()));
+        } catch (\InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function adminDestroy(int $id, GetProductQuery $query, DeleteProductUseCase $useCase)
+    {
+        if (! $query->execute($id, true)) {
+            return response()->json(['message' => "Produk dengan ID {$id} tidak ditemukan."], 404);
+        }
+
+        $useCase->execute($id);
+
+        return response()->json(['message' => 'Produk berhasil dihapus.']);
+    }
+
     public function store(StoreProductRequest $request, CreateProductUseCase $useCase)
     {
         $sellerId = $this->resolveCurrentSellerId($request);
@@ -80,6 +124,7 @@ final class ProductController extends Controller
         }
 
         $payload = $request->validated();
+        unset($payload['store_id']);
         $payload['seller_id'] = $sellerId;
 
         try {
@@ -97,12 +142,12 @@ final class ProductController extends Controller
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        $product = $query->execute($id);
+        $product = $query->execute($id, true);
         if (! $product) {
             return response()->json(['message' => "Produk dengan ID {$id} tidak ditemukan."], 404);
         }
 
-        // Perubahan: Otorisasi dialihkan ke pencocokan storeId hasil resolve DB
+
         $storeId = $this->resolveStoreIdBySellerId($sellerId);
         if ($product->storeId() !== $storeId) {
             return response()->json(['message' => 'Forbidden. Produk ini bukan milik toko Anda.'], 403);
@@ -127,12 +172,12 @@ final class ProductController extends Controller
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        $product = $query->execute($id);
+        $product = $query->execute($id, true);
         if (! $product) {
             return response()->json(['message' => "Produk dengan ID {$id} tidak ditemukan."], 404);
         }
 
-        // Perubahan: Mengamankan penghapusan via storeId matching
+
         $storeId = $this->resolveStoreIdBySellerId($sellerId);
         if ($product->storeId() !== $storeId) {
             return response()->json(['message' => 'Forbidden. Produk ini bukan milik toko Anda.'], 403);

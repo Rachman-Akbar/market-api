@@ -4,13 +4,22 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Product\Infrastructure\Persistence\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
 use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
+use App\Domains\Shared\Infrastructure\Persistence\Concerns\HasActiveStatus;
+use App\Domains\Shared\Infrastructure\Persistence\Concerns\TracksUserChanges;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class ProductModel extends Model
 {
+    use HasActiveStatus;
+    use SoftDeletes;
+    use TracksUserChanges;
+
     protected $table = 'products';
 
     protected $fillable = [
@@ -23,13 +32,23 @@ final class ProductModel extends Model
         'thumbnail',
         'status',
         'is_active',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
         'store_id' => 'integer',
         'primary_category_id' => 'integer',
         'is_active' => 'boolean',
+        'deleted_at' => 'datetime',
     ];
+
+    protected function name(): Attribute
+    {
+        return Attribute::make(
+            set: fn (mixed $value): string => Str::lower(trim((string) $value))
+        );
+    }
 
     public function store()
     {

@@ -1,68 +1,146 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\Banner\Presentation\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use App\Http\Controllers\Controller;
-use App\Domains\Catalog\Banner\Application\Queries\GetBannerQuery;
-use App\Domains\Catalog\Banner\Application\UseCases\UpsertBannerUseCase;
-use App\Domains\Catalog\Banner\Application\UseCases\DeleteBannerUseCase;
 use App\Domains\Catalog\Banner\Application\Dtos\BannerData;
+use App\Domains\Catalog\Banner\Application\Queries\GetBannerQuery;
+use App\Domains\Catalog\Banner\Application\UseCases\DeleteBannerUseCase;
+use App\Domains\Catalog\Banner\Application\UseCases\UpsertBannerUseCase;
 use App\Domains\Catalog\Banner\Presentation\Http\Requests\BannerRequest;
 use App\Domains\Catalog\Banner\Presentation\Http\Resources\BannerResource;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
+use RuntimeException;
+use Throwable;
 
-class BannerController extends Controller
+final class BannerController extends Controller
 {
-    // GET /api/v1/catalog/shop-banners
-    // Jika tidak membawa ?store_id=X di URL, otomatis mencari milik store_id 27
     public function index(Request $request, GetBannerQuery $query): JsonResponse
     {
-        $storeId = (int) $request->query('store_id', 27);
+        $storeId = $request->integer('store_id');
+
+        if (! $storeId || ! DB::table('stores')->where('id', $storeId)->where('is_active', true)->exists()) {
+            return response()->json(['data' => []]);
+        }
+
         $banners = $query->execute($storeId);
 
-        return response()->json(['data' => array_map(fn($b) => $b->toArray(), $banners)]);
+        return response()->json(['data' => array_map(fn ($banner) => $banner->toArray(), $banners)]);
     }
-    // Ganti parameter pertama dari Request menjadi BannerRequest
-    public function store(BannerRequest $request, UpsertBannerUseCase $useCase): BannerResource
+
+    public function adminManage(Request $request, GetBannerQuery $query): JsonResponse
     {
-        // 1. Ambil data yang sudah lolos validasi dari BannerRequest
-        $validatedData = $request->validated();
+        $banners = $query->executeAll($request->only(['search', 'store_id', 'is_active']));
 
-        // 2. Masukkan ke dalam DTO (store_id otomatis jadi 27 di dalam sini jika kosong)
-        $dto = BannerData::fromArray($validatedData);
-
-        // 3. Eksekusi Use Case
-        $banner = $useCase->execute($dto);
-
-        // 4. Kembalikan data menggunakan BannerResource (Otomatis status code 201)
-        return new BannerResource($banner);
+        return response()->json(['data' => array_map(fn ($banner) => $banner->toArray(), $banners)]);
     }
-    
-    // PUT /api/v1/catalog/shop-banners/{id}
-    public function update(BannerRequest $request, int $id, UpsertBannerUseCase $useCase): JsonResponse
-    {
-        $request->validate([
-            'image_url' => 'required|string'
-        ]);
 
-        $dto = BannerData::fromArray($request->all());
+    public function adminStore(BannerRequest $request, UpsertBannerUseCase $useCase): BannerResource
+    {
+        $payload = $request->validated();
+        $payload['store_id'] = $this->requireAdminStoreId($payload);
+
+        return new BannerResource($useCase->execute(BannerData::fromArray($payload)));
+    }
+
+    public function adminUpdate(BannerRequest $request, int $id, UpsertBannerUseCase $useCase): JsonResponse
+    {
+        $payload = $request->validated();
+        $payload['store_id'] = $this->requireAdminStoreId($payload);
+
         try {
-            $banner = $useCase->execute($dto, $id);
-            return response()->json(['message' => 'Banner toko berhasil diperbarui', 'data' => $banner->toArray()]);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 404);
+            $banner = $useCase->execute(BannerData::fromArray($payload), $id);
+
+            return response()->json([
+                'message' => 'Banner berhasil diperbarui.',
+                'data' => $banner->toArray(),
+            ]);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
         }
     }
 
-    // DELETE /api/v1/catalog/shop-banners/{id}
-    public function destroy(int $id, DeleteBannerUseCase $useCase): JsonResponse
+    public function adminDestroy(int $id, DeleteBannerUseCase $useCase): JsonResponse
     {
         try {
             $useCase->execute($id);
-            return response()->json(['message' => 'Banner toko berhasil dihapus']);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 404);
+
+            return response()->json(['message' => 'Banner berhasil dihapus.']);
+        } catch (Throwable $exception) {
+            return response()->json(['message' => $exception->getMessage()], 404);
         }
+    }
+
+    public function manage(Request $request, GetBannerQuery $query): JsonResponse
+    {
+        $banners = $query->execute($this->resolveSellerStoreId($request), true);
+
+        return response()->json(['data' => array_map(fn ($banner) => $banner->toArray(), $banners)]);
+    }
+
+    public function store(BannerRequest $request, UpsertBannerUseCase $useCase): BannerResource
+    {
+        $payload = $request->validated();
+        $payload['store_id'] = $this->resolveSellerStoreId($request);
+
+        return new BannerResource($useCase->execute(BannerData::fromArray($payload)));
+    }
+
+    public function update(BannerRequest $request, int $id, UpsertBannerUseCase $useCase): JsonResponse
+    {
+        $payload = $request->validated();
+        $payload['store_id'] = $this->resolveSellerStoreId($request);
+
+        try {
+            $banner = $useCase->execute(BannerData::fromArray($payload), $id);
+
+            return response()->json([
+                'message' => 'Banner toko berhasil diperbarui',
+                'data' => $banner->toArray(),
+            ]);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function destroy(Request $request, int $id, DeleteBannerUseCase $useCase): JsonResponse
+    {
+        try {
+            $useCase->execute($id, $this->resolveSellerStoreId($request));
+
+            return response()->json(['message' => 'Banner toko berhasil dihapus']);
+        } catch (Throwable $exception) {
+            return response()->json(['message' => $exception->getMessage()], 404);
+        }
+    }
+
+    private function requireAdminStoreId(array $payload): int
+    {
+        $storeId = (int) ($payload['store_id'] ?? 0);
+
+        if ($storeId <= 0) {
+            throw ValidationException::withMessages([
+                'store_id' => ['Toko wajib dipilih.'],
+            ]);
+        }
+
+        return $storeId;
+    }
+
+    private function resolveSellerStoreId(Request $request): int
+    {
+        $storeId = $request->user()?->store?->id;
+
+        if (! $storeId) {
+            throw new RuntimeException('Akun seller belum terhubung dengan toko aktif.');
+        }
+
+        return (int) $storeId;
     }
 }

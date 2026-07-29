@@ -46,12 +46,15 @@ final class StoreMapper
             city: $model->city,
             province: $model->province,
             address: $model->address,
+            status: (string) ($model->status ?? 'pending'),
             isActive: (bool) $model->is_active,
             logo: $model->logo,
             bannerUrl: $model->banner_url,
             createdAt: $model->created_at?->toIso8601String(),
             updatedAt: $model->updated_at?->toIso8601String(),
-            detail: $detail
+            detail: $detail,
+            ownerName: $model->relationLoaded('owner') ? $model->owner?->name : null,
+            ownerEmail: $model->relationLoaded('owner') ? $model->owner?->email : null
         );
     }
 
@@ -68,6 +71,7 @@ final class StoreMapper
             'city' => $store->city(),
             'province' => $store->province(),
             'address' => $store->address(),
+            'status' => $store->status(),
             'is_active' => $store->isActive(),
             'logo' => $store->logo(),
             'banner_url' => $store->bannerUrl(),

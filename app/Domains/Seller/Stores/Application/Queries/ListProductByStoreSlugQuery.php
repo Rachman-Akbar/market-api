@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Seller\Stores\Application\Queries;
 
 use App\Domains\Seller\Stores\Domain\Repositories\StoreRepositoryInterface;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 final class ListProductByStoreSlugQuery
 {
@@ -16,10 +16,7 @@ final class ListProductByStoreSlugQuery
         $this->storeRepository = $storeRepository;
     }
 
-    /**
-     * Mengubah return type dari Collection menjadi LengthAwarePaginator
-     */
-    public function execute(string $slug, array $filters = []): LengthAwarePaginator
+    public function execute(string $slug, array $filters = []): Collection
     {
         return $this->storeRepository->listProductsByStoreSlug($slug, $filters);
     }

@@ -25,12 +25,15 @@ final class StoreResource extends JsonResource
             'city' => $store->city,
             'province' => $store->province,
             'address' => $store->address,
+            'status' => $store->status,
             'is_active' => $store->isActive,
             'logo' => $store->logo,
             'banner_url' => $store->bannerUrl,
             'detail' => $store->detail ? new StoreDetailResource($store->detail) : null,
             'created_at' => $store->createdAt,
             'updated_at' => $store->updatedAt,
+            'owner_name' => $store->ownerName,
+            'owner_email' => $store->ownerEmail,
         ];
     }
 }

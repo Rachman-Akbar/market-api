@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Seller\Stores\Application\UseCases;
 
-use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
-use App\Domains\Identity\Features\Auth\Application\DTOs\RegisterSellerDTO;
+use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
+use App\Domains\Identity\Auth\Application\DTOs\RegisterSellerDTO;
 use App\Domains\Seller\Stores\Application\DTOs\StoreData;
 use App\Domains\Seller\Stores\Domain\Repositories\StoreRepositoryInterface;
 use Illuminate\Support\Facades\DB;

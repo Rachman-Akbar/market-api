@@ -1,36 +1,102 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\Promotion\Application\UseCases;
 
-use App\Domains\Catalog\Promotion\Domain\Repositories\PromotionRepositoryInterface;
-use App\Domains\Catalog\Promotion\Domain\Entities\Promotion as PromotionEntity;
 use App\Domains\Catalog\Promotion\Application\Dtos\PromotionData;
+use App\Domains\Catalog\Promotion\Domain\Entities\Promotion;
+use App\Domains\Catalog\Promotion\Domain\Repositories\PromotionRepositoryInterface;
+use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
-class UpsertPromotionUseCase
+final class UpsertPromotionUseCase
 {
-    public function __construct(
-        private PromotionRepositoryInterface $repository
-    ) {}
+    public function __construct(private PromotionRepositoryInterface $repository) {}
 
-    public function execute(PromotionData $dto, ?int $id = null): PromotionData
-    {
-        if ($id && !$this->repository->findById($id)) {
-            throw new \Exception("Promosi tidak ditemukan.");
+    public function execute(
+        PromotionData $dto,
+        ?int $id = null,
+        ?int $sellerStoreId = null,
+        bool $sellerSubmission = false,
+        ?string $actorId = null
+    ): PromotionData {
+        $existing = $id !== null ? $this->repository->findById($id, true) : null;
+
+        if ($id !== null && ! $existing) {
+            throw new InvalidArgumentException('Promosi tidak ditemukan.');
         }
 
-        $entity = new PromotionEntity(
+        if ($sellerSubmission && $existing && $existing->storeId !== $sellerStoreId) {
+            throw new InvalidArgumentException('Anda tidak memiliki akses ke promosi ini.');
+        }
+
+        if ($this->repository->nameExists($dto->name, $id)) {
+            throw new InvalidArgumentException("Nama promosi '{$dto->name}' sudah digunakan.");
+        }
+
+        $storeId = $sellerSubmission ? $sellerStoreId : $dto->storeId;
+        $this->validateTarget($dto, $storeId, $sellerSubmission);
+
+        $approvalStatus = $sellerSubmission
+            ? 'pending'
+            : ($existing?->approvalStatus ?? 'approved');
+
+        $entity = new Promotion(
             id: $id,
+            storeId: $storeId,
+            name: $dto->name,
             imageUrl: $dto->imageUrl,
             mobileImageUrl: $dto->mobileImageUrl,
             clickAction: $dto->clickAction,
-            targetId: $dto->targetId,
-            targetUrl: $dto->targetUrl,
+            targetId: in_array($dto->clickAction, ['product', 'category'], true) ? $dto->targetId : null,
+            targetUrl: $dto->clickAction === 'url' ? $dto->targetUrl : null,
             sortOrder: $dto->sortOrder,
-            isActive: $dto->isActive
+            isActive: $dto->isActive,
+            approvalStatus: $approvalStatus,
+            rejectionReason: $sellerSubmission ? null : $existing?->rejectionReason,
+            submittedAt: $sellerSubmission || ! $existing ? now()->toDateTimeString() : $existing->submittedAt,
+            approvedAt: $sellerSubmission ? null : ($existing?->approvedAt ?? now()->toDateTimeString()),
+            approvedBy: $sellerSubmission ? null : ($existing?->approvedBy ?? $actorId),
         );
 
-        $savedEntity = $this->repository->save($entity);
+        return PromotionData::fromArray($this->repository->save($entity)->toArray());
+    }
 
-        return PromotionData::fromArray($savedEntity->toArray());
+    private function validateTarget(PromotionData $dto, ?int $storeId, bool $sellerSubmission): void
+    {
+        if ($dto->clickAction === 'product') {
+            if (! $dto->targetId) {
+                throw new InvalidArgumentException('Produk target wajib dipilih.');
+            }
+
+            $query = DB::table('products')
+                ->where('id', $dto->targetId)
+                ->where('is_active', true)
+                ->where('status', 'published')
+                ->whereNull('deleted_at');
+
+            if ($sellerSubmission) {
+                $query->where('store_id', $storeId);
+            }
+
+            if (! $query->exists()) {
+                throw new InvalidArgumentException('Produk target tidak valid atau bukan milik toko Anda.');
+            }
+        }
+
+        if ($dto->clickAction === 'category') {
+            if (! $dto->targetId || ! DB::table('categories')
+                ->where('id', $dto->targetId)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')
+                ->exists()) {
+                throw new InvalidArgumentException('Kategori target tidak valid.');
+            }
+        }
+
+        if ($dto->clickAction === 'url' && ! $dto->targetUrl) {
+            throw new InvalidArgumentException('URL target wajib diisi.');
+        }
     }
 }

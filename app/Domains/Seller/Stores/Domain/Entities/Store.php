@@ -18,12 +18,15 @@ final class Store
         private ?string $city,
         private ?string $province,
         private ?string $address,
+        private string $status,
         private bool $isActive,
         private ?string $logo,
         private ?string $bannerUrl,
         private ?string $createdAt,
         private ?string $updatedAt,
-        private ?StoreDetail $detail = null
+        private ?StoreDetail $detail = null,
+        private ?string $ownerName = null,
+        private ?string $ownerEmail = null
     ) {}
 
     public function id(): int { return $this->id; }
@@ -37,12 +40,16 @@ final class Store
     public function city(): ?string { return $this->city; }
     public function province(): ?string { return $this->province; }
     public function address(): ?string { return $this->address; }
+    public function status(): string { return $this->status; }
     public function isActive(): bool { return $this->isActive; }
+    public function isPubliclyAvailable(): bool { return in_array($this->status, ['approved', 'active'], true) && $this->isActive; }
     public function logo(): ?string { return $this->logo; }
     public function bannerUrl(): ?string { return $this->bannerUrl; }
     public function createdAt(): ?string { return $this->createdAt; }
     public function updatedAt(): ?string { return $this->updatedAt; }
     public function detail(): ?StoreDetail { return $this->detail; }
+    public function ownerName(): ?string { return $this->ownerName; }
+    public function ownerEmail(): ?string { return $this->ownerEmail; }
 
     public function updateDetails(
         string $name,
@@ -70,5 +77,14 @@ final class Store
         $this->logo = $logo;
         $this->bannerUrl = $bannerUrl;
         $this->isActive = $isActive;
+    }
+
+    public function changeStatus(string $status): void
+    {
+        $this->status = $status;
+
+        if ($status === 'suspended') {
+            $this->isActive = false;
+        }
     }
 }

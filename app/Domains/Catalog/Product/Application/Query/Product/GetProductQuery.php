@@ -13,8 +13,8 @@ final class GetProductQuery
         private readonly ProductRepositoryInterface $products
     ) {}
 
-    public function execute(int $id): ?Product
+    public function execute(int $id, bool $includeInactive = false): ?Product
     {
-        return $this->products->findById($id);
+        return $this->products->findById($id, $includeInactive);
     }
 }

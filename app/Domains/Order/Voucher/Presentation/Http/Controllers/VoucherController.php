@@ -6,30 +6,64 @@ namespace App\Domains\Order\Voucher\Presentation\Http\Controllers;
 
 use App\Domains\Order\Voucher\Application\DTOs\VoucherDTO;
 use App\Domains\Order\Voucher\Application\UseCases\ManageVoucherUseCase;
+use App\Domains\Order\Voucher\Domain\Entities\Voucher;
 use App\Domains\Order\Voucher\Presentation\Http\Requests\StoreVoucherRequest;
 use App\Domains\Order\Voucher\Presentation\Http\Resources\VoucherResource;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Throwable;
 
-class VoucherController extends Controller
+final class VoucherController extends Controller
 {
     public function __construct(private ManageVoucherUseCase $useCase) {}
 
     public function index(Request $request): JsonResponse
     {
+        $storeIds = collect(explode(',', (string) $request->query('store_ids', '')))
+            ->push($request->query('store_id'))
+            ->filter(fn (mixed $value): bool => is_numeric($value))
+            ->map(fn (mixed $value): int => (int) $value)
+            ->unique()
+            ->values()
+            ->all();
+
         $filters = [
-            'active_now' => $request->boolean('active_now', true),
+            'active_now' => true,
+            'is_active' => true,
+            'store_ids' => $storeIds,
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => VoucherResource::collection($this->useCase->listVouchers($filters)),
+        ]);
+    }
+
+    public function manage(Request $request): JsonResponse
+    {
+        $filters = [
+            'include_inactive' => true,
+            'active_now' => $request->boolean('active_now', false),
         ];
 
         if ($request->has('is_active')) {
             $filters['is_active'] = $request->boolean('is_active');
         }
 
-        if ($request->filled('store_id')) {
-            $filters['store_id'] = $request->integer('store_id');
+        if ($this->activeRole($request) === 'seller') {
+            $filters['voucher_scope'] = 'store';
+            $filters['store_id'] = $this->sellerStoreId($request);
+        } else {
+            if ($request->filled('voucher_scope')) {
+                $filters['voucher_scope'] = (string) $request->query('voucher_scope');
+            }
+
+            if ($request->filled('store_id')) {
+                $filters['store_id'] = $request->integer('store_id');
+            }
         }
 
         return response()->json([
@@ -41,36 +75,26 @@ class VoucherController extends Controller
     public function show(int $id): JsonResponse
     {
         try {
-            return response()->json([
-                'success' => true,
-                'data' => new VoucherResource($this->useCase->showVoucher($id)),
-            ]);
+            return response()->json(['success' => true, 'data' => new VoucherResource($this->useCase->showVoucher($id, false))]);
         } catch (Throwable $exception) {
-            return response()->json([
-                'success' => false,
-                'message' => $exception->getMessage(),
-            ], 404);
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 404);
         }
     }
 
     public function store(StoreVoucherRequest $request): JsonResponse
     {
         try {
-            $data = $this->prepareData($request);
-            $voucher = $this->useCase->createVoucher(new VoucherDTO(...$data));
+            $voucher = $this->useCase->createVoucher(new VoucherDTO(...$this->prepareData($request)));
 
             return response()->json([
                 'success' => true,
-                'message' => 'Voucher berhasil dibuat.',
+                'message' => $voucher->voucher_scope === 'store' ? 'Voucher toko berhasil dibuat.' : 'Voucher platform berhasil dibuat.',
                 'data' => new VoucherResource($voucher),
             ], 201);
         } catch (Throwable $exception) {
             $this->deleteUploadedImage($request->attributes->get('uploaded_voucher_image'));
 
-            return response()->json([
-                'success' => false,
-                'message' => $exception->getMessage(),
-            ], 400);
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 422);
         }
     }
 
@@ -79,74 +103,57 @@ class VoucherController extends Controller
         $oldImage = null;
 
         try {
-            $currentVoucher = $this->useCase->showVoucher($id);
-            $this->assertOwnership($request, $currentVoucher->store_id);
-            $oldImage = $currentVoucher->image;
-            $data = $this->prepareData($request, $currentVoucher->store_id);
-            $voucher = $this->useCase->updateVoucher($id, new VoucherDTO(...$data));
+            $current = $this->useCase->showVoucher($id, true);
+            $this->assertOwnership($request, $current);
+            $oldImage = $current->image;
+            $voucher = $this->useCase->updateVoucher($id, new VoucherDTO(...$this->prepareData($request, $current)));
 
-            if ($data['image'] !== null && $oldImage && $oldImage !== $data['image']) {
+            if ($voucher->image && $oldImage && $voucher->image !== $oldImage) {
                 $this->deleteUploadedImage($oldImage);
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Voucher berhasil diperbarui.',
-                'data' => new VoucherResource($voucher),
-            ]);
+            return response()->json(['success' => true, 'message' => 'Voucher berhasil diperbarui.', 'data' => new VoucherResource($voucher)]);
         } catch (Throwable $exception) {
             $this->deleteUploadedImage($request->attributes->get('uploaded_voucher_image'));
 
-            return response()->json([
-                'success' => false,
-                'message' => $exception->getMessage(),
-            ], 400);
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 422);
         }
     }
 
     public function destroy(Request $request, int $id): JsonResponse
     {
         try {
-            $voucher = $this->useCase->showVoucher($id);
-            $this->assertOwnership($request, $voucher->store_id);
+            $voucher = $this->useCase->showVoucher($id, true);
+            $this->assertOwnership($request, $voucher);
             $image = $voucher->image;
             $this->useCase->deleteVoucher($id);
             $this->deleteUploadedImage($image);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Voucher berhasil dihapus.',
-            ]);
+            return response()->json(['success' => true, 'message' => 'Voucher berhasil dihapus.']);
         } catch (Throwable $exception) {
-            return response()->json([
-                'success' => false,
-                'message' => $exception->getMessage(),
-            ], 400);
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 422);
         }
     }
 
-    private function prepareData(StoreVoucherRequest $request, mixed $currentStoreId = null): array
+    private function prepareData(StoreVoucherRequest $request, ?Voucher $current = null): array
     {
         $data = $request->validated();
-        $activeRole = strtolower((string) $request->attributes->get('active_role', ''));
+        $role = $this->activeRole($request);
 
-        if ($activeRole === 'admin') {
-            $data['store_id'] = $request->input('store_id');
-        } elseif ($activeRole === 'seller') {
-            $storeId = $request->user()?->store?->id;
+        if ($role === 'seller') {
+            $data['voucher_scope'] = 'store';
+            $data['store_id'] = $this->sellerStoreId($request);
+        } else {
+            $data['voucher_scope'] = $current?->voucher_scope ?? 'platform';
+            $data['store_id'] = $current?->store_id;
 
-            if (!$storeId) {
-                throw new \RuntimeException('Akun seller belum terhubung dengan toko.');
+            if ($current === null) {
+                $data['voucher_scope'] = 'platform';
+                $data['store_id'] = null;
             }
-
-            if ($currentStoreId !== null && (int) $currentStoreId !== (int) $storeId) {
-                throw new \RuntimeException('Anda tidak memiliki akses ke voucher ini.');
-            }
-
-            $data['store_id'] = $storeId;
         }
 
-        $data['is_active'] = array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true;
+        $data['is_active'] = array_key_exists('is_active', $data) ? (bool) $data['is_active'] : ($current?->is_active ?? true);
         $data['image'] = null;
 
         if ($request->hasFile('image')) {
@@ -154,25 +161,52 @@ class VoucherController extends Controller
             $request->attributes->set('uploaded_voucher_image', $data['image']);
         }
 
-        return $data;
+        return [
+            'code' => (string) $data['code'],
+            'name' => (string) $data['name'],
+            'voucher_scope' => (string) $data['voucher_scope'],
+            'discount_target' => (string) $data['discount_target'],
+            'discount_type' => (string) $data['discount_type'],
+            'discount_value' => (float) $data['discount_value'],
+            'min_spend' => (float) $data['min_spend'],
+            'max_discount' => isset($data['max_discount']) && $data['max_discount'] !== '' ? (float) $data['max_discount'] : null,
+            'starts_at' => (string) $data['starts_at'],
+            'ends_at' => (string) $data['ends_at'],
+            'usage_limit' => (int) $data['usage_limit'],
+            'store_id' => $data['store_id'] !== null ? (int) $data['store_id'] : null,
+            'is_active' => (bool) $data['is_active'],
+            'image' => $data['image'],
+        ];
     }
 
-    private function assertOwnership(Request $request, mixed $storeId): void
+    private function assertOwnership(Request $request, Voucher $voucher): void
     {
-        $activeRole = strtolower((string) $request->attributes->get('active_role', ''));
+        if ($this->activeRole($request) === 'seller') {
+            if ($voucher->voucher_scope !== 'store' || (int) $voucher->store_id !== $this->sellerStoreId($request)) {
+                throw new RuntimeException('Anda tidak memiliki akses ke voucher ini.');
+            }
+        }
+    }
 
-        if ($activeRole !== 'seller') {
-            return;
+    private function sellerStoreId(Request $request): int
+    {
+        $storeId = $request->attributes->get('seller_store_id') ?: $request->user()?->store?->id;
+
+        if (! $storeId) {
+            throw new RuntimeException('Akun seller belum terhubung dengan toko.');
         }
 
-        if ((int) $storeId !== (int) $request->user()?->store?->id) {
-            throw new \RuntimeException('Anda tidak memiliki akses ke voucher ini.');
-        }
+        return (int) $storeId;
+    }
+
+    private function activeRole(Request $request): string
+    {
+        return strtolower((string) $request->attributes->get('active_role', 'admin'));
     }
 
     private function deleteUploadedImage(?string $path): void
     {
-        if ($path && !str_starts_with($path, 'http')) {
+        if ($path && ! str_starts_with($path, 'http')) {
             Storage::disk('public')->delete($path);
         }
     }

@@ -9,12 +9,10 @@ use App\Domains\Seller\Stores\Domain\Repositories\StoreRepositoryInterface;
 
 final readonly class GetStoreBySlugQuery
 {
-    public function __construct(
-        private StoreRepositoryInterface $repository
-    ) {}
+    public function __construct(private StoreRepositoryInterface $repository) {}
 
-    public function execute(string $slug): ?Store
+    public function execute(string $slug, bool $publicOnly = false): ?Store
     {
-        return $this->repository->findBySlug($slug);
+        return $this->repository->findBySlug($slug, $publicOnly);
     }
 }

@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Seller\Stores\Presentation\Http\Controllers;
 
-use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
+use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
+use App\Domains\Seller\Stores\Application\DTOs\StoreData;
 use App\Domains\Seller\Stores\Application\Queries\GetStoreByIdQuery;
 use App\Domains\Seller\Stores\Application\Queries\GetStoreBySlugQuery;
 use App\Domains\Seller\Stores\Application\Queries\ListProductByStoreSlugQuery;
@@ -29,29 +30,50 @@ final class StoreController extends Controller
 
     public function index(Request $request, ListStoreQuery $query): AnonymousResourceCollection
     {
+        $filters = $request->query();
+        $filters['public_only'] = true;
+
+        return StoreListResource::collection($query->execute($filters));
+    }
+
+    public function manage(Request $request, ListStoreQuery $query): AnonymousResourceCollection
+    {
         return StoreListResource::collection($query->execute($request->query()));
     }
 
     public function showBySlug(string $slug, GetStoreBySlugQuery $query): StoreResource
     {
-        $store = $query->execute($slug);
-        abort_if(!$store, 404, 'Store not found.');
-        return new StoreResource($store);
+        $store = $query->execute($slug, true);
+        abort_if(! $store, 404, 'Toko tidak ditemukan.');
+
+        return new StoreResource(StoreData::fromEntity($store));
     }
 
     public function showById(int $id): StoreResource
     {
         $store = $this->getStoreByIdQuery->execute($id);
-        abort_if(!$store, 404, 'Store dengan ID tersebut tidak ditemukan.');
-        return new StoreResource($store);
+        abort_if(! $store || ! $store->isPubliclyAvailable(), 404, 'Toko tidak ditemukan.');
+
+        return new StoreResource(StoreData::fromEntity($store));
+    }
+
+    public function manageShow(Request $request, int $id): StoreResource
+    {
+        $store = $this->getStoreByIdQuery->execute($id);
+        abort_if(! $store, 404, 'Toko tidak ditemukan.');
+        abort_unless($store->userId() === (string) $request->user()->id, 403, 'Anda tidak memiliki akses ke toko ini.');
+
+        return new StoreResource(StoreData::fromEntity($store));
     }
 
     public function productsBySlug(Request $request, string $slug): JsonResponse
     {
-        return response()->json($this->listProductByStoreSlugQuery->execute(
+        $products = $this->listProductByStoreSlugQuery->execute(
             $slug,
-            $request->only(['per_page', 'page', 'search'])
-        ));
+            $request->only(['search', 'category_id'])
+        );
+
+        return response()->json(['data' => $products->values()]);
     }
 
     public function registerStore(Request $request, CreateStoreUseCase $useCase): JsonResponse
@@ -63,7 +85,7 @@ final class StoreController extends Controller
         $store = $useCase->execute((string) $request->user()->id, $validated, $request->header('X-Device-Name'));
 
         return (new StoreResource($store))
-            ->additional(['message' => 'Store registered successfully'])
+            ->additional(['message' => 'Toko berhasil dibuat dan menunggu persetujuan admin.'])
             ->response()
             ->setStatusCode(201);
     }
@@ -71,9 +93,11 @@ final class StoreController extends Controller
     public function updateStore(int $id, Request $request, UpdateStoreUseCase $useCase): JsonResponse
     {
         $validated = $request->validate($this->rules(false));
+        unset($validated['status']);
         $validated = $this->storeUploads($request, $validated);
         $detail = $this->detailData($validated);
-        if ($detail) {
+
+        if ($detail !== []) {
             $validated['detail'] = $detail;
         }
 
@@ -81,13 +105,14 @@ final class StoreController extends Controller
         $store = $useCase->execute($id, (string) $request->user()->id, $role, $validated);
 
         return (new StoreResource($store))
-            ->additional(['message' => 'Store updated successfully'])
+            ->additional(['message' => 'Toko berhasil diperbarui.'])
             ->response();
     }
 
     private function rules(bool $creating): array
     {
         $required = $creating ? 'required' : 'sometimes';
+
         return [
             'store_name' => [$required, 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -104,11 +129,11 @@ final class StoreController extends Controller
             'detail.owner_name' => ['nullable', 'string', 'max:120'],
             'detail.owner_phone' => ['nullable', 'string', 'max:30'],
             'detail.description' => ['nullable', 'string'],
-            'detail.shipping_policy' => ['nullable', 'string'],
-            'detail.return_policy' => ['nullable', 'string'],
-            'detail.open_days' => ['nullable', 'string', 'max:120'],
-            'detail.open_time' => ['nullable', 'date_format:H:i'],
-            'detail.close_time' => ['nullable', 'date_format:H:i'],
+            'detail.shipping_policy' => [$creating ? 'required' : 'nullable', 'string', 'min:10'],
+            'detail.return_policy' => [$creating ? 'required' : 'nullable', 'string', 'min:10'],
+            'detail.open_days' => [$creating ? 'required' : 'nullable', 'string', 'max:120'],
+            'detail.open_time' => [$creating ? 'required' : 'nullable', 'date_format:H:i'],
+            'detail.close_time' => [$creating ? 'required' : 'nullable', 'date_format:H:i', 'after:detail.open_time'],
             'detail.whatsapp_url' => ['nullable', 'url', 'max:255'],
             'detail.instagram_url' => ['nullable', 'url', 'max:255'],
             'detail.tiktok_url' => ['nullable', 'url', 'max:255'],
@@ -121,15 +146,18 @@ final class StoreController extends Controller
         if ($request->hasFile('logo')) {
             $validated['logo'] = $request->file('logo')->store('stores/logos', 'public');
         }
+
         if ($request->hasFile('banner')) {
             $validated['banner_url'] = $request->file('banner')->store('stores/banners', 'public');
         }
+
         unset($validated['banner']);
+
         return $validated;
     }
 
     private function detailData(array $validated): array
     {
-        return Arr::where($validated['detail'] ?? [], fn($value) => $value !== null && $value !== '');
+        return Arr::where($validated['detail'] ?? [], fn (mixed $value): bool => $value !== null && $value !== '');
     }
 }

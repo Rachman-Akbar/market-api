@@ -27,6 +27,19 @@ final class ProductMapper
             ? $model->images->map(fn ($item) => ProductImageMapper::toEntity($item))->all()
             : [];
 
+        $store = $model->relationLoaded('store') && $model->store
+            ? [
+                'id' => (int) $model->store->id,
+                'name' => (string) $model->store->name,
+                'slug' => (string) $model->store->slug,
+                'logo' => $model->store->logo,
+                'city' => $model->store->city,
+                'province' => $model->store->province,
+                'status' => (string) $model->store->status,
+                'is_active' => (bool) $model->store->is_active,
+            ]
+            : [];
+
         return new Product(
             id: (int) $model->id,
             storeId: (int) $model->store_id,
@@ -42,6 +55,7 @@ final class ProductMapper
             attributeValues: $attributeValues,
             variants: $variants,
             images: $images,
+            store: $store,
             createdAt: $model->created_at?->toDateTimeString(),
             updatedAt: $model->updated_at?->toDateTimeString()
         );

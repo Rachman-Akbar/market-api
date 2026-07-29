@@ -34,6 +34,16 @@ final class CategoryController extends Controller
         ]);
     }
 
+    public function manage(ListCategoryQuery $query): JsonResponse
+    {
+        $categories = $query->execute(true);
+
+        return response()->json([
+            'success' => true,
+            'data' => CategoryResource::collection($categories),
+        ]);
+    }
+
     public function menu(ListCategoryMenuQuery $query): JsonResponse
     {
         $categories = $query->execute();

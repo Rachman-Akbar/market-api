@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\CatalogGroup\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
-class CatalogGroupRequest extends FormRequest
+final class CatalogGroupRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -21,17 +23,19 @@ class CatalogGroupRequest extends FormRequest
             $data['is_active'] = $this->boolean('isActive');
         }
 
+        if ($this->has('is_active')) {
+            $data['is_active'] = $this->boolean('is_active');
+        }
+
         if ($this->has('name')) {
-            $data['name'] = trim((string) $this->input('name'));
+            $data['name'] = Str::lower(trim((string) $this->input('name')));
         }
 
         if ($this->has('slug')) {
             $slug = trim((string) $this->input('slug'));
             $data['slug'] = $slug !== '' ? Str::slug($slug) : null;
-        }
-
-        if (! $this->has('slug') && $this->has('name')) {
-            $data['slug'] = Str::slug((string) $this->input('name'));
+        } elseif ($this->has('name')) {
+            $data['slug'] = Str::slug((string) $data['name']);
         }
 
         $this->merge($data);
@@ -42,7 +46,12 @@ class CatalogGroupRequest extends FormRequest
         $id = $this->route('id');
 
         return [
-            'name' => [$this->isMethod('post') ? 'required' : 'sometimes', 'string', 'max:255'],
+            'name' => [
+                $this->isMethod('post') ? 'required' : 'sometimes',
+                'string',
+                'max:255',
+                Rule::unique('catalog_groups', 'name')->ignore($id),
+            ],
             'slug' => [
                 'nullable',
                 'string',
@@ -50,19 +59,6 @@ class CatalogGroupRequest extends FormRequest
                 Rule::unique('catalog_groups', 'slug')->ignore($id),
             ],
             'is_active' => ['sometimes', 'boolean'],
-        ];
-    }
-
-    public function messages(): array
-    {
-        return [
-            'name.required' => 'Nama kelompok katalog wajib diisi.',
-            'name.string' => 'Nama kelompok katalog harus berupa teks.',
-            'name.max' => 'Nama kelompok katalog maksimal 255 karakter.',
-            'slug.string' => 'Slug harus berupa teks.',
-            'slug.max' => 'Slug maksimal 255 karakter.',
-            'slug.unique' => 'Slug sudah digunakan.',
-            'is_active.boolean' => 'Status aktif harus bernilai benar atau salah.',
         ];
     }
 }

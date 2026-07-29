@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Product\Application\Query\Product;
 
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
+use Illuminate\Support\Collection;
 
 final class ListSellerProductsQuery
 {
@@ -13,12 +13,11 @@ final class ListSellerProductsQuery
         private readonly ProductRepositoryInterface $products
     ) {}
 
-    public function execute(string $sellerId, array $filters = []): LengthAwarePaginator
+    public function execute(string $sellerId, array $filters = []): Collection
     {
         $filters['seller_id'] = $sellerId;
+        $filters['include_inactive'] = true;
 
-        $perPage = (int) ($filters['per_page'] ?? 15);
-
-        return $this->products->paginate($filters, $perPage);
+        return $this->products->getAll($filters);
     }
 }

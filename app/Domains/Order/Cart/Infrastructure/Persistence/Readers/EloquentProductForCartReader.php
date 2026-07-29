@@ -14,7 +14,17 @@ final class EloquentProductForCartReader implements ProductForCartReaderInterfac
 {
     public function getVariantStock(int $productVariantId): ?int
     {
-        $stock = DB::table('product_variants')->where('id', $productVariantId)->value('stock');
+        $stock = DB::table('product_variants')
+            ->join('products', 'products.id', '=', 'product_variants.product_id')
+            ->join('stores', 'stores.id', '=', 'product_variants.store_id')
+            ->where('product_variants.id', $productVariantId)
+            ->where('products.is_active', true)
+            ->where('products.status', 'published')
+            ->whereNull('products.deleted_at')
+            ->where('stores.status', 'approved')
+            ->where('stores.is_active', true)
+            ->whereNull('stores.deleted_at')
+            ->value('product_variants.stock');
         return $stock === null ? null : (int) $stock;
     }
 
@@ -47,6 +57,12 @@ final class EloquentProductForCartReader implements ProductForCartReaderInterfac
             ->join('stores', 'stores.id', '=', 'product_variants.store_id')
             ->select($select)
             ->where('product_variants.id', $productVariantId)
+            ->where('products.is_active', true)
+            ->where('products.status', 'published')
+            ->whereNull('products.deleted_at')
+            ->where('stores.status', 'approved')
+            ->where('stores.is_active', true)
+            ->whereNull('stores.deleted_at')
             ->first();
 
         if (!$variant) {

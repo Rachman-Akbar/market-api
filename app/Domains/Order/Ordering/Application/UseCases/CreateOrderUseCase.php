@@ -145,6 +145,15 @@ class CreateOrderUseCase
             }
         }
 
+        $storeSubtotals = [];
+        foreach ($groups as $storeId => $items) {
+            $storeSubtotals[(int) $storeId] = array_reduce(
+                $items,
+                fn (float $total, array $item): float => $total + ((float) $item['price'] * (int) $item['quantity']),
+                0.0
+            );
+        }
+
         $orderNumber = 'ORD-' . now()->format('YmdHis') . '-' . strtoupper(bin2hex(random_bytes(3)));
         $customer = DB::table('users')->where('id', $userId)->first(['name', 'email']);
 
@@ -154,6 +163,7 @@ class CreateOrderUseCase
             $itemsTotal,
             $shippingTotal,
             $shippingBreakdown,
+            $storeSubtotals,
             $shippingAddress,
             $destinationId,
             $courier,
@@ -169,7 +179,8 @@ class CreateOrderUseCase
                 $voucherCode,
                 $itemsTotal,
                 $shippingTotal,
-                array_keys($groups)
+                $storeSubtotals,
+                $shippingBreakdown
             );
 
             $subOrders = [];
@@ -268,60 +279,88 @@ class CreateOrderUseCase
         });
     }
 
-    private function calculateVoucher(?string $voucherCode, float $itemsTotal, float $shippingTotal, array $storeIds): array
-    {
-        $code = strtoupper(trim((string) $voucherCode));
+    private function calculateVoucher(
+        ?string $voucherCode,
+        float $itemsTotal,
+        float $shippingTotal,
+        array $storeSubtotals,
+        array $shippingBreakdown
+    ): array {
+        $code = strtolower(trim((string) $voucherCode));
+
         if ($code === '') {
             return [null, 0.0, 0.0];
         }
 
-        $voucher = DB::table('vouchers')->where('code', $code)->lockForUpdate()->first();
-        if (!$voucher) {
+        $voucher = DB::table('vouchers')
+            ->leftJoin('stores', 'stores.id', '=', 'vouchers.store_id')
+            ->select('vouchers.*', 'stores.status as store_status', 'stores.is_active as store_is_active', 'stores.deleted_at as store_deleted_at')
+            ->where('vouchers.code', $code)
+            ->where('vouchers.is_active', true)
+            ->whereNull('vouchers.deleted_at')
+            ->lockForUpdate()
+            ->first();
+
+        if (! $voucher) {
             throw new RuntimeException('Voucher tidak dikenali.');
         }
 
-        if (!(bool) $voucher->is_active || now()->lt($voucher->starts_at) || now()->gt($voucher->ends_at)) {
-            throw new RuntimeException('Voucher sudah kedaluwarsa atau tidak aktif.');
+        if (now()->lt($voucher->starts_at) || now()->gt($voucher->ends_at)) {
+            throw new RuntimeException('Voucher sudah kedaluwarsa atau belum berlaku.');
         }
+
         if ((int) $voucher->usage_limit > 0 && (int) $voucher->used_count >= (int) $voucher->usage_limit) {
             throw new RuntimeException('Kuota penggunaan voucher sudah habis.');
         }
-        if ($voucher->store_id !== null && !in_array((int) $voucher->store_id, array_map('intval', $storeIds), true)) {
-            throw new RuntimeException('Voucher tidak berlaku untuk toko dalam pesanan ini.');
+
+        $scope = strtolower((string) $voucher->voucher_scope);
+        $targetStoreId = $voucher->store_id !== null ? (int) $voucher->store_id : null;
+
+        if ($scope === 'platform') {
+            if ($targetStoreId !== null) {
+                throw new RuntimeException('Konfigurasi voucher platform tidak valid.');
+            }
+            $eligibleSubtotal = $itemsTotal;
+            $eligibleShipping = $shippingTotal;
+        } elseif ($scope === 'store') {
+            if ($targetStoreId === null || ! array_key_exists($targetStoreId, $storeSubtotals)) {
+                throw new RuntimeException('Voucher tidak berlaku untuk toko dalam pesanan ini.');
+            }
+            if ((string) $voucher->store_status !== 'approved' || ! (bool) $voucher->store_is_active || $voucher->store_deleted_at !== null) {
+                throw new RuntimeException('Toko pemilik voucher sedang tidak tersedia.');
+            }
+            $eligibleSubtotal = (float) ($storeSubtotals[$targetStoreId] ?? 0);
+            $eligibleShipping = (float) ($shippingBreakdown[$targetStoreId] ?? 0);
+        } else {
+            throw new RuntimeException('Scope voucher tidak valid.');
         }
-        if ($itemsTotal < (float) $voucher->min_spend) {
+
+        if ($eligibleSubtotal < (float) $voucher->min_spend) {
             throw new RuntimeException('Minimal belanja voucher belum terpenuhi.');
         }
 
+        $target = strtolower((string) $voucher->discount_target);
         $type = strtolower((string) $voucher->discount_type);
         $value = (float) $voucher->discount_value;
-        $maxDiscount = $voucher->max_discount !== null ? (float) $voucher->max_discount : null;
-        $productDiscount = 0.0;
-        $shippingDiscount = 0.0;
+        $baseAmount = $target === 'shipping' ? $eligibleShipping : $eligibleSubtotal;
 
-        if ($type === 'percentage') {
-            $productDiscount = $itemsTotal * $value / 100;
-        } elseif ($type === 'fixed') {
-            $productDiscount = $value;
-        } elseif ($type === 'free_shipping') {
-            $shippingDiscount = $shippingTotal;
-        } elseif ($type === 'shipping_percentage') {
-            $shippingDiscount = $shippingTotal * $value / 100;
-        } elseif ($type === 'shipping_fixed') {
-            $shippingDiscount = $value;
-        } else {
-            throw new RuntimeException('Tipe voucher tidak didukung.');
+        if (! in_array($target, ['product', 'shipping'], true) || ! in_array($type, ['fixed', 'percentage'], true)) {
+            throw new RuntimeException('Konfigurasi diskon voucher tidak didukung.');
         }
 
-        if ($maxDiscount !== null) {
-            $productDiscount = min($productDiscount, $maxDiscount);
-            $shippingDiscount = min($shippingDiscount, $maxDiscount);
+        $discount = $type === 'percentage' ? $baseAmount * $value / 100 : $value;
+
+        if ($voucher->max_discount !== null) {
+            $discount = min($discount, (float) $voucher->max_discount);
         }
+
+        $discount = min($baseAmount, max(0.0, $discount));
 
         return [
             (int) $voucher->id,
-            min($itemsTotal, max(0, $productDiscount)),
-            min($shippingTotal, max(0, $shippingDiscount)),
+            $target === 'product' ? $discount : 0.0,
+            $target === 'shipping' ? $discount : 0.0,
         ];
     }
+
 }

@@ -7,6 +7,7 @@ namespace App\Domains\Catalog\Product\Presentation\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class UpdateProductVariantRequest extends FormRequest
 {
@@ -15,15 +16,20 @@ final class UpdateProductVariantRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('name')) {
+            $this->merge(['name' => Str::lower(trim((string) $this->input('name')))]);
+        }
+    }
+
     public function rules(): array
     {
         $variantId = (int) $this->route('variantId');
         
-        // Ambil store_id langsung melalui data varian yang akan diupdate
         $storeId = DB::table('product_variants')->where('id', $variantId)->value('store_id');
 
         return [
-            // PERBAIKAN: Unik per toko dengan pengecualian ID saat ini (Ignore)
             'sku' => [
                 'nullable', 
                 'string', 
@@ -32,7 +38,14 @@ final class UpdateProductVariantRequest extends FormRequest
                     ->ignore($variantId)
                     ->where(fn ($query) => $query->where('store_id', $storeId))
             ],
-            'name' => ['nullable', 'string', 'max:255'],
+            'name' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('product_variants', 'name')
+                    ->ignore($variantId)
+                    ->where(fn ($query) => $query->where('product_id', $this->route('productId'))),
+            ],
             'price' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['nullable', 'integer', 'min:0'],
             'is_default' => ['nullable', 'boolean'],

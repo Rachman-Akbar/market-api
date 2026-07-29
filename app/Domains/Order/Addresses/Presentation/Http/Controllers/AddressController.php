@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Order\Addresses\Presentation\Http\Controllers;
 
-use App\Domains\Identity\Domain\Repositories\UserRepositoryInterface;
+use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Order\Addresses\Application\UseCases\ManageAddressUseCase;
 use App\Domains\Order\Addresses\Application\UseCases\ResolveAddressDestinationUseCase;
 use App\Domains\Order\Addresses\Infrastructure\Persistence\Mappers\AddressMapper;

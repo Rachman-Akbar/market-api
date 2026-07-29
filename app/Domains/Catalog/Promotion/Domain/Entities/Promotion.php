@@ -1,32 +1,47 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Catalog\Promotion\Domain\Entities;
 
-class Promotion
+final class Promotion
 {
     public function __construct(
         public ?int $id,
+        public ?int $storeId,
+        public string $name,
         public string $imageUrl,
         public ?string $mobileImageUrl,
         public string $clickAction,
         public ?int $targetId,
         public ?string $targetUrl,
         public int $sortOrder,
-        public bool $isActive
+        public bool $isActive,
+        public string $approvalStatus = 'pending',
+        public ?string $rejectionReason = null,
+        public ?string $submittedAt = null,
+        public ?string $approvedAt = null,
+        public ?string $approvedBy = null,
     ) {}
 
-    // TAMBAHKAN FUNGSI INI:
     public function toArray(): array
     {
         return [
-            'id'               => $this->id,
-            'image_url'        => $this->imageUrl,
+            'id' => $this->id,
+            'store_id' => $this->storeId,
+            'name' => $this->name,
+            'image_url' => $this->imageUrl,
             'mobile_image_url' => $this->mobileImageUrl,
-            'click_action'     => $this->clickAction,
-            'target_id'        => $this->targetId,
-            'target_url'       => $this->targetUrl,
-            'sort_order'       => $this->sortOrder,
-            'is_active'        => $this->isActive,
+            'click_action' => $this->clickAction,
+            'target_id' => $this->targetId,
+            'target_url' => $this->targetUrl,
+            'sort_order' => $this->sortOrder,
+            'is_active' => $this->isActive,
+            'approval_status' => $this->approvalStatus,
+            'rejection_reason' => $this->rejectionReason,
+            'submitted_at' => $this->submittedAt,
+            'approved_at' => $this->approvedAt,
+            'approved_by' => $this->approvedBy,
         ];
     }
 }

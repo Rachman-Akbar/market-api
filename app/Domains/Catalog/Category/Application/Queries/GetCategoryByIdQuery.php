@@ -14,8 +14,8 @@ final class GetCategoryByIdQuery
     ) {
     }
 
-    public function execute(int $id): ?Category
+    public function execute(int $id, bool $includeInactive = false): ?Category
     {
-        return $this->repository->findById($id);
+        return $this->repository->findById($id, $includeInactive);
     }
 }
