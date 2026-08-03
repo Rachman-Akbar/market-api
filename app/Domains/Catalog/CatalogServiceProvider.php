@@ -26,6 +26,13 @@ use Illuminate\Support\ServiceProvider;
 
 final class CatalogServiceProvider extends ServiceProvider
 {
+    public function boot(): void
+    {
+        $this->loadMigrationsFrom(
+            __DIR__ . '/Product/Infrastructure/Persistence/Migrations'
+        );
+    }
+
     public function register(): void
     {
         $this->app->bind(CatalogGroupRepositoryInterface::class, EloquentCatalogGroupRepository::class);

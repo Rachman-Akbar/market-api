@@ -35,7 +35,7 @@ final class CreateProductUseCase
                 throw new InvalidArgumentException('Toko untuk produk tersebut tidak ditemukan.');
             }
 
-            $name = Str::lower(trim((string) $data['name']));
+            $name = trim((string) preg_replace('/\s+/u', ' ', (string) $data['name']));
 
             if ($this->products->nameExistsForStore($name, $storeId)) {
                 throw new InvalidArgumentException("Nama produk '{$name}' sudah digunakan pada toko ini.");
@@ -81,7 +81,7 @@ final class CreateProductUseCase
             } else {
                 foreach ($data['variants'] as $index => $variantData) {
                     $variantSku = trim((string) ($variantData['sku'] ?? ''));
-                    $variantName = Str::lower(trim((string) ($variantData['name'] ?? '')));
+                    $variantName = trim((string) preg_replace('/\s+/u', ' ', (string) ($variantData['name'] ?? '')));
 
                     $variant = $this->variants->save(new ProductVariant(
                         id: null,

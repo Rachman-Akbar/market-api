@@ -21,7 +21,7 @@ final class CategoryRequest extends FormRequest
         $normalized = [];
 
         if ($this->has('name')) {
-            $normalized['name'] = Str::lower(trim((string) $this->input('name')));
+            $normalized['name'] = trim((string) preg_replace('/\s+/u', ' ', (string) $this->input('name')));
         }
 
         if ($this->has('slug')) {

@@ -25,6 +25,6 @@ final class VoucherDTO
         public ?string $image = null,
     ) {
         $this->code = Str::lower(trim($this->code));
-        $this->name = Str::lower(trim($this->name));
+        $this->name = trim((string) preg_replace('/\s+/u', ' ', $this->name));
     }
 }

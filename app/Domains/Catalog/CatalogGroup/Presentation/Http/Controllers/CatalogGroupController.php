@@ -4,6 +4,7 @@ namespace App\Domains\Catalog\CatalogGroup\Presentation\Http\Controllers;
 
 use Illuminate\Routing\Controller;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 use App\Domains\Catalog\CatalogGroup\Application\Dtos\CatalogGroupData;
 
@@ -22,9 +23,9 @@ use App\Domains\Catalog\Category\Presentation\Http\Resources\CategoryResource;
 
 final class CatalogGroupController extends Controller
 {
-    public function index(GetCatalogGroupsQuery $query): JsonResponse
+    public function index(Request $request, GetCatalogGroupsQuery $query): JsonResponse
     {
-        $groups = $query->execute();
+        $groups = $query->execute($request->query());
 
         return response()->json([
             'success' => true,
@@ -32,9 +33,9 @@ final class CatalogGroupController extends Controller
         ]);
     }
 
-    public function manage(GetCatalogGroupsQuery $query): JsonResponse
+    public function manage(Request $request, GetCatalogGroupsQuery $query): JsonResponse
     {
-        $groups = $query->execute([], true);
+        $groups = $query->execute($request->query(), true);
 
         return response()->json([
             'success' => true,

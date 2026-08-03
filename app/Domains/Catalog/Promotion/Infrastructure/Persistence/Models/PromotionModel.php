@@ -58,7 +58,7 @@ final class PromotionModel extends Model
     protected function name(): Attribute
     {
         return Attribute::make(
-            set: fn (mixed $value): string => Str::lower(trim((string) $value))
+            set: fn (mixed $value): string => trim((string) preg_replace('/\s+/u', ' ', (string) $value))
         );
     }
 }

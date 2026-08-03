@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Catalog\Product\Application\Query\Product;
 
 use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\CursorPaginator;
 
 final class ListProductsQuery
 {
@@ -13,23 +13,14 @@ final class ListProductsQuery
         private readonly ProductRepositoryInterface $products
     ) {}
 
-    public function execute(array $filters = []): Collection
+    public function execute(array $filters = []): CursorPaginator
     {
         $filters['status'] = $filters['status'] ?? 'published';
         $filters['is_active'] = true;
         $filters['include'] = $filters['include'] ?? 'summary';
 
-        $categorySlug = $filters['category_slug']
-            ?? $filters['category']
-            ?? null;
+        $perPage = max(1, min(50, (int) ($filters['per_page'] ?? 24)));
 
-        if (is_string($categorySlug) && trim($categorySlug) !== '') {
-            return $this->products->findPublishedByCategorySlug(
-                categorySlug: trim($categorySlug),
-                filters: $filters
-            );
-        }
-
-        return $this->products->getAll($filters);
+        return $this->products->cursorPaginate($filters, $perPage);
     }
 }

@@ -9,7 +9,10 @@ use App\Domains\Catalog\Product\Domain\Entities\Product;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Mappers\ProductMapper;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
+use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductVariantModel;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\CursorPaginator;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -18,27 +21,55 @@ final class EloquentProductRepository implements ProductRepositoryInterface
 {
     public function getAll(array $filters = []): Collection
     {
-        $includeInactive = (bool) ($filters['include_inactive'] ?? false);
-        $query = ProductModel::query()->with($this->relationsForList($filters, $includeInactive));
-
-        if (! $includeInactive) {
-            $this->applyPublicStoreFilter($query);
-        }
-
-        $this->applyCommonFilters($query, $filters, $includeInactive);
+        $query = $this->buildListQuery($filters);
+        $this->applySorting($query, $filters);
 
         return $query
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
             ->get()
             ->map(fn (ProductModel $model): Product => ProductMapper::toEntity($model));
+    }
+
+    public function cursorPaginate(array $filters = [], int $perPage = 24): CursorPaginator
+    {
+        $query = $this->buildListQuery($filters);
+        $this->applySorting($query, $filters);
+
+        $paginator = $query
+            ->cursorPaginate(
+                max(1, min(50, $perPage)),
+                ['*'],
+                'cursor'
+            );
+
+        return $paginator;
+    }
+
+    public function paginate(array $filters = [], int $perPage = 20, int $page = 1): LengthAwarePaginator
+    {
+        $query = $this->buildListQuery($filters);
+        $this->applySorting($query, $filters);
+
+        $paginator = $query
+            ->paginate(
+                max(1, min(100, $perPage)),
+                ['*'],
+                'page',
+                max(1, $page)
+            );
+
+        $paginator->setCollection(
+            $paginator->getCollection()
+                ->map(fn (ProductModel $model): Product => ProductMapper::toEntity($model))
+        );
+
+        return $paginator;
     }
 
     public function findById(int $id, bool $includeInactive = false): ?Product
     {
         $model = ProductModel::query()
             ->when(! $includeInactive, function (Builder $query): void {
-                $query->active()->whereRaw('LOWER(TRIM(products.status)) = ?', ['published']);
+                $query->active()->where('products.status', 'published');
                 $this->applyPublicStoreFilter($query);
             })
             ->with($this->relationsForDetail($includeInactive))
@@ -51,7 +82,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     {
         $model = ProductModel::query()
             ->when(! $includeInactive, function (Builder $query): void {
-                $query->active()->whereRaw('LOWER(TRIM(products.status)) = ?', ['published']);
+                $query->active()->where('products.status', 'published');
                 $this->applyPublicStoreFilter($query);
             })
             ->with($this->relationsForDetail($includeInactive))
@@ -65,8 +96,8 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     {
         return ProductModel::withTrashed()
             ->where('store_id', $storeId)
-            ->where('name', Str::lower(trim($name)))
-            ->when($ignoreId !== null, fn (Builder $query) => $query->whereKeyNot($ignoreId))
+            ->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower(trim($name))])
+            ->when($ignoreId !== null, fn (Builder $query) => $query->where($query->getModel()->getQualifiedKeyName(), '!=', $ignoreId))
             ->exists();
     }
 
@@ -77,7 +108,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             ->whereHas('store', fn (Builder $query) => $query->publiclyAvailable())
             ->with($this->relationsForList(['include' => 'summary']))
             ->where('store_id', $storeId)
-            ->whereRaw('LOWER(TRIM(products.status)) = ?', ['published'])
+            ->where('products.status', 'published')
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->get()
@@ -105,7 +136,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             ->active()
             ->whereHas('store', fn (Builder $query) => $query->publiclyAvailable())
             ->with($this->relationsForList($filters))
-            ->whereRaw('LOWER(TRIM(products.status)) = ?', ['published']);
+            ->where('products.status', 'published');
 
         $this->applyCategoryIdsFilter($query, $categoryIds);
         $this->applyOptionalFilters($query, $filters);
@@ -140,7 +171,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             ->active()
             ->whereHas('store', fn (Builder $query) => $query->publiclyAvailable())
             ->with($this->relationsForList($filters))
-            ->whereRaw('LOWER(TRIM(products.status)) = ?', ['published']);
+            ->where('products.status', 'published');
 
         $this->applyCategoryIdsFilter($query, $categoryIds);
         $this->applyOptionalFilters($query, $filters);
@@ -165,7 +196,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             ->active()
             ->whereHas('store', fn (Builder $query) => $query->publiclyAvailable())
             ->with($this->relationsForList($filters))
-            ->whereRaw('LOWER(TRIM(products.status)) = ?', ['published']);
+            ->where('products.status', 'published');
 
         $this->applyCategoryIdsFilter($query, $categoryIds);
         $this->applyOptionalFilters($query, $filters);
@@ -226,6 +257,21 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         return $model ? (bool) $model->delete() : false;
     }
 
+    private function buildListQuery(array $filters): Builder
+    {
+        $includeInactive = (bool) ($filters['include_inactive'] ?? false);
+        $query = ProductModel::query()
+            ->with($this->relationsForList($filters, $includeInactive));
+
+        if (! $includeInactive) {
+            $this->applyPublicStoreFilter($query);
+        }
+
+        $this->applyCommonFilters($query, $filters, $includeInactive);
+
+        return $query;
+    }
+
     private function relationsForList(array $filters = [], bool $includeInactive = false): array
     {
         $include = (string) ($filters['include'] ?? $filters['view'] ?? 'summary');
@@ -268,7 +314,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     {
         if (! empty($filters['status'])) {
             $status = Str::lower(trim((string) $filters['status']));
-            $query->whereRaw('LOWER(TRIM(products.status)) = ?', [$status]);
+            $query->where('products.status', $status);
         }
 
         if (array_key_exists('is_active', $filters)) {
@@ -282,10 +328,36 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         }
 
         if (! empty($filters['category_id'])) {
-            $this->applyCategoryIdsFilter(
-                $query,
-                $this->getCategoryAndDescendantIdsById((int) $filters['category_id'])
+            $categoryId = (int) $filters['category_id'];
+            $includeDescendants = filter_var(
+                $filters['include_descendants'] ?? true,
+                FILTER_VALIDATE_BOOLEAN
             );
+            $categoryIds = $includeDescendants
+                ? $this->getCategoryAndDescendantIdsById($categoryId)
+                : [$categoryId];
+
+            $this->applyCategoryIdsFilter($query, $categoryIds);
+        } else {
+            $categorySlug = trim((string) ($filters['category_slug'] ?? $filters['category'] ?? ''));
+
+            if ($categorySlug !== '') {
+                $category = CategoryModel::query()
+                    ->active()
+                    ->whereHas('catalogGroup', fn (Builder $categoryQuery) => $categoryQuery->active())
+                    ->where(function (Builder $categoryQuery) use ($categorySlug): void {
+                        $categoryQuery
+                            ->where('slug', $categorySlug)
+                            ->orWhere('full_slug', $categorySlug);
+                    })
+                    ->first();
+
+                $categoryIds = $category
+                    ? $this->getCategoryAndDescendantIdsById((int) $category->id)
+                    : [];
+
+                $this->applyCategoryIdsFilter($query, $categoryIds);
+            }
         }
 
         $this->applyOptionalFilters($query, $filters);
@@ -296,6 +368,23 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         if (! empty($filters['store_id'])) {
             $query->where('store_id', (int) $filters['store_id']);
         }
+
+        $name = trim((string) ($filters['name'] ?? ''));
+
+        if ($name !== '') {
+            $query->where('products.name', 'like', '%' . $name . '%');
+        }
+
+        $mode = Str::lower(trim((string) ($filters['mode'] ?? '')));
+
+        if ($mode === 'variant') {
+            $query->has('variants', '>', 1);
+        } elseif ($mode === 'simple') {
+            $query->has('variants', '<=', 1);
+        }
+
+        $this->applyVariantRangeFilter($query, 'price', $filters['price_min'] ?? null, $filters['price_max'] ?? null);
+        $this->applyVariantRangeFilter($query, 'stock', $filters['stock_min'] ?? null, $filters['stock_max'] ?? null);
 
         if (! empty($filters['seller_id'])) {
             $sellerId = (string) $filters['seller_id'];
@@ -319,6 +408,70 @@ final class EloquentProductRepository implements ProductRepositoryInterface
                     ->orWhere('brand', 'like', '%' . $search . '%')
                     ->orWhereHas('variants', fn (Builder $query) => $query->where('sku', 'like', '%' . $search . '%'));
             });
+        }
+    }
+
+    private function applyVariantRangeFilter(
+        Builder $query,
+        string $column,
+        mixed $minimum,
+        mixed $maximum
+    ): void {
+        if (! in_array($column, ['price', 'stock'], true)) {
+            return;
+        }
+
+        $subquery = fn () => ProductVariantModel::query()
+            ->select($column)
+            ->whereColumn('product_id', 'products.id')
+            ->orderByDesc('is_default')
+            ->orderBy('id')
+            ->limit(1);
+
+        if ($minimum !== null && $minimum !== '' && is_numeric($minimum)) {
+            $query->where($subquery(), '>=', (float) $minimum);
+        }
+
+        if ($maximum !== null && $maximum !== '' && is_numeric($maximum)) {
+            $query->where($subquery(), '<=', (float) $maximum);
+        }
+    }
+
+    private function applySorting(Builder $query, array $filters): void
+    {
+        $sortBy = Str::lower(trim((string) ($filters['sort_by'] ?? 'created_at')));
+        $direction = Str::lower(trim((string) ($filters['sort_direction'] ?? 'desc'))) === 'asc'
+            ? 'asc'
+            : 'desc';
+
+        if ($sortBy === 'store_name') {
+            $query->orderBy(
+                DB::table('stores')
+                    ->select('name')
+                    ->whereColumn('stores.id', 'products.store_id')
+                    ->limit(1),
+                $direction
+            );
+        } elseif ($sortBy === 'price' || $sortBy === 'stock') {
+            $query->orderBy(
+                ProductVariantModel::query()
+                    ->select($sortBy)
+                    ->whereColumn('product_id', 'products.id')
+                    ->orderByDesc('is_default')
+                    ->orderBy('id')
+                    ->limit(1),
+                $direction
+            );
+        } elseif ($sortBy === 'mode') {
+            $query->withCount('variants')->orderBy('variants_count', $direction);
+        } else {
+            $allowed = ['id', 'name', 'status', 'is_active', 'created_at', 'updated_at'];
+            $column = in_array($sortBy, $allowed, true) ? $sortBy : 'created_at';
+            $query->orderBy('products.' . $column, $direction);
+        }
+
+        if ($sortBy !== 'id') {
+            $query->orderBy('products.id', $direction);
         }
     }
 

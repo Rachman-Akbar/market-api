@@ -18,7 +18,7 @@ final class CreateCatalogGroupUseCase
 
     public function execute(CatalogGroupData $data): CatalogGroup
     {
-        $name = Str::lower(trim((string) $data->name()));
+        $name = trim((string) preg_replace('/\s+/u', ' ', (string) $data->name()));
 
         if ($this->repository->nameExists($name)) {
             throw new InvalidArgumentException('Nama kelompok katalog sudah digunakan.');

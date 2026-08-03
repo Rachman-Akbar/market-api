@@ -51,7 +51,7 @@ final class StoreModel extends Model
     public function scopePubliclyAvailable(Builder $query): Builder
     {
         return $query
-            ->whereRaw('LOWER(TRIM(' . $this->qualifyColumn('status') . ')) IN (?, ?)', ['approved', 'active'])
+            ->whereIn($this->qualifyColumn('status'), ['approved', 'active'])
             ->where($this->qualifyColumn('is_active'), true);
     }
 
@@ -66,6 +66,13 @@ final class StoreModel extends Model
     }
 
     protected function name(): Attribute
+    {
+        return Attribute::make(
+            set: fn (mixed $value): string => trim((string) preg_replace('/\s+/u', ' ', (string) $value))
+        );
+    }
+
+    protected function status(): Attribute
     {
         return Attribute::make(
             set: fn (mixed $value): string => Str::lower(trim((string) $value))

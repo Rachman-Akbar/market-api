@@ -100,7 +100,7 @@ final class EloquentStoreRepository implements StoreRepositoryInterface
     {
         $storeId = DB::table('stores')
             ->where('slug', trim($slug))
-            ->whereIn('status', ['approved', 'active'])
+            ->whereRaw('LOWER(TRIM(status)) IN (?, ?)', ['approved', 'active'])
             ->where('is_active', true)
             ->whereNull('deleted_at')
             ->value('id');
@@ -172,7 +172,7 @@ final class EloquentStoreRepository implements StoreRepositoryInterface
         }
 
         if ((bool) ($filters['public_only'] ?? false)) {
-            $query->whereIn('status', ['approved', 'active'])->where('is_active', true);
+            $query->publiclyAvailable();
         }
     }
 

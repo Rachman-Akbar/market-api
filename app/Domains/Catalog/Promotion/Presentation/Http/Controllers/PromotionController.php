@@ -228,7 +228,7 @@ final class PromotionController extends Controller
         }
 
         if ($columns->contains('approval_status')) {
-            $query->where('approval_status', 'approved');
+            $query->whereRaw('LOWER(TRIM(approval_status)) = ?', ['approved']);
         }
 
         if ($columns->contains('deleted_at')) {
@@ -244,7 +244,7 @@ final class PromotionController extends Controller
                             ->whereColumn('stores.id', 'promotions.store_id');
 
                         if (Schema::hasColumn('stores', 'status')) {
-                            $storeQuery->where('stores.status', 'approved');
+                            $storeQuery->whereRaw('LOWER(TRIM(stores.status)) IN (?, ?)', ['approved', 'active']);
                         }
 
                         if (Schema::hasColumn('stores', 'is_active')) {

@@ -25,7 +25,7 @@ final class UpdateCatalogGroupUseCase
         }
 
         $name = $data->hasName()
-            ? Str::lower(trim((string) $data->name()))
+            ? trim((string) preg_replace('/\s+/u', ' ', (string) $data->name()))
             : $catalogGroup->name();
 
         if ($this->repository->nameExists($name, $id)) {

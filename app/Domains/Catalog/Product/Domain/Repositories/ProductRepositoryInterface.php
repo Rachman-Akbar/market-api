@@ -5,11 +5,17 @@ declare(strict_types=1);
 namespace App\Domains\Catalog\Product\Domain\Repositories;
 
 use App\Domains\Catalog\Product\Domain\Entities\Product;
+use Illuminate\Pagination\CursorPaginator;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 interface ProductRepositoryInterface
 {
     public function getAll(array $filters = []): Collection;
+
+    public function cursorPaginate(array $filters = [], int $perPage = 24): CursorPaginator;
+
+    public function paginate(array $filters = [], int $perPage = 20, int $page = 1): LengthAwarePaginator;
 
     public function findById(int $id, bool $includeInactive = false): ?Product;
 

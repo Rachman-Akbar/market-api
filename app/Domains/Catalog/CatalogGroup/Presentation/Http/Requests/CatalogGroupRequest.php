@@ -28,7 +28,7 @@ final class CatalogGroupRequest extends FormRequest
         }
 
         if ($this->has('name')) {
-            $data['name'] = Str::lower(trim((string) $this->input('name')));
+            $data['name'] = trim((string) preg_replace('/\s+/u', ' ', (string) $this->input('name')));
         }
 
         if ($this->has('slug')) {

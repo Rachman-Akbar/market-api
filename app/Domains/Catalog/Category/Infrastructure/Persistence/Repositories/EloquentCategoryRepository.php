@@ -144,8 +144,8 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
                 fn (Builder $query) => $query->whereNull('parent_id'),
                 fn (Builder $query) => $query->where('parent_id', $parentId)
             )
-            ->where('name', Str::lower(trim($name)))
-            ->when($ignoreId !== null, fn (Builder $query) => $query->whereKeyNot($ignoreId))
+            ->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower(trim($name))])
+            ->when($ignoreId !== null, fn (Builder $query) => $query->where($query->getModel()->getQualifiedKeyName(), '!=', $ignoreId))
             ->exists();
     }
 
@@ -233,8 +233,8 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
                     ? $query
                     : $query
                         ->where('products.is_active', true)
-                        ->where('products.status', 'published')
-                        ->whereHas('store', fn (Builder $storeQuery) => $storeQuery->where('status', 'approved')->where('is_active', true)),
+                        ->whereRaw('LOWER(TRIM(products.status)) = ?', ['published'])
+                        ->whereHas('store', fn (Builder $storeQuery) => $storeQuery->publiclyAvailable()),
             ])
             ->where('level', '<=', 3)
             ->when($menuOnly, fn (Builder $query) => $query->where('is_visible_in_menu', true))

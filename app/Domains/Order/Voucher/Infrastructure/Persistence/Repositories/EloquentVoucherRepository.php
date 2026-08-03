@@ -26,9 +26,7 @@ final class EloquentVoucherRepository implements VoucherRepositoryInterface
                     })->orWhere(function (Builder $storeVoucherQuery): void {
                         $storeVoucherQuery->where('voucher_scope', 'store')
                             ->whereNotNull('store_id')
-                            ->whereHas('store', fn (Builder $storeQuery) => $storeQuery
-                                ->where('status', 'approved')
-                                ->where('is_active', true));
+                            ->whereHas('store', fn (Builder $storeQuery) => $storeQuery->publiclyAvailable());
                     });
                 });
             })
@@ -77,15 +75,15 @@ final class EloquentVoucherRepository implements VoucherRepositoryInterface
     {
         return Voucher::withTrashed()
             ->where('code', Str::lower(trim($code)))
-            ->when($ignoreId !== null, fn (Builder $query) => $query->whereKeyNot($ignoreId))
+            ->when($ignoreId !== null, fn (Builder $query) => $query->where($query->getModel()->getQualifiedKeyName(), '!=', $ignoreId))
             ->exists();
     }
 
     public function nameExists(string $name, ?int $ignoreId = null): bool
     {
         return Voucher::withTrashed()
-            ->where('name', Str::lower(trim($name)))
-            ->when($ignoreId !== null, fn (Builder $query) => $query->whereKeyNot($ignoreId))
+            ->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower(trim($name))])
+            ->when($ignoreId !== null, fn (Builder $query) => $query->where($query->getModel()->getQualifiedKeyName(), '!=', $ignoreId))
             ->exists();
     }
 

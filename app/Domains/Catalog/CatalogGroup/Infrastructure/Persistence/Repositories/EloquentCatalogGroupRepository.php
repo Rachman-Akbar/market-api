@@ -57,8 +57,8 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
                 ->withCount([
                     'products' => fn ($query) => $query
                         ->where('products.is_active', true)
-                        ->where('products.status', 'published')
-                        ->whereHas('store', fn (Builder $storeQuery) => $storeQuery->where('status', 'approved')->where('is_active', true)),
+                        ->whereRaw('LOWER(TRIM(products.status)) = ?', ['published'])
+                        ->whereHas('store', fn (Builder $storeQuery) => $storeQuery->publiclyAvailable()),
                 ])
                 ->orderBy('sort_order')
                 ->orderBy('name')
@@ -69,8 +69,8 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
     public function nameExists(string $name, ?int $ignoreId = null): bool
     {
         return CatalogGroupModel::withTrashed()
-            ->where('name', Str::lower(trim($name)))
-            ->when($ignoreId !== null, fn (Builder $query) => $query->whereKeyNot($ignoreId))
+            ->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower(trim($name))])
+            ->when($ignoreId !== null, fn (Builder $query) => $query->where($query->getModel()->getQualifiedKeyName(), '!=', $ignoreId))
             ->exists();
     }
 
@@ -147,8 +147,8 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
                             ? $products
                             : $products
                                 ->where('products.is_active', true)
-                                ->where('products.status', 'published')
-                                ->whereHas('store', fn (Builder $storeQuery) => $storeQuery->where('status', 'approved')->where('is_active', true)),
+                                ->whereRaw('LOWER(TRIM(products.status)) = ?', ['published'])
+                                ->whereHas('store', fn (Builder $storeQuery) => $storeQuery->publiclyAvailable()),
                     ])
                     ->select([
                         'id',

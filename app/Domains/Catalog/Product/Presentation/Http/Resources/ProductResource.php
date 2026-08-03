@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Catalog\Product\Presentation\Http\Resources;
 
 use App\Domains\Catalog\Product\Domain\Entities\ProductVariant;
+use App\Domains\Catalog\Product\Infrastructure\Persistence\Mappers\ProductMapper;
+use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -12,7 +14,9 @@ final class ProductResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $product = $this->resource;
+        $product = $this->resource instanceof ProductModel
+            ? ProductMapper::toEntity($this->resource)
+            : $this->resource;
         $variants = $product->variants();
         $targetVariant = null;
 

@@ -22,7 +22,7 @@ final class BannerData
         return new self(
             id: isset($data['id']) ? (int) $data['id'] : null,
             storeId: (int) ($data['store_id'] ?? 27),
-            name: Str::lower(trim((string) ($data['name'] ?? 'banner'))),
+            name: trim((string) preg_replace('/\s+/u', ' ', (string) ($data['name'] ?? 'banner'))),
             imageUrl: (string) $data['image_url'],
             sortOrder: (int) ($data['sort_order'] ?? 0),
             isActive: (bool) ($data['is_active'] ?? true)

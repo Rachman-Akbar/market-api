@@ -17,12 +17,10 @@ final class EloquentPromotionRepository implements PromotionRepositoryInterface
     {
         return $this->applyFilters(PromotionModel::query(), $filters, $includeInactive)
             ->when(! $includeInactive, function (Builder $query): void {
-                $query->where('approval_status', 'approved')
+                $query->whereRaw('LOWER(TRIM(approval_status)) = ?', ['approved'])
                     ->where(function (Builder $visibilityQuery): void {
                         $visibilityQuery->whereNull('store_id')
-                            ->orWhereHas('store', fn (Builder $storeQuery) => $storeQuery
-                                ->where('status', 'approved')
-                                ->where('is_active', true));
+                            ->orWhereHas('store', fn (Builder $storeQuery) => $storeQuery->publiclyAvailable());
                     });
             })
             ->orderBy('sort_order')
@@ -45,7 +43,7 @@ final class EloquentPromotionRepository implements PromotionRepositoryInterface
     public function findById(int $id, bool $includeInactive = true): ?Promotion
     {
         $model = PromotionModel::query()
-            ->when(! $includeInactive, fn (Builder $query) => $query->active()->where('approval_status', 'approved'))
+            ->when(! $includeInactive, fn (Builder $query) => $query->active()->whereRaw('LOWER(TRIM(approval_status)) = ?', ['approved']))
             ->find($id);
 
         return $model ? PromotionMapper::toEntity($model) : null;
@@ -54,8 +52,8 @@ final class EloquentPromotionRepository implements PromotionRepositoryInterface
     public function nameExists(string $name, ?int $ignoreId = null): bool
     {
         return PromotionModel::withTrashed()
-            ->where('name', Str::lower(trim($name)))
-            ->when($ignoreId !== null, fn (Builder $query) => $query->whereKeyNot($ignoreId))
+            ->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower(trim($name))])
+            ->when($ignoreId !== null, fn (Builder $query) => $query->where($query->getModel()->getQualifiedKeyName(), '!=', $ignoreId))
             ->exists();
     }
 

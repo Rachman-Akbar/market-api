@@ -6,7 +6,7 @@ namespace App\Domains\Catalog\Category\Application\Queries;
 
 use App\Domains\Catalog\Category\Domain\Repositories\CategoryRepositoryInterface;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\CursorPaginator;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final class ListProductsByCategoryPathQuery
@@ -17,7 +17,7 @@ final class ListProductsByCategoryPathQuery
     ) {
     }
 
-    public function execute(string $path, array $filters = []): Collection
+    public function execute(string $path, array $filters = []): CursorPaginator
     {
         $category = $this->categoryRepository->findByPath($path);
 
@@ -25,15 +25,17 @@ final class ListProductsByCategoryPathQuery
             throw new NotFoundHttpException('Category not found.');
         }
 
-        $includeDescendants = filter_var(
-            $filters['include_descendants'] ?? false,
+        $filters['category_id'] = $category->id();
+        $filters['include_descendants'] = filter_var(
+            $filters['include_descendants'] ?? true,
             FILTER_VALIDATE_BOOLEAN
         );
+        $filters['status'] = 'published';
+        $filters['is_active'] = true;
+        $filters['include'] = $filters['include'] ?? 'summary';
 
-        return $this->productRepository->findByCategory(
-            categoryId: $category->id(),
-            filters: $filters,
-            includeDescendants: $includeDescendants
-        );
+        $perPage = max(1, min(50, (int) ($filters['per_page'] ?? 24)));
+
+        return $this->productRepository->cursorPaginate($filters, $perPage);
     }
 }

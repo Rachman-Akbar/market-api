@@ -31,7 +31,7 @@ final class PromotionData
         return new self(
             id: isset($data['id']) ? (int) $data['id'] : null,
             storeId: isset($data['store_id']) && $data['store_id'] !== null ? (int) $data['store_id'] : null,
-            name: Str::lower(trim((string) ($data['name'] ?? ''))),
+            name: trim((string) preg_replace('/\s+/u', ' ', (string) ($data['name'] ?? ''))),
             imageUrl: trim((string) ($data['image_url'] ?? '')),
             mobileImageUrl: self::nullableString($data['mobile_image_url'] ?? null),
             clickAction: (string) ($data['click_action'] ?? 'none'),

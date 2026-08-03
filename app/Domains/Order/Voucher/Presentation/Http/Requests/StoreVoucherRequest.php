@@ -19,7 +19,7 @@ final class StoreVoucherRequest extends FormRequest
     {
         $this->merge([
             'code' => $this->has('code') ? Str::lower(trim((string) $this->input('code'))) : $this->input('code'),
-            'name' => $this->has('name') ? Str::lower(trim((string) $this->input('name'))) : $this->input('name'),
+            'name' => $this->has('name') ? trim((string) preg_replace('/\s+/u', ' ', (string) $this->input('name'))) : $this->input('name'),
         ]);
     }
 

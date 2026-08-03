@@ -60,8 +60,8 @@ final class EloquentBannerRepository implements BannerRepositoryInterface
     {
         return BannerModel::withTrashed()
             ->where('store_id', $storeId)
-            ->where('name', Str::lower(trim($name)))
-            ->when($ignoreId !== null, fn ($query) => $query->whereKeyNot($ignoreId))
+            ->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower(trim($name))])
+            ->when($ignoreId !== null, fn ($query) => $query->where($query->getModel()->getQualifiedKeyName(), '!=', $ignoreId))
             ->exists();
     }
 

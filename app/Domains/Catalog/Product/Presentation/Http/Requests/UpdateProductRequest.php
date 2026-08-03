@@ -16,14 +16,14 @@ final class UpdateProductRequest extends FormRequest
         $payload = [];
 
         if ($this->has('name')) {
-            $payload['name'] = Str::lower(trim((string) $this->input('name')));
+            $payload['name'] = trim((string) preg_replace('/\s+/u', ' ', (string) $this->input('name')));
         }
 
         if (is_array($this->input('variants'))) {
             $payload['variants'] = collect($this->input('variants'))
                 ->map(function (array $variant): array {
                     if (array_key_exists('name', $variant)) {
-                        $variant['name'] = Str::lower(trim((string) $variant['name']));
+                        $variant['name'] = trim((string) preg_replace('/\s+/u', ' ', (string) $variant['name']));
                     }
 
                     return $variant;

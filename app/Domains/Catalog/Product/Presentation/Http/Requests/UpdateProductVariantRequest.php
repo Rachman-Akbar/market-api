@@ -19,7 +19,7 @@ final class UpdateProductVariantRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         if ($this->has('name')) {
-            $this->merge(['name' => Str::lower(trim((string) $this->input('name')))]);
+            $this->merge(['name' => trim((string) preg_replace('/\s+/u', ' ', (string) $this->input('name')))]);
         }
     }
 

@@ -31,7 +31,7 @@ final class UpdateProductUseCase
             abort_if(! $current, 404, 'Product not found.');
 
             $storeId = (int) ($data['store_id'] ?? $current->storeId());
-            $name = Str::lower(trim((string) ($data['name'] ?? $current->name())));
+            $name = trim((string) preg_replace('/\s+/u', ' ', (string) ($data['name'] ?? $current->name())));
 
             if ($this->products->nameExistsForStore($name, $storeId, (int) $current->id())) {
                 throw new InvalidArgumentException("Nama produk '{$name}' sudah digunakan pada toko ini.");
@@ -91,7 +91,7 @@ final class UpdateProductUseCase
                         productId: (int) $product->id(),
                         storeId: $storeId,
                         sku: $computedSku,
-                        name: Str::lower(trim((string) ($variantData['name'] ?? ($oldVariant?->name() ?? $product->name())))),
+                        name: trim((string) preg_replace('/\s+/u', ' ', (string) ($variantData['name'] ?? ($oldVariant?->name() ?? $product->name())))),
                         price: (float) ($variantData['price'] ?? ($oldVariant?->price() ?? 0.0)),
                         stock: (int) ($variantData['stock'] ?? ($oldVariant?->stock() ?? 0)),
                         isDefault: $index === 0

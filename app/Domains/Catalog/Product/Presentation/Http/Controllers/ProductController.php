@@ -75,8 +75,10 @@ final class ProductController extends Controller
     {
         $filters = $request->all();
         $filters['include_inactive'] = true;
+        $perPage = max(1, min(100, (int) ($filters['per_page'] ?? 20)));
+        $page = max(1, (int) ($filters['page'] ?? 1));
 
-        return ProductResource::collection($products->getAll($filters));
+        return ProductResource::collection($products->paginate($filters, $perPage, $page));
     }
 
     public function adminStore(StoreProductRequest $request, CreateProductUseCase $useCase)
