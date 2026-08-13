@@ -10,6 +10,7 @@ use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Identity\User\Infrastructure\Middleware\EnsureActiveRole;
 use App\Domains\Identity\User\Infrastructure\Middleware\EnsureActiveUser;
 use App\Domains\Identity\User\Infrastructure\Middleware\EnsureEmailIsVerified;
+use App\Domains\Identity\User\Infrastructure\Middleware\EnsureUserHasPermission;
 use App\Domains\Identity\User\Infrastructure\Middleware\EnsureUserHasRole;
 use App\Domains\Identity\User\Infrastructure\Persistence\Repositories\EloquentRoleRepository;
 use App\Domains\Identity\User\Infrastructure\Persistence\Repositories\EloquentUserRepository;
@@ -53,6 +54,7 @@ final class IdentityServiceProvider extends ServiceProvider
         $router->aliasMiddleware('active.user', EnsureActiveUser::class);
         $router->aliasMiddleware('active.role', EnsureActiveRole::class);
         $router->aliasMiddleware('role', EnsureUserHasRole::class);
+        $router->aliasMiddleware('permission', EnsureUserHasPermission::class);
         $router->aliasMiddleware('verified.email', EnsureEmailIsVerified::class);
     }
 }

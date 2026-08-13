@@ -12,6 +12,9 @@ use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
 use App\Domains\Order\Ordering\Presentation\Http\Requests\CreateOrderRequest;
 use App\Domains\Order\Ordering\Presentation\Http\Resources\OrderResource;
+use App\Domains\Seller\Stock\Application\Services\StockMovementService;
+use App\Domains\Shared\Presentation\Http\Concerns\ResolvesSellerStoreContext;
+use App\Domains\Engagement\Mission\Application\Services\MissionService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +23,8 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class OrderingController extends Controller
 {
+    use ResolvesSellerStoreContext;
+
     public function __construct(
         private CreateOrderUseCase $createOrderUseCase,
         private GetShippingOptionsUseCase $shippingOptionsUseCase,
@@ -27,7 +32,9 @@ class OrderingController extends Controller
         private UpdateOrderStatusUseCase $updateOrderStatusUseCase,
         private GetOrdersUseCase $getOrdersUseCase,
         private OrderRepositoryInterface $orderRepository,
-        private UserRepositoryInterface $userRepository
+        private UserRepositoryInterface $userRepository,
+        private StockMovementService $stockMovementService,
+        private MissionService $missionService
     ) {}
 
     public function shippingOptions(Request $request): JsonResponse
@@ -58,7 +65,10 @@ class OrderingController extends Controller
                 courier: (string) $data['courier'],
                 service: $data['service'] ?? null,
                 paymentMethod: (string) $data['payment_method'],
-                voucherCode: $data['voucher_code'] ?? null
+                voucherCode: $data['voucher_code'] ?? null,
+                orderType: $data['order_type'] ?? 'normal',
+                preorderReleaseAt: $data['preorder_release_at'] ?? null,
+                bookingExpiresAt: $data['booking_expires_at'] ?? null
             );
 
             return (new OrderResource($order))
@@ -83,7 +93,7 @@ class OrderingController extends Controller
         $orders = $this->getOrdersUseCase->execute(
             authenticatedUserId: (string) $request->user()->id,
             canViewAllOrders: true,
-            filters: $request->only(['user_id', 'status', 'payment_status', 'search']),
+            filters: $request->only(['user_id', 'status', 'payment_status', 'order_type', 'search']),
             perPage: min(100, max(1, (int) $request->query('per_page', 15)))
         );
 
@@ -101,7 +111,7 @@ class OrderingController extends Controller
         $orders = $this->getOrdersUseCase->execute(
             authenticatedUserId: $role === 'admin' ? $userId : $authenticatedId,
             canViewAllOrders: false,
-            filters: $request->only(['status', 'payment_status', 'search']),
+            filters: $request->only(['status', 'payment_status', 'order_type', 'search']),
             perPage: min(100, max(1, (int) $request->query('per_page', 15)))
         );
 
@@ -184,32 +194,119 @@ class OrderingController extends Controller
     public function updateStatus(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
-            'status' => ['required', 'string', 'in:pending,processing,shipped,completed,cancelled'],
+            'status' => ['required', 'string', 'in:pending,processing,shipped,received,completed,cancelled'],
             'tracking_number' => ['nullable', 'string', 'max:255'],
         ]);
 
         $role = $this->activeRole($request);
-        if (!in_array($role, ['admin', 'seller'], true)) {
+
+        if ($role === 'buyer') {
+            if ($validated['status'] !== 'received') {
+                throw new AccessDeniedHttpException('Buyer hanya dapat mengonfirmasi pesanan diterima.');
+            }
+
+            $order = $this->orderRepository->findById($id);
+
+            if (! $order || $order->userId !== (string) $request->user()->id) {
+                throw new AccessDeniedHttpException('Pesanan tidak ditemukan untuk akun Anda.');
+            }
+
+            $this->updateOrderStatusUseCase->execute($id, 'received');
+
+            return response()->json(['success' => true, 'message' => 'Pesanan berhasil dikonfirmasi diterima.']);
+        }
+
+        if (! in_array($role, ['admin', 'seller'], true)) {
             throw new AccessDeniedHttpException('Hanya seller atau admin yang dapat memperbarui status.');
         }
 
         if ($role === 'seller') {
             $storeId = $this->sellerStoreId($request);
-            $affected = DB::table('sub_orders')
-                ->where('id', $id)
-                ->where('store_id', $storeId)
-                ->update([
-                    'status' => $validated['status'],
-                    'tracking_number' => $validated['tracking_number'] ?? null,
-                    'updated_at' => now(),
+            $result = DB::transaction(function () use ($id, $storeId, $validated): array {
+                $subOrder = SubOrderModel::query()
+                    ->where('id', $id)
+                    ->where('store_id', $storeId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $subOrder) {
+                    throw new AccessDeniedHttpException('Sub-order tidak ditemukan untuk toko Anda.');
+                }
+
+                $previousStatus = (string) $subOrder->status;
+                $nextStatus = (string) $validated['status'];
+                $transitions = [
+                    'pending' => ['processing', 'cancelled'],
+                    'processing' => ['shipped', 'cancelled'],
+                    'shipped' => ['received', 'completed'],
+                    'received' => ['completed'],
+                    'completed' => [],
+                    'cancelled' => [],
+                ];
+
+                if ($previousStatus !== $nextStatus && ! in_array($nextStatus, $transitions[$previousStatus] ?? [], true)) {
+                    throw new AccessDeniedHttpException("Perubahan status dari {$previousStatus} ke {$nextStatus} tidak diizinkan.");
+                }
+
+                if ($previousStatus === $nextStatus) {
+                    return ['order_id' => (int) $subOrder->order_id, 'parent_completed' => false];
+                }
+
+                $parent = $subOrder->parentOrder()->lockForUpdate()->firstOrFail();
+
+                if ($nextStatus === 'processing' && $parent->payment_method === 'midtrans' && $parent->payment_status !== 'paid') {
+                    throw new AccessDeniedHttpException('Order Midtrans belum memiliki pembayaran yang berhasil.');
+                }
+
+                $subOrder->forceFill([
+                    'status' => $nextStatus,
+                    'tracking_number' => $validated['tracking_number'] ?? $subOrder->tracking_number,
+                ])->save();
+
+                $this->stockMovementService->syncSubOrderStatus((int) $subOrder->id, $previousStatus, $nextStatus);
+                $statuses = SubOrderModel::query()->where('order_id', $parent->id)->pluck('status');
+                $parentStatus = 'pending';
+
+                if ($statuses->every(fn (string $status): bool => $status === 'cancelled')) {
+                    $parentStatus = 'cancelled';
+                } elseif ($statuses->every(fn (string $status): bool => $status === 'completed')) {
+                    $parentStatus = 'completed';
+                } elseif ($statuses->every(fn (string $status): bool => in_array($status, ['received', 'completed'], true))) {
+                    $parentStatus = 'received';
+                } elseif ($statuses->every(fn (string $status): bool => in_array($status, ['shipped', 'received', 'completed'], true))) {
+                    $parentStatus = 'shipped';
+                } elseif ($statuses->contains(fn (string $status): bool => in_array($status, ['processing', 'shipped', 'received', 'completed'], true))) {
+                    $parentStatus = 'processing';
+                }
+
+                $previousParentStatus = (string) $parent->status;
+                $parent->forceFill([
+                    'status' => $parentStatus,
+                    'received_at' => $parentStatus === 'received' ? ($parent->received_at ?? now()) : $parent->received_at,
+                ])->save();
+
+                $this->stockMovementService->syncOrderStatus((int) $parent->id, $previousParentStatus, $parentStatus);
+
+                return [
+                    'order_id' => (int) $parent->id,
+                    'user_id' => (string) $parent->user_id,
+                    'order_type' => (string) ($parent->order_type ?? 'normal'),
+                    'parent_completed' => $previousParentStatus !== 'completed' && $parentStatus === 'completed',
+                ];
+            });
+
+            if ($result['parent_completed']) {
+                $this->missionService->recordEvent($result['user_id'], 'order_completed', 1, [
+                    'order_id' => $result['order_id'],
+                    'order_type' => $result['order_type'],
                 ]);
-            if ($affected === 0) {
-                throw new AccessDeniedHttpException('Sub-order tidak ditemukan untuk toko Anda.');
             }
+
             return response()->json(['success' => true, 'message' => 'Status sub-order berhasil diperbarui.']);
         }
 
         $this->updateOrderStatusUseCase->execute($id, $validated['status']);
+
         return response()->json(['success' => true, 'message' => 'Status order berhasil diperbarui.']);
     }
 
@@ -220,10 +317,10 @@ class OrderingController extends Controller
 
     private function sellerStoreId(Request $request): int
     {
-        $user = $request->user();
-        if (!$this->userRepository->hasSellerAccess($user)) {
+        if (! $this->userRepository->hasSellerAccess($request->user())) {
             throw new AccessDeniedHttpException('Toko aktif tidak ditemukan.');
         }
-        return (int) $user->store->id;
+
+        return $this->resolveSellerStoreId($request);
     }
 }

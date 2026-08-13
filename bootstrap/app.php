@@ -1,10 +1,9 @@
 <?php
 
-use App\Domains\Identity\Infrastructure\Middleware\EnsureActiveRole;
-use App\Domains\Identity\Infrastructure\Middleware\EnsureEmailIsVerified;
-use App\Domains\Identity\Infrastructure\Middleware\EnsureUserHasRole;
-use App\Domains\Identity\Infrastructure\Middleware\ValidateFirebaseToken;
-
+use App\Domains\Identity\Auth\Infrastructure\Middleware\ValidateFirebaseToken;
+use App\Domains\Identity\User\Infrastructure\Middleware\EnsureActiveRole;
+use App\Domains\Identity\User\Infrastructure\Middleware\EnsureEmailIsVerified;
+use App\Domains\Identity\User\Infrastructure\Middleware\EnsureUserHasRole;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -14,18 +13,14 @@ use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__ . '/../routes/web.php',
-        api: __DIR__ . '/../routes/api.php',
-        commands: __DIR__ . '/../routes/console.php',
+        channels: __DIR__.'/../routes/channels.php',
+        web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
+        commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
     ->withProviders([
-        // Daftarkan semua Domain Service Provider di sini
-        App\Domains\Identity\IdentityServiceProvider::class,
-        App\Domains\Catalog\CatalogServiceProvider::class,
-        App\Domains\Seller\SellerServiceProvider::class,
-        App\Domains\Order\OrderServiceProvider::class,
-
+        App\Domains\DomainServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(HandleCors::class);
@@ -33,8 +28,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'firebase.token' => ValidateFirebaseToken::class,
             'verified.email' => EnsureEmailIsVerified::class,
-            'role'           => EnsureUserHasRole::class,
-            'active.role'    => EnsureActiveRole::class,
+            'role' => EnsureUserHasRole::class,
+            'active.role' => EnsureActiveRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -44,12 +39,8 @@ return Application::configure(basePath: dirname(__DIR__))
                     'message' => 'Unauthenticated.',
                 ], 401);
             }
+
             return null;
         });
     })
     ->create();
-
-
-
-
-

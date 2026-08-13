@@ -22,6 +22,8 @@ final class Product
         private readonly array $variants = [],
         private readonly array $images = [],
         private readonly array $store = [],
+        private readonly float $averageRating = 0.0,
+        private readonly int $reviewCount = 0,
         private readonly ?string $createdAt = null,
         private readonly ?string $updatedAt = null
     ) {}
@@ -99,6 +101,16 @@ final class Product
     public function store(): array
     {
         return $this->store;
+    }
+
+    public function averageRating(): float
+    {
+        return $this->averageRating;
+    }
+
+    public function reviewCount(): int
+    {
+        return $this->reviewCount;
     }
 
     public function createdAt(): ?string

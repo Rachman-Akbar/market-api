@@ -107,6 +107,34 @@ final class User extends Authenticatable
             ->all();
     }
 
+    public function hasPermission(string $permission): bool
+    {
+        $permission = Str::lower(trim($permission));
+
+        return $this->roles()
+            ->whereHas('permissions', fn ($query) => $query
+                ->where('permissions.name', $permission)
+                ->where('permissions.is_active', true))
+            ->exists();
+    }
+
+    public function hasPermissionForRole(string $permission, ?string $role): bool
+    {
+        if ($role === null || trim($role) === '') {
+            return false;
+        }
+
+        $permission = Str::lower(trim($permission));
+        $role = Str::lower(trim($role));
+
+        return $this->roles()
+            ->where('roles.name', $role)
+            ->whereHas('permissions', fn ($query) => $query
+                ->where('permissions.name', $permission)
+                ->where('permissions.is_active', true))
+            ->exists();
+    }
+
     public function isBanned(): bool
     {
         return $this->banned_at !== null;

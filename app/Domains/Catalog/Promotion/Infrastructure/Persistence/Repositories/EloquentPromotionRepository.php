@@ -65,6 +65,7 @@ final class EloquentPromotionRepository implements PromotionRepositoryInterface
 
         $model->fill([
             'store_id' => $promotion->storeId,
+            'promotion_payment_id' => $promotion->promotionPaymentId,
             'name' => $promotion->name,
             'image_url' => $promotion->imageUrl,
             'mobile_image_url' => $promotion->mobileImageUrl,

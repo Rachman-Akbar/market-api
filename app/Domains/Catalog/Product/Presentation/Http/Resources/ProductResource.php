@@ -48,6 +48,8 @@ final class ProductResource extends JsonResource
             'sku' => $targetVariant ? $targetVariant->sku() : null,
             'price' => $targetVariant ? $targetVariant->price() : 0.0,
             'stock' => $targetVariant ? $targetVariant->stock() : 0,
+            'average_rating' => $product->averageRating(),
+            'review_count' => $product->reviewCount(),
             'description' => $product->description(),
             'brand' => $product->brand(),
             'thumbnail' => $product->thumbnail(),

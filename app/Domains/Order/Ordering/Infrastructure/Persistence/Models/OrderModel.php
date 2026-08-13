@@ -12,6 +12,12 @@ class OrderModel extends Model
     protected $table = 'orders';
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'preorder_release_at' => 'datetime',
+        'booking_expires_at' => 'datetime',
+        'received_at' => 'datetime',
+    ];
+
     public function subOrders(): HasMany
     {
         return $this->hasMany(SubOrderModel::class, 'order_id');

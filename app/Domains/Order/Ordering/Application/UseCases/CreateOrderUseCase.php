@@ -2,6 +2,8 @@
 
 namespace App\Domains\Order\Ordering\Application\UseCases;
 
+use App\Domains\Admin\Notification\Application\Services\AdminNotificationService;
+use App\Domains\Engagement\Mission\Application\Services\MissionService;
 use App\Domains\Order\Addresses\Domain\Repositories\AddressRepositoryInterface;
 use App\Domains\Order\Cart\Application\Readers\ProductForCartReaderInterface;
 use App\Domains\Order\Cart\Infrastructure\Persistence\Models\CartModel;
@@ -13,6 +15,7 @@ use App\Domains\Order\Ordering\Domain\Services\ShippingCostCalculator;
 use App\Domains\Order\Payment\Domain\Entities\Payment;
 use App\Domains\Order\Payment\Domain\Repositories\PaymentRepositoryInterface;
 use App\Domains\Order\Payment\Infrastructure\Services\MidtransService;
+use App\Domains\Seller\Stock\Application\Services\StockMovementService;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -25,7 +28,10 @@ class CreateOrderUseCase
         private GetShippingOptionsUseCase $shippingOptionsUseCase,
         private ShippingCostCalculator $shippingCalculator,
         private MidtransService $midtransService,
-        private PaymentRepositoryInterface $paymentRepository
+        private PaymentRepositoryInterface $paymentRepository,
+        private StockMovementService $stockMovementService,
+        private MissionService $missionService,
+        private AdminNotificationService $notificationService
     ) {}
 
     public function execute(
@@ -35,7 +41,10 @@ class CreateOrderUseCase
         string $courier,
         ?string $service,
         string $paymentMethod,
-        ?string $voucherCode = null
+        ?string $voucherCode = null,
+        string $orderType = 'normal',
+        ?string $preorderReleaseAt = null,
+        ?string $bookingExpiresAt = null
     ): Order {
         if (trim($userId) === '') {
             throw new RuntimeException('Sesi Anda telah berakhir. Silakan login kembali.');
@@ -89,6 +98,11 @@ class CreateOrderUseCase
             $service = 'HAVERSINE';
         }
         $paymentMethod = strtolower(trim($paymentMethod));
+        $orderType = strtolower(trim($orderType));
+
+        if (! in_array($orderType, ['normal', 'preorder', 'booking'], true)) {
+            throw new RuntimeException('Tipe pesanan tidak valid.');
+        }
 
         if ($paymentMethod === 'tunai_toko' && $courier !== 'ambil_sendiri') {
             throw new RuntimeException('Bayar tunai di toko hanya tersedia untuk metode ambil sendiri.');
@@ -173,9 +187,13 @@ class CreateOrderUseCase
             $groups,
             $cart,
             $ids,
-            $customer
+            $customer,
+            $orderType,
+            $preorderReleaseAt,
+            $bookingExpiresAt
         ): Order {
             [$voucherId, $discountAmount, $shippingDiscountAmount] = $this->calculateVoucher(
+                $userId,
                 $voucherCode,
                 $itemsTotal,
                 $shippingTotal,
@@ -246,6 +264,10 @@ class CreateOrderUseCase
             $order = new Order(
                 id: null,
                 orderNumber: $orderNumber,
+                orderType: $orderType,
+                preorderReleaseAt: $orderType === 'preorder' ? $preorderReleaseAt : null,
+                bookingExpiresAt: $orderType === 'booking' ? $bookingExpiresAt : null,
+                receivedAt: null,
                 userId: $userId,
                 voucherId: $voucherId,
                 totalAmount: $itemsTotal + $shippingTotal,
@@ -260,6 +282,7 @@ class CreateOrderUseCase
             );
 
             $created = $this->orderRepository->create($order);
+            $this->stockMovementService->recordCheckoutReservation((int) $created->id);
             $this->paymentRepository->save(new Payment(
                 id: null,
                 orderNumber: $orderNumber,
@@ -272,14 +295,51 @@ class CreateOrderUseCase
 
             if ($voucherId) {
                 DB::table('vouchers')->where('id', $voucherId)->increment('used_count');
+                $userVoucherId = DB::table('user_vouchers')
+                    ->where('user_id', $userId)
+                    ->where('voucher_id', $voucherId)
+                    ->where('status', 'available')
+                    ->orderBy('id')
+                    ->value('id');
+
+                if ($userVoucherId) {
+                    DB::table('user_vouchers')->where('id', $userVoucherId)->update([
+                        'status' => 'used',
+                        'used_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
             }
 
+            $purchasedQuantity = collect($groups)
+                ->flatten(1)
+                ->sum(fn (array $item): int => (int) $item['quantity']);
+            $this->missionService->recordEvent($userId, 'product_purchased', (int) $purchasedQuantity, [
+                'order_id' => (int) $created->id,
+            ]);
+            $this->missionService->recordEvent($userId, 'purchase_amount', (int) round($itemsTotal), [
+                'order_id' => (int) $created->id,
+                'amount' => $itemsTotal,
+            ]);
+
             $cart->items()->whereIn('id', $ids)->delete();
+            $this->notificationService->notifyAdmins([
+                'module' => 'orders',
+                'type' => 'order.created',
+                'title' => 'Pesanan baru',
+                'message' => $orderNumber . ' · Rp ' . number_format($grossAmount, 0, ',', '.'),
+                'reference_type' => 'order',
+                'reference_id' => $created->id,
+                'url' => '/admin/orders?order=' . $created->id,
+                'meta' => ['order_number' => $orderNumber, 'order_type' => $orderType, 'payment_method' => $paymentMethod],
+            ], $userId);
+
             return $created;
         });
     }
 
     private function calculateVoucher(
+        string $userId,
         ?string $voucherCode,
         float $itemsTotal,
         float $shippingTotal,
@@ -311,6 +371,20 @@ class CreateOrderUseCase
 
         if ((int) $voucher->usage_limit > 0 && (int) $voucher->used_count >= (int) $voucher->usage_limit) {
             throw new RuntimeException('Kuota penggunaan voucher sudah habis.');
+        }
+
+        $missionReward = DB::table('missions')
+            ->where('voucher_id', $voucher->id)
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if ($missionReward && ! DB::table('user_vouchers')
+            ->where('user_id', $userId)
+            ->where('voucher_id', $voucher->id)
+            ->where('status', 'available')
+            ->exists()) {
+            throw new RuntimeException('Voucher ini hanya tersedia setelah misi diselesaikan.');
         }
 
         $scope = strtolower((string) $voucher->voucher_scope);

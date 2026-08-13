@@ -10,6 +10,9 @@ use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
 use App\Domains\Catalog\Promotion\Infrastructure\Persistence\Models\PromotionModel;
 use App\Domains\Order\Voucher\Domain\Entities\Voucher;
+use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
+use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialTransactionModel;
+use App\Domains\Seller\Stock\Infrastructure\Persistence\Models\StockMovementModel;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 
@@ -64,6 +67,42 @@ final class SpreadsheetModuleRegistry
                     ['Status marketplace', 'Agar tampil kepada Buyer, gunakan status=published dan is_active=1. Product juga tetap mengikuti status toko dan relasi publik.'],
                 ],
                 'descriptions' => self::productDescriptions(),
+            ],
+            'order' => [
+                'label' => 'Pesanan',
+                'model' => OrderModel::class,
+                'roles' => ['admin', 'seller'],
+                'image_fields' => [],
+                'headers' => ['id', 'order_number', 'buyer_email', 'store_name', 'sub_order_number', 'order_type', 'status', 'payment_status', 'payment_method', 'shipping_address', 'sku', 'product_name', 'variant_name', 'quantity', 'price', 'shipping_cost', 'courier', 'service', 'destination_id', 'tracking_number', 'preorder_release_at', 'booking_expires_at', 'received_at'],
+                'examples' => self::orderExamples(),
+                'guides' => [
+                    ['Satu pesanan banyak item', 'Gunakan order_number dan store_name yang sama pada beberapa baris. Setiap baris mewakili satu SKU.'],
+                    ['Mode Data Baru', 'Kolom id kosong. Nomor pesanan baru dapat diulang di file yang sama untuk menambahkan item.'],
+                    ['Mode Update Data', 'Isi id Order pada setiap baris. SKU yang sama memperbarui item, SKU baru menambah item pada sub-order toko tersebut.'],
+                    ['Hak Seller', 'Seller otomatis dibatasi pada toko sesi. Seller tidak dapat mengimport item dari toko lain.'],
+                    ['Tipe Pesanan', 'order_type menerima normal, preorder, atau booking. Isi tanggal khusus sesuai tipe.'],
+                ],
+                'descriptions' => self::orderDescriptions(),
+            ],
+            'income' => self::financeModule('Pemasukan', 'income'),
+            'expense' => self::financeModule('Pengeluaran', 'expense'),
+            'receivable' => self::financeModule('Piutang', 'receivable'),
+            'payable' => self::financeModule('Hutang', 'payable'),
+            'stock' => [
+                'label' => 'Stok',
+                'model' => StockMovementModel::class,
+                'roles' => ['admin', 'seller'],
+                'image_fields' => [],
+                'headers' => ['id', 'store_name', 'sku', 'product_name', 'variant_name', 'movement_type', 'quantity_delta', 'balance_after', 'reference_type', 'reference_id', 'order_number', 'notes', 'occurred_at'],
+                'examples' => self::stockExamples(),
+                'guides' => [
+                    ['Barang masuk', 'Isi movement_type=in dan quantity_delta positif.'],
+                    ['Barang keluar', 'Isi movement_type=out dan quantity_delta negatif. Stok akhir tidak boleh negatif.'],
+                    ['Penyesuaian', 'Gunakan movement_type=adjustment. Pada mode update, balance_after menjadi target stok terbaru dan sistem membuat movement koreksi.'],
+                    ['SKU', 'SKU wajib dan harus milik toko yang dipilih atau toko sesi Seller.'],
+                    ['Audit stok', 'Import tidak mengubah history lama. Setiap perubahan selalu membuat Stock Movement baru.'],
+                ],
+                'descriptions' => self::stockDescriptions(),
             ],
             'category' => [
                 'label' => 'Category',
@@ -374,6 +413,187 @@ final class SpreadsheetModuleRegistry
             ['image_url', 'Wajib', 'URL/path/gambar cell', 'https://example.com/banner.jpg', 'Mendukung URL, path storage, dan embedded image.', 'Disimpan ke storage Laravel.'],
             ['sort_order', 'Optional', 'Angka bulat', '1', 'Default 0.', 'Nilai kecil tampil lebih awal.'],
             ['is_active', 'Optional', '1|0|ya|tidak', '1', 'Default aktif.', 'Nonaktif tidak tampil pada Store Page.'],
+        ];
+    }
+
+
+    private static function financeModule(string $label, string $type): array
+    {
+        $settlement = in_array($type, ['payable', 'receivable'], true);
+        $statusGuide = $settlement
+            ? 'Status dihitung dari paid_amount: open jika belum dibayar, partial jika sebagian, paid jika lunas, atau cancelled untuk pembatalan.'
+            : 'Status yang tersedia adalah draft, posted, atau cancelled. paid_amount tidak digunakan untuk pemasukan dan pengeluaran.';
+
+        return [
+            'label' => $label,
+            'model' => FinancialTransactionModel::class,
+            'roles' => ['admin', 'seller'],
+            'image_fields' => [],
+            'fixed_type' => $type,
+            'headers' => ['id', 'store_name', 'order_number', 'counterparty_email', 'reference_number', 'title', 'description', 'amount', 'paid_amount', 'status', 'due_date', 'occurred_at', 'settled_at', 'is_active'],
+            'examples' => self::financeExamples($label, $type),
+            'guides' => [
+                ['Jenis transaksi', 'Jenis ditentukan otomatis oleh modul '.$label.' dan tidak perlu ditulis pada file.'],
+                ['Mode Data Baru', 'Kolom id wajib kosong. reference_number boleh kosong agar dibuat otomatis.'],
+                ['Mode Update Data', 'Isi id transaksi. Data tetap dibatasi ke toko Seller yang sedang aktif.'],
+                ['Relasi Order', 'Isi order_number bila transaksi terkait pesanan. Nomor harus tersedia dan terkait toko yang sama untuk Seller.'],
+                ['Status dan pembayaran', $statusGuide],
+            ],
+            'descriptions' => self::financeDescriptions($label, $type),
+        ];
+    }
+
+    private static function financeExamples(string $label, string $type): array
+    {
+        $settlement = in_array($type, ['payable', 'receivable'], true);
+        $base = [
+            'id' => '',
+            'store_name' => 'Toko Nusantara',
+            'order_number' => '',
+            'counterparty_email' => '',
+            'reference_number' => strtoupper(substr($type, 0, 3)).'-0001',
+            'title' => $label.' Operasional',
+            'description' => 'Contoh transaksi '.$label,
+            'amount' => '1500000',
+            'paid_amount' => '0',
+            'status' => $settlement ? 'open' : 'posted',
+            'due_date' => $settlement ? '2026-08-31' : '',
+            'occurred_at' => '2026-08-04 10:00:00',
+            'settled_at' => '',
+            'is_active' => '1',
+        ];
+
+        $examples = [
+            self::example($base, 'Create Data', $label.' baru tanpa order.', 'Isi toko, judul, nominal, status, dan tanggal.', $label.' baru dibuat.'),
+            self::example([...$base, 'reference_number' => '', 'title' => $label.' Nomor Otomatis'], 'Nomor Otomatis', 'Reference number dikosongkan.', 'Kosongkan reference_number.', 'Nomor unik dibuat backend.'),
+            self::example([...$base, 'order_number' => 'ORD-202608-0001', 'title' => $label.' Terkait Order'], 'Relasi Order', 'Transaksi terkait pesanan.', 'Isi order_number yang tersedia.', 'Relasi order tersimpan.'),
+            self::example([...$base, 'counterparty_email' => 'buyer@example.com'], 'Relasi User', 'Transaksi memiliki pihak terkait.', 'Isi email user aktif.', 'counterparty tersimpan.'),
+        ];
+
+        if ($settlement) {
+            $examples[] = self::example([...$base, 'status' => 'partial', 'paid_amount' => '500000'], 'Pembayaran Sebagian', 'Sebagian nominal telah dibayar.', 'Isi paid_amount lebih kecil dari amount.', 'Status dihitung menjadi partial dan saldo tersisa.');
+            $examples[] = self::example([...$base, 'status' => 'paid', 'paid_amount' => '1500000', 'settled_at' => '2026-08-05 12:00:00'], 'Lunas', 'Nominal telah dibayar penuh.', 'Samakan paid_amount dengan amount dan isi settled_at.', 'Status dihitung menjadi paid.');
+            $examples[] = self::example([...$base, 'status' => 'cancelled'], 'Dibatalkan', 'Hutang atau piutang dibatalkan.', 'Gunakan status cancelled.', 'Transaksi tidak dihitung sebagai outstanding.');
+        } else {
+            $examples[] = self::example([...$base, 'status' => 'draft', 'title' => $label.' Draft'], 'Draft', 'Transaksi belum diposting.', 'Gunakan status draft.', 'Transaksi tersimpan sebagai draft.');
+            $examples[] = self::example([...$base, 'status' => 'posted', 'title' => $label.' Diposting'], 'Diposting', 'Transaksi sudah diakui.', 'Gunakan status posted.', 'Transaksi aktif dalam laporan.');
+            $examples[] = self::example([...$base, 'status' => 'cancelled', 'title' => $label.' Dibatalkan'], 'Dibatalkan', 'Transaksi dibatalkan tanpa dihapus.', 'Gunakan status cancelled.', 'Transaksi tetap memiliki audit trail.');
+        }
+
+        $examples[] = self::example([...$base, 'is_active' => '0', 'title' => $label.' Nonaktif'], 'Nonaktif', 'Transaksi disimpan sebagai arsip.', 'Isi is_active=0.', 'Data tidak aktif tetapi tidak dihapus.');
+        $examples[] = self::example([...$base, 'id' => '10', 'title' => $label.' Update'], 'Update Data', 'Transaksi lama diperbarui.', 'Gunakan mode update dan isi id.', 'Data ID 10 diperbarui.');
+        $examples[] = self::example([...$base, 'amount' => '100000', 'paid_amount' => '200000'], 'Validasi Gagal', 'Pembayaran melebihi nominal.', 'Isi paid_amount lebih besar dari amount untuk pengujian.', 'Baris ditolak dan masuk file error.', 'paid_amount tidak boleh melebihi amount.');
+
+        return $examples;
+    }
+
+    private static function financeDescriptions(string $label, string $type): array
+    {
+        $settlement = in_array($type, ['payable', 'receivable'], true);
+        $statusOptions = $settlement ? 'open|partial|paid|cancelled' : 'draft|posted|cancelled';
+        $statusExample = $settlement ? 'open' : 'posted';
+        $paidNote = $settlement ? 'Tidak boleh lebih besar dari amount.' : 'Isi 0 untuk pemasukan atau pengeluaran.';
+        $dueNote = $settlement ? 'Tanggal jatuh tempo hutang atau piutang.' : 'Boleh kosong untuk pemasukan atau pengeluaran.';
+
+        return [
+            ['id', 'Kondisional', 'Angka bulat', '10', 'Wajib pada mode update dan kosong pada mode data baru.', 'ID '.$label.' sendiri.'],
+            ['store_name', 'Wajib Admin, otomatis Seller', 'Nama toko', 'Toko Nusantara', 'Dicocokkan berdasarkan nama.', 'Seller selalu memakai toko sesi.'],
+            ['order_number', 'Optional', 'Nomor pesanan', 'ORD-202608-0001', 'Harus tersedia bila diisi.', 'Seller hanya dapat memakai order tokonya.'],
+            ['counterparty_email', 'Optional', 'Email user', 'buyer@example.com', 'Harus merupakan user aktif.', 'Relasi pihak transaksi.'],
+            ['reference_number', 'Optional', 'Teks unik', 'FIN-0001', 'Kosong berarti dibuat otomatis.', 'Unik per transaksi.'],
+            ['title', 'Wajib', 'Teks', $label.' Operasional', 'Maksimum 160 karakter.', 'Judul transaksi.'],
+            ['description', 'Optional', 'Teks', 'Keterangan transaksi', 'Boleh kosong.', 'Catatan internal.'],
+            ['amount', 'Wajib', 'Angka positif', '1500000', 'Tanpa simbol Rp.', 'Nilai transaksi.'],
+            ['paid_amount', $settlement ? 'Optional' : 'Tidak digunakan', 'Angka ≥ 0', $settlement ? '500000' : '0', $paidNote, 'Jumlah telah dibayar.'],
+            ['status', 'Wajib', $statusOptions, $statusExample, 'Harus sesuai pilihan modul.', 'Status transaksi.'],
+            ['due_date', 'Optional', 'YYYY-MM-DD', $settlement ? '2026-08-31' : '', 'Tanggal valid.', $dueNote],
+            ['occurred_at', 'Wajib', 'Tanggal dan waktu', '2026-08-04 10:00:00', 'Format tanggal Excel didukung.', 'Waktu transaksi.'],
+            ['settled_at', $settlement ? 'Optional' : 'Tidak digunakan', 'Tanggal dan waktu', $settlement ? '2026-08-05 12:00:00' : '', 'Isi saat hutang atau piutang lunas.', 'Waktu penyelesaian.'],
+            ['is_active', 'Optional', '1|0|ya|tidak', '1', 'Default aktif.', 'Soft delete tetap terpisah.'],
+        ];
+    }
+
+    private static function orderExamples(): array
+    {
+        $base = ['id' => '', 'order_number' => 'ORD-202608-0001', 'buyer_email' => 'buyer@example.com', 'store_name' => 'Toko Nusantara', 'sub_order_number' => 'SUB-202608-0001', 'order_type' => 'normal', 'status' => 'pending', 'payment_status' => 'pending', 'payment_method' => 'bank_transfer', 'shipping_address' => 'Jl. Merdeka No. 1, Jakarta', 'sku' => 'PRODUK-001', 'product_name' => 'Produk Contoh', 'variant_name' => 'Default', 'quantity' => '2', 'price' => '75000', 'shipping_cost' => '15000', 'courier' => 'JNE', 'service' => 'REG', 'destination_id' => '501', 'tracking_number' => '', 'preorder_release_at' => '', 'booking_expires_at' => '', 'received_at' => ''];
+
+        return [
+            self::example($base, 'Order Normal', 'Membuat pesanan normal satu item.', 'Isi buyer, toko, SKU, quantity, harga, dan pengiriman.', 'Order, sub-order, dan item dibuat.'),
+            self::exampleRows([$base, [...$base, 'sku' => 'PRODUK-002', 'product_name' => 'Produk Kedua', 'quantity' => '1', 'price' => '125000']], 'Multi Item', 'Satu pesanan memiliki dua SKU.', 'Ulangi order_number dan sub_order_number pada dua baris.', 'Dua item masuk ke sub-order yang sama.'),
+            self::example([...$base, 'order_number' => 'ORD-PRE-0001', 'sub_order_number' => 'SUB-PRE-0001', 'order_type' => 'preorder', 'preorder_release_at' => '2026-09-01 09:00:00'], 'Preorder', 'Membuat pesanan preorder.', 'Gunakan order_type=preorder dan isi preorder_release_at.', 'Tanggal rilis preorder tersimpan.'),
+            self::example([...$base, 'order_number' => 'ORD-BOOK-0001', 'sub_order_number' => 'SUB-BOOK-0001', 'order_type' => 'booking', 'booking_expires_at' => '2026-08-10 23:59:59'], 'Booking', 'Membuat pesanan booking.', 'Gunakan order_type=booking dan isi booking_expires_at.', 'Batas booking tersimpan.'),
+            self::example([...$base, 'status' => 'processing', 'payment_status' => 'paid'], 'Sudah Dibayar', 'Pesanan telah dibayar dan sedang diproses.', 'Gunakan status processing dan payment_status paid.', 'Order tampil sebagai dibayar dan diproses.'),
+            self::example([...$base, 'status' => 'shipped', 'payment_status' => 'paid', 'tracking_number' => 'JNE123456789'], 'Dikirim', 'Pesanan sudah dikirim.', 'Isi tracking_number dan status shipped.', 'Nomor resi tersimpan.'),
+            self::example([...$base, 'status' => 'received', 'payment_status' => 'paid', 'received_at' => '2026-08-08 14:00:00'], 'Diterima', 'Buyer telah menerima pesanan.', 'Isi status received dan received_at.', 'Pesanan dapat direview.'),
+            self::example([...$base, 'id' => '25', 'status' => 'processing'], 'Update Order', 'Memperbarui pesanan yang ada.', 'Pilih mode update dan isi id Order.', 'Order ID 25 diperbarui.'),
+            self::example([...$base, 'store_name' => ''], 'Seller Auto Store', 'Seller mengosongkan store_name.', 'Seller menggunakan template dengan toko kosong.', 'Toko diambil dari sesi Seller.'),
+            self::example([...$base, 'sku' => 'SKU-TIDAK-ADA'], 'Validasi Gagal', 'SKU tidak ditemukan pada toko.', 'Isi SKU yang tidak tersedia.', 'Baris ditolak dan masuk file error.', 'Product tidak dibuat otomatis dari import order.'),
+        ];
+    }
+
+    private static function orderDescriptions(): array
+    {
+        return [
+            ['id', 'Kondisional', 'Angka bulat', '25', 'Wajib mode update dan kosong mode data baru.', 'ID Order, bukan Sub Order.'],
+            ['order_number', 'Wajib', 'Teks unik', 'ORD-202608-0001', 'Boleh diulang untuk beberapa item dalam file yang sama.', 'Nomor pesanan.'],
+            ['buyer_email', 'Wajib', 'Email', 'buyer@example.com', 'User harus tersedia dan aktif.', 'Pemilik pesanan.'],
+            ['store_name', 'Wajib Admin, otomatis Seller', 'Nama toko', 'Toko Nusantara', 'Dicocokkan berdasarkan nama.', 'Menentukan Sub Order.'],
+            ['sub_order_number', 'Optional', 'Teks unik', 'SUB-202608-0001', 'Kosong berarti dibuat otomatis.', 'Nomor pesanan per toko.'],
+            ['order_type', 'Wajib', 'normal|preorder|booking', 'normal', 'Harus sesuai pilihan.', 'Jenis pesanan.'],
+            ['status', 'Wajib', 'pending|processing|shipped|received|completed|cancelled', 'pending', 'Harus sesuai lifecycle order.', 'Status global order.'],
+            ['payment_status', 'Wajib', 'unpaid|pending|paid|failed|refunded', 'pending', 'Harus sesuai pilihan.', 'Status pembayaran.'],
+            ['payment_method', 'Optional', 'Teks', 'bank_transfer', 'Maksimum 80 karakter.', 'Metode bayar.'],
+            ['shipping_address', 'Wajib', 'Teks', 'Jl. Merdeka No. 1', 'Alamat lengkap.', 'Alamat pengiriman order.'],
+            ['sku', 'Wajib', 'SKU variant', 'PRODUK-001', 'Harus milik toko terkait.', 'Menentukan produk dan variant.'],
+            ['product_name', 'Optional', 'Teks', 'Produk Contoh', 'Diisi otomatis dari SKU bila kosong.', 'Snapshot nama produk.'],
+            ['variant_name', 'Optional', 'Teks', 'Default', 'Diisi otomatis dari SKU bila kosong.', 'Informasi variant.'],
+            ['quantity', 'Wajib', 'Angka bulat positif', '2', 'Minimal 1.', 'Jumlah item.'],
+            ['price', 'Optional', 'Angka ≥ 0', '75000', 'Kosong memakai harga variant.', 'Harga per item.'],
+            ['shipping_cost', 'Optional', 'Angka ≥ 0', '15000', 'Per sub-order.', 'Ongkir.'],
+            ['courier', 'Optional', 'Teks', 'JNE', 'Per sub-order.', 'Kurir.'],
+            ['service', 'Optional', 'Teks', 'REG', 'Per sub-order.', 'Layanan kurir.'],
+            ['destination_id', 'Optional', 'Teks', '501', 'Sesuai integrasi ongkir.', 'Tujuan pengiriman.'],
+            ['tracking_number', 'Optional', 'Teks', 'JNE123456789', 'Isi ketika dikirim.', 'Nomor resi.'],
+            ['preorder_release_at', 'Kondisional', 'Tanggal dan waktu', '2026-09-01 09:00:00', 'Wajib untuk preorder.', 'Tanggal rilis.'],
+            ['booking_expires_at', 'Kondisional', 'Tanggal dan waktu', '2026-08-10 23:59:59', 'Wajib untuk booking.', 'Batas booking.'],
+            ['received_at', 'Kondisional', 'Tanggal dan waktu', '2026-08-08 14:00:00', 'Isi untuk status received/completed.', 'Waktu diterima buyer.'],
+        ];
+    }
+
+    private static function stockExamples(): array
+    {
+        $base = ['id' => '', 'store_name' => 'Toko Nusantara', 'sku' => 'PRODUK-001', 'product_name' => 'Produk Contoh', 'variant_name' => 'Default', 'movement_type' => 'adjustment', 'quantity_delta' => '10', 'balance_after' => '', 'reference_type' => 'manual_import', 'reference_id' => '', 'order_number' => '', 'notes' => 'Penyesuaian stok awal', 'occurred_at' => '2026-08-04 10:00:00'];
+
+        return [
+            self::example([...$base, 'movement_type' => 'in', 'quantity_delta' => '20', 'notes' => 'Barang masuk gudang'], 'Barang Masuk', 'Menambah stok variant.', 'Isi movement_type=in dan delta positif.', 'Stok bertambah 20.'),
+            self::example([...$base, 'movement_type' => 'out', 'quantity_delta' => '-3', 'notes' => 'Barang rusak'], 'Barang Keluar', 'Mengurangi stok variant.', 'Isi movement_type=out dan delta negatif.', 'Stok berkurang 3.'),
+            self::example($base, 'Adjustment', 'Penyesuaian stok manual.', 'Isi delta positif atau negatif.', 'Movement adjustment dibuat.'),
+            self::example([...$base, 'order_number' => 'ORD-202608-0001', 'reference_type' => 'order'], 'Relasi Order', 'Movement terkait pesanan.', 'Isi order_number yang tersedia.', 'Order tersimpan pada movement.'),
+            self::example([...$base, 'reference_type' => 'purchase', 'reference_id' => 'PO-0001'], 'Referensi Eksternal', 'Movement terkait pembelian.', 'Isi reference_type dan reference_id.', 'Referensi audit tersimpan.'),
+            self::example([...$base, 'store_name' => ''], 'Seller Auto Store', 'Seller mengosongkan toko.', 'Seller cukup mengisi SKU dan perubahan.', 'Toko diambil dari sesi Seller.'),
+            self::example([...$base, 'occurred_at' => '2026-08-04'], 'Tanggal Excel', 'Tanggal tanpa jam.', 'Gunakan tanggal valid.', 'Tanggal dinormalisasi.'),
+            self::example([...$base, 'id' => '40', 'balance_after' => '100', 'quantity_delta' => ''], 'Update Menjadi Saldo', 'Mode update menetapkan target saldo terbaru.', 'Isi id movement lama dan balance_after target.', 'Sistem membuat movement koreksi sampai stok 100.'),
+            self::example([...$base, 'sku' => 'SKU-TIDAK-ADA'], 'Validasi Gagal', 'SKU tidak ditemukan.', 'Gunakan SKU tidak tersedia.', 'Baris ditolak.', 'Produk harus dibuat lebih dahulu.'),
+            self::example([...$base, 'movement_type' => 'out', 'quantity_delta' => '-999999'], 'Stok Negatif', 'Pengurangan melebihi stok.', 'Isi delta sangat besar.', 'Baris ditolak dan stok tidak berubah.', 'Stok akhir tidak boleh negatif.'),
+        ];
+    }
+
+    private static function stockDescriptions(): array
+    {
+        return [
+            ['id', 'Kondisional', 'Angka bulat', '40', 'Wajib pada mode update.', 'History lama tidak diedit; ID menentukan movement referensi.'],
+            ['store_name', 'Wajib Admin, otomatis Seller', 'Nama toko', 'Toko Nusantara', 'Dicocokkan berdasarkan nama.', 'Seller selalu toko sesi.'],
+            ['sku', 'Wajib', 'SKU variant', 'PRODUK-001', 'Harus tersedia pada toko.', 'Kunci utama import stok.'],
+            ['product_name', 'Optional', 'Teks', 'Produk Contoh', 'Digunakan untuk pemeriksaan tambahan.', 'Tidak membuat Product baru.'],
+            ['variant_name', 'Optional', 'Teks', 'Default', 'Digunakan untuk informasi.', 'SKU tetap menjadi pencocokan.'],
+            ['movement_type', 'Wajib', 'in|out|adjustment|reservation|release', 'adjustment', 'Harus sesuai pilihan.', 'Jenis perubahan stok.'],
+            ['quantity_delta', 'Kondisional', 'Angka bulat bukan 0', '10', 'Wajib create. Positif menambah, negatif mengurangi.', 'Tidak boleh membuat stok negatif.'],
+            ['balance_after', 'Kondisional', 'Angka bulat ≥ 0', '100', 'Dapat dipakai sebagai target pada mode update.', 'Sistem menghitung delta koreksi.'],
+            ['reference_type', 'Optional', 'Teks', 'manual_import', 'Default manual_import.', 'Jenis sumber movement.'],
+            ['reference_id', 'Optional', 'Teks', 'PO-0001', 'Maksimum 120 karakter.', 'ID sumber eksternal.'],
+            ['order_number', 'Optional', 'Nomor pesanan', 'ORD-202608-0001', 'Harus tersedia bila diisi.', 'Relasi order.'],
+            ['notes', 'Optional', 'Teks', 'Penyesuaian stok', 'Maksimum 1000 karakter.', 'Alasan perubahan.'],
+            ['occurred_at', 'Wajib', 'Tanggal dan waktu', '2026-08-04 10:00:00', 'Format Excel didukung.', 'Waktu movement.'],
         ];
     }
 

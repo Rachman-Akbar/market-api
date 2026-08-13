@@ -56,6 +56,8 @@ final class ProductMapper
             variants: $variants,
             images: $images,
             store: $store,
+            averageRating: round((float) ($model->reviews_avg_rating ?? 0), 2),
+            reviewCount: (int) ($model->reviews_count ?? 0),
             createdAt: $model->created_at?->toDateTimeString(),
             updatedAt: $model->updated_at?->toDateTimeString()
         );

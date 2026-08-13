@@ -9,6 +9,7 @@ use App\Domains\Order\Voucher\Application\UseCases\ManageVoucherUseCase;
 use App\Domains\Order\Voucher\Domain\Entities\Voucher;
 use App\Domains\Order\Voucher\Presentation\Http\Requests\StoreVoucherRequest;
 use App\Domains\Order\Voucher\Presentation\Http\Resources\VoucherResource;
+use App\Domains\Shared\Presentation\Http\Concerns\ResolvesSellerStoreContext;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ use Throwable;
 
 final class VoucherController extends Controller
 {
+    use ResolvesSellerStoreContext;
     public function __construct(private ManageVoucherUseCase $useCase) {}
 
     public function index(Request $request): JsonResponse
@@ -55,7 +57,7 @@ final class VoucherController extends Controller
 
         if ($this->activeRole($request) === 'seller') {
             $filters['voucher_scope'] = 'store';
-            $filters['store_id'] = $this->sellerStoreId($request);
+            $filters['store_id'] = $this->resolveSellerStoreId($request);
         } else {
             if ($request->filled('voucher_scope')) {
                 $filters['voucher_scope'] = (string) $request->query('voucher_scope');
@@ -142,7 +144,7 @@ final class VoucherController extends Controller
 
         if ($role === 'seller') {
             $data['voucher_scope'] = 'store';
-            $data['store_id'] = $this->sellerStoreId($request);
+            $data['store_id'] = $this->resolveSellerStoreId($request);
         } else {
             $data['voucher_scope'] = $current?->voucher_scope ?? 'platform';
             $data['store_id'] = $current?->store_id;
@@ -182,22 +184,13 @@ final class VoucherController extends Controller
     private function assertOwnership(Request $request, Voucher $voucher): void
     {
         if ($this->activeRole($request) === 'seller') {
-            if ($voucher->voucher_scope !== 'store' || (int) $voucher->store_id !== $this->sellerStoreId($request)) {
+            if ($voucher->voucher_scope !== 'store' || (int) $voucher->store_id !== $this->resolveSellerStoreId($request)) {
                 throw new RuntimeException('Anda tidak memiliki akses ke voucher ini.');
             }
         }
     }
 
-    private function sellerStoreId(Request $request): int
-    {
-        $storeId = $request->attributes->get('seller_store_id') ?: $request->user()?->store?->id;
 
-        if (! $storeId) {
-            throw new RuntimeException('Akun seller belum terhubung dengan toko.');
-        }
-
-        return (int) $storeId;
-    }
 
     private function activeRole(Request $request): string
     {

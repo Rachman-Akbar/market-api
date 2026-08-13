@@ -10,6 +10,7 @@
         "kreait/firebase-php": "^8.2",
         "kreait/laravel-firebase": "^7.1",
         "laravel/framework": "^13.0",
+        "laravel/reverb": "^1.11",
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
         "midtrans/midtrans-php": "^2.6",

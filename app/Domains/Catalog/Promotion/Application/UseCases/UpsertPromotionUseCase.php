@@ -6,13 +6,17 @@ namespace App\Domains\Catalog\Promotion\Application\UseCases;
 
 use App\Domains\Catalog\Promotion\Application\Dtos\PromotionData;
 use App\Domains\Catalog\Promotion\Domain\Entities\Promotion;
+use App\Domains\Catalog\Promotion\Application\Services\PromotionPaymentService;
 use App\Domains\Catalog\Promotion\Domain\Repositories\PromotionRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 final class UpsertPromotionUseCase
 {
-    public function __construct(private PromotionRepositoryInterface $repository) {}
+    public function __construct(
+        private PromotionRepositoryInterface $repository,
+        private PromotionPaymentService $paymentService
+    ) {}
 
     public function execute(
         PromotionData $dto,
@@ -36,6 +40,15 @@ final class UpsertPromotionUseCase
         }
 
         $storeId = $sellerSubmission ? $sellerStoreId : $dto->storeId;
+
+        if ($sellerSubmission) {
+            if (! $dto->promotionPaymentId || ! $storeId) {
+                throw new InvalidArgumentException('Pembayaran promosi yang telah disetujui wajib dipilih.');
+            }
+
+            $this->paymentService->approvedForPromotion($dto->promotionPaymentId, $storeId, $id);
+        }
+
         $this->validateTarget($dto, $storeId, $sellerSubmission);
 
         $approvalStatus = $sellerSubmission
@@ -45,6 +58,7 @@ final class UpsertPromotionUseCase
         $entity = new Promotion(
             id: $id,
             storeId: $storeId,
+            promotionPaymentId: $dto->promotionPaymentId ?? $existing?->promotionPaymentId,
             name: $dto->name,
             imageUrl: $dto->imageUrl,
             mobileImageUrl: $dto->mobileImageUrl,

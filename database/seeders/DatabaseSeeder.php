@@ -18,6 +18,7 @@ final class DatabaseSeeder extends Seeder
             ProductSeeder::class,
             MarketingSeeder::class,
             MarketplaceFakerSeeder::class,
+            AdvancedMarketplaceSeeder::class,
         ]);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Seller\Stores\Application\UseCases;
 
+use App\Domains\Admin\Notification\Application\Services\AdminNotificationService;
 use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Identity\Auth\Application\DTOs\RegisterSellerDTO;
 use App\Domains\Seller\Stores\Application\DTOs\StoreData;
@@ -16,7 +17,8 @@ final readonly class CreateStoreUseCase
 {
     public function __construct(
         private UserRepositoryInterface $userRepository,
-        private StoreRepositoryInterface $storeRepository
+        private StoreRepositoryInterface $storeRepository,
+        private AdminNotificationService $notificationService
     ) {}
 
     public function execute(string $userId, array $data, ?string $deviceName = null): StoreData
@@ -46,6 +48,17 @@ final readonly class CreateStoreUseCase
         if (!$store) {
             throw new RuntimeException('Toko gagal dimuat setelah registrasi.');
         }
+
+        $this->notificationService->notifyAdmins([
+            'module' => 'stores',
+            'type' => 'store.registration.created',
+            'title' => 'Pendaftaran toko baru',
+            'message' => $store->name() . ' menunggu pemeriksaan admin.',
+            'reference_type' => 'store',
+            'reference_id' => $store->id(),
+            'url' => '/admin/stores?store=' . $store->id(),
+            'meta' => ['status' => $store->status()],
+        ], $userId, $store->id());
 
         return StoreData::fromEntity($store);
     }

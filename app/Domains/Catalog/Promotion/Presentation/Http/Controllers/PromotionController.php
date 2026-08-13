@@ -11,17 +11,18 @@ use App\Domains\Catalog\Promotion\Application\UseCases\ReviewPromotionUseCase;
 use App\Domains\Catalog\Promotion\Application\UseCases\UpsertPromotionUseCase;
 use App\Domains\Catalog\Promotion\Presentation\Http\Requests\PromotionDecisionRequest;
 use App\Domains\Catalog\Promotion\Presentation\Http\Requests\PromotionRequest;
+use App\Domains\Shared\Presentation\Http\Concerns\ResolvesSellerStoreContext;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
-use RuntimeException;
 use Throwable;
 
 final class PromotionController extends Controller
 {
+    use ResolvesSellerStoreContext;
     public function index(Request $request, GetPromotionQuery $query): JsonResponse
     {
         try {
@@ -281,14 +282,5 @@ final class PromotionController extends Controller
         })->all();
     }
 
-    private function resolveSellerStoreId(Request $request): int
-    {
-        $storeId = $request->user()?->store?->id;
 
-        if (! $storeId) {
-            throw new RuntimeException('Akun seller belum terhubung dengan toko.');
-        }
-
-        return (int) $storeId;
-    }
 }

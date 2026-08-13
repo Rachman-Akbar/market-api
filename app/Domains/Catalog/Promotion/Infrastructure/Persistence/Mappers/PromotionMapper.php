@@ -14,6 +14,7 @@ final class PromotionMapper
         return new Promotion(
             id: (int) $model->id,
             storeId: $model->store_id !== null ? (int) $model->store_id : null,
+            promotionPaymentId: $model->promotion_payment_id !== null ? (int) $model->promotion_payment_id : null,
             name: (string) $model->name,
             imageUrl: (string) $model->image_url,
             mobileImageUrl: $model->mobile_image_url,

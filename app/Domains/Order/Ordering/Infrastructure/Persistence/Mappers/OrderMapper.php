@@ -48,6 +48,10 @@ final class OrderMapper
         return new DomainOrder(
             id: (int) $model->id,
             orderNumber: (string) $model->order_number,
+            orderType: (string) ($model->order_type ?? 'normal'),
+            preorderReleaseAt: $model->preorder_release_at?->toIso8601String(),
+            bookingExpiresAt: $model->booking_expires_at?->toIso8601String(),
+            receivedAt: $model->received_at?->toIso8601String(),
             userId: (string) $model->user_id,
             voucherId: $model->voucher_id ? (int) $model->voucher_id : null,
             totalAmount: (float) $model->total_amount,
@@ -68,6 +72,10 @@ final class OrderMapper
     {
         return [
             'order_number' => $entity->orderNumber,
+            'order_type' => $entity->orderType,
+            'preorder_release_at' => $entity->preorderReleaseAt,
+            'booking_expires_at' => $entity->bookingExpiresAt,
+            'received_at' => $entity->receivedAt,
             'user_id' => $entity->userId,
             'voucher_id' => $entity->voucherId,
             'total_amount' => $entity->totalAmount,

@@ -68,6 +68,8 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     public function findById(int $id, bool $includeInactive = false): ?Product
     {
         $model = ProductModel::query()
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
             ->when(! $includeInactive, function (Builder $query): void {
                 $query->active()->where('products.status', 'published');
                 $this->applyPublicStoreFilter($query);
@@ -81,6 +83,8 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     public function findBySlug(string $slug, bool $includeInactive = false): ?Product
     {
         $model = ProductModel::query()
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
             ->when(! $includeInactive, function (Builder $query): void {
                 $query->active()->where('products.status', 'published');
                 $this->applyPublicStoreFilter($query);
@@ -104,6 +108,8 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     public function findPublishedByStoreId(int $storeId): Collection
     {
         return ProductModel::query()
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
             ->active()
             ->whereHas('store', fn (Builder $query) => $query->publiclyAvailable())
             ->with($this->relationsForList(['include' => 'summary']))
@@ -261,6 +267,8 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     {
         $includeInactive = (bool) ($filters['include_inactive'] ?? false);
         $query = ProductModel::query()
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
             ->with($this->relationsForList($filters, $includeInactive));
 
         if (! $includeInactive) {

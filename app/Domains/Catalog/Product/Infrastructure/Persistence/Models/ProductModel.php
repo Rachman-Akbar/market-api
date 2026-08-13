@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Catalog\Product\Infrastructure\Persistence\Models;
 
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
+use App\Domains\Order\Review\Infrastructure\Persistence\Models\ProductReviewModel;
 use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use App\Domains\Shared\Infrastructure\Persistence\Concerns\HasActiveStatus;
 use App\Domains\Shared\Infrastructure\Persistence\Concerns\TracksUserChanges;
@@ -90,5 +91,10 @@ final class ProductModel extends Model
     public function images(): HasMany
     {
         return $this->hasMany(ProductImageModel::class, 'product_id', 'id');
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ProductReviewModel::class, 'product_id')->where('is_active', true);
     }
 }

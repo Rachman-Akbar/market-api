@@ -12,6 +12,7 @@ use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductVariant
 use App\Domains\Order\Voucher\Domain\Entities\Voucher;
 use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use App\Domains\Shared\Spreadsheet\Application\SpreadsheetModuleRegistry;
+use App\Domains\Shared\Spreadsheet\Application\Services\AdvancedSpreadsheetTransferService;
 use App\Http\Controllers\Controller;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -44,6 +45,8 @@ use Throwable;
 final class SpreadsheetTransferController extends Controller
 {
     private array $createdProductIds = [];
+
+    public function __construct(private AdvancedSpreadsheetTransferService $advancedTransfer) {}
     public function template(Request $request, string $module): BinaryFileResponse|JsonResponse
     {
         try {
@@ -139,6 +142,7 @@ final class SpreadsheetTransferController extends Controller
             $request->attributes->set('import_mode', (string) $request->input('import_mode'));
             $request->attributes->set('create_missing_relations', $request->boolean('create_missing_relations'));
             $this->createdProductIds = [];
+            $this->advancedTransfer->reset();
             $spreadsheet = $this->loadImportSpreadsheet($request->file('file'), false);
             $sheet = $spreadsheet->getSheetByName('Template Kosong') ?: $spreadsheet->getSheet(0);
             $headerRow = $this->findHeaderRow($sheet, $config['headers']);
@@ -168,13 +172,36 @@ final class SpreadsheetTransferController extends Controller
 
             $this->assertImportRows($request, $module, $rows);
 
-            foreach ($rows as $item) {
-                $row = $item['data'];
-                try {
-                    DB::transaction(fn () => $this->persistRow($request, $module, $row));
-                    $successful++;
-                } catch (Throwable $exception) {
-                    $errors[] = [...$row, 'error_message' => $exception->getMessage()];
+            if ($module === 'order') {
+                $groups = collect($rows)->groupBy(function (array $item): string {
+                    $orderNumber = trim((string) ($item['data']['order_number'] ?? ''));
+                    return $orderNumber !== '' ? $orderNumber : '__row_'.$item['row_number'];
+                });
+
+                foreach ($groups as $group) {
+                    $this->advancedTransfer->reset();
+                    try {
+                        DB::transaction(function () use ($request, $module, $group): void {
+                            foreach ($group as $item) {
+                                $this->persistRow($request, $module, $item['data']);
+                            }
+                        });
+                        $successful += $group->count();
+                    } catch (Throwable $exception) {
+                        foreach ($group as $item) {
+                            $errors[] = [...$item['data'], 'error_message' => $exception->getMessage()];
+                        }
+                    }
+                }
+            } else {
+                foreach ($rows as $item) {
+                    $row = $item['data'];
+                    try {
+                        DB::transaction(fn () => $this->persistRow($request, $module, $row));
+                        $successful++;
+                    } catch (Throwable $exception) {
+                        $errors[] = [...$row, 'error_message' => $exception->getMessage()];
+                    }
                 }
             }
 
@@ -205,6 +232,12 @@ final class SpreadsheetTransferController extends Controller
     {
         try {
             $config = $this->authorizeModule($request, $module);
+            if ($module === 'stock') {
+                throw new InvalidArgumentException('Riwayat stok tidak dapat dihapus melalui bulk delete. Gunakan movement koreksi agar audit trail tetap utuh.');
+            }
+            if ($module === 'order' && $this->activeRole($request) === 'seller') {
+                throw new InvalidArgumentException('Seller tidak dapat menghapus order melalui bulk delete.');
+            }
             $data = $request->validate(['ids' => ['required', 'array', 'min:1'], 'ids.*' => ['integer']]);
             $query = $this->scopedQuery($request, $config, $module)->whereIn('id', $data['ids']);
             $rows = $query->get();
@@ -288,6 +321,10 @@ final class SpreadsheetTransferController extends Controller
 
     private function scopedQuery(Request $request, array $config, string $module): Builder
     {
+        if ($this->advancedTransfer->supports($module)) {
+            return $this->advancedTransfer->scopedQuery($request, $module);
+        }
+
         $query = SpreadsheetModuleRegistry::model($config)->newQuery();
         $role = $this->activeRole($request);
 
@@ -456,8 +493,11 @@ final class SpreadsheetTransferController extends Controller
         $this->writeHeader($sheet, $headers);
         $rowNumber = 2;
 
-        foreach ($models as $model) {
-            $row = $this->modelToRow($module, $model, $config['headers']);
+        $rows = $this->advancedTransfer->supports($module)
+            ? $this->advancedTransfer->exportRows($module, $models)
+            : collect($models)->map(fn (Model $model): array => $this->modelToRow($module, $model, $config['headers']))->all();
+
+        foreach ($rows as $row) {
             foreach ($config['headers'] as $index => $header) {
                 $sheet->setCellValue([$index + 1, $rowNumber], $row[$header] ?? '');
             }
@@ -494,6 +534,11 @@ final class SpreadsheetTransferController extends Controller
 
     private function persistRow(Request $request, string $module, array $row): void
     {
+        if ($this->advancedTransfer->supports($module)) {
+            $this->advancedTransfer->persist($request, $module, $row);
+            return;
+        }
+
         match ($module) {
             'product' => $this->persistProduct($request, $row),
             'category' => $this->persistCategory($request, $row),
@@ -919,6 +964,10 @@ final class SpreadsheetTransferController extends Controller
 
     private function analyzeMissingRelations(Request $request, string $module, array $rows): array
     {
+        if ($this->advancedTransfer->supports($module)) {
+            return $this->advancedTransfer->analyzeMissingRelations($request, $module, $rows);
+        }
+
         $missing = [];
         $add = function (string $type, string $name, int $rowNumber, bool $canAutoCreate, string $context = '') use (&$missing): void {
             $displayName = $this->cleanName($name);
@@ -1764,11 +1813,25 @@ final class SpreadsheetTransferController extends Controller
 
     private function sellerStoreId(Request $request): int
     {
-        $storeId = $request->attributes->get('seller_store_id') ?: $request->user()?->store?->id;
-        if (! $storeId) {
+        $userId = (string) ($request->user()?->getAuthIdentifier() ?? '');
+        $storeId = (int) ($request->attributes->get('seller_store_id') ?? 0);
+
+        if ($storeId <= 0 && $userId !== '') {
+            $storeId = (int) DB::table('stores')
+                ->where('user_id', $userId)
+                ->whereNull('deleted_at')
+                ->orderByDesc('is_active')
+                ->orderBy('id')
+                ->value('id');
+        }
+
+        if ($storeId <= 0) {
             throw new InvalidArgumentException('Akun seller belum terhubung dengan toko.');
         }
-        return (int) $storeId;
+
+        $request->attributes->set('seller_store_id', $storeId);
+
+        return $storeId;
     }
 
     private function boolValue(mixed $value): bool

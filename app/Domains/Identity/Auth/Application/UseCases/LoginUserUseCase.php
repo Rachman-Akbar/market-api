@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Identity\Auth\Application\UseCases;
 
+use App\Domains\Engagement\Mission\Application\Services\MissionService;
 use App\Domains\Identity\User\Domain\Entities\User;
 use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
 use Illuminate\Support\Facades\Hash;
@@ -15,6 +16,7 @@ final class LoginUserUseCase
         private UserRepositoryInterface $userRepository,
         private BuildAuthPayloadUseCase $payload,
         private IssueApiTokenUseCase $issueToken,
+        private MissionService $missionService,
     ) {}
 
     public function execute(
@@ -39,6 +41,9 @@ final class LoginUserUseCase
 
         $activeRole = $this->resolveRole($user, $requestedRole);
         $token = $this->issueToken->execute($user, $deviceName, $activeRole);
+        $this->missionService->recordEvent((string) $user->id, 'login', 1, [
+            'active_role' => $activeRole,
+        ]);
 
         return [
             ...$this->payload->execute($user, $activeRole),

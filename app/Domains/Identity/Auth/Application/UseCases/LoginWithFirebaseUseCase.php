@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Identity\Auth\Application\UseCases;
 
+use App\Domains\Engagement\Mission\Application\Services\MissionService;
 use App\Domains\Identity\User\Domain\Entities\User;
 use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
 use Illuminate\Validation\ValidationException;
@@ -15,6 +16,7 @@ final class LoginWithFirebaseUseCase
         private readonly UserRepositoryInterface $userRepository,
         private readonly BuildAuthPayloadUseCase $payload,
         private readonly IssueApiTokenUseCase $issueToken,
+        private readonly MissionService $missionService,
     ) {}
 
     public function execute(
@@ -49,6 +51,9 @@ final class LoginWithFirebaseUseCase
             $deviceName ?? 'marketplace-web',
             $activeRole
         );
+        $this->missionService->recordEvent((string) $user->id, 'login', 1, [
+            'active_role' => $activeRole,
+        ]);
 
         return [
             ...$this->payload->execute($user, $activeRole),
