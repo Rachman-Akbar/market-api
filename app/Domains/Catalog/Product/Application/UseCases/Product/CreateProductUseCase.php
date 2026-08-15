@@ -75,7 +75,7 @@ final class CreateProductUseCase
                     sku: $sku,
                     name: $name,
                     price: (float) ($data['price'] ?? 0),
-                    stock: (int) ($data['stock'] ?? 0),
+                    stock: 0,
                     isDefault: true
                 ));
             } else {
@@ -90,7 +90,7 @@ final class CreateProductUseCase
                         sku: $variantSku !== '' ? $variantSku : ($index === 0 ? $sku : $this->generateSku($variantData + $data, $storeId)),
                         name: $variantName !== '' ? $variantName : $name,
                         price: (float) ($variantData['price'] ?? 0),
-                        stock: (int) ($variantData['stock'] ?? 0),
+                        stock: 0,
                         isDefault: array_key_exists('is_default', $variantData)
                             ? (bool) $variantData['is_default']
                             : $index === 0

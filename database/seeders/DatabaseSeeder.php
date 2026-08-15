@@ -19,6 +19,10 @@ final class DatabaseSeeder extends Seeder
             MarketingSeeder::class,
             MarketplaceFakerSeeder::class,
             AdvancedMarketplaceSeeder::class,
+            InventoryCostingFinanceSeeder::class,
+            ComprehensiveRealtimeSeeder::class,
+            RealtimeMarketplaceSeeder::class,
+            BudiSellerPanelSeeder::class,
         ]);
     }
 }

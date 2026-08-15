@@ -6,7 +6,7 @@ use App\Domains\Shared\Spreadsheet\Presentation\Http\Controllers\SpreadsheetTran
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('catalog')->group(function (): void {
-    $spreadsheetModulePattern = 'product|category|catalog-group|promotion|voucher|banner|order|income|expense|receivable|payable|stock';
+    $spreadsheetModulePattern = 'product|category|catalog-group|promotion|voucher|banner|order|income|expense|receivable|payable|stock|raw-material|raw-material-stock|product-costing|customer|review|cost-impact';
 
     Route::middleware(['auth:sanctum', 'active.user', 'verified.email', 'role:seller,admin'])
         ->prefix('spreadsheets/{module}')

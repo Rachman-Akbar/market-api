@@ -4,12 +4,21 @@ declare(strict_types=1);
 
 namespace App\Domains\Shared\Spreadsheet\Application\Services;
 
+use App\Domains\Catalog\Product\Costing\Application\Services\ProductCostingService;
+use App\Domains\Catalog\Product\Costing\Infrastructure\Persistence\Models\ProductCostingImpactModel;
+use App\Domains\Catalog\Product\Costing\Infrastructure\Persistence\Models\ProductCostingModel;
+use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductVariantModel;
 use App\Domains\Identity\User\Domain\Entities\User;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderItemModel;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
+use App\Domains\Order\Review\Infrastructure\Persistence\Models\ProductReviewModel;
+use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialPaymentHistoryModel;
 use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialTransactionModel;
+use App\Domains\Seller\Inventory\Application\Services\RawMaterialService;
+use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialModel;
+use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialStockMovementModel;
 use App\Domains\Seller\Stock\Application\Services\StockMovementService;
 use App\Domains\Seller\Stock\Infrastructure\Persistence\Models\StockMovementModel;
 use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
@@ -26,11 +35,15 @@ final class AdvancedSpreadsheetTransferService
     private array $createdOrders = [];
     private array $orderSignatures = [];
 
-    public function __construct(private StockMovementService $stockMovementService) {}
+    public function __construct(
+        private StockMovementService $stockMovementService,
+        private RawMaterialService $rawMaterialService,
+        private ProductCostingService $productCostingService
+    ) {}
 
     public function supports(string $module): bool
     {
-        return in_array($module, ['order', 'income', 'expense', 'receivable', 'payable', 'stock'], true);
+        return in_array($module, ['order', 'income', 'expense', 'receivable', 'payable', 'stock', 'raw-material', 'raw-material-stock', 'product-costing', 'customer', 'review', 'cost-impact'], true);
     }
 
     public function reset(): void
@@ -59,6 +72,48 @@ final class AdvancedSpreadsheetTransferService
                 ->with(['store:id,name', 'product:id,name', 'variant:id,product_id,store_id,sku,name,price,stock', 'order:id,order_number']);
         }
 
+        if ($module === 'raw-material') {
+            return RawMaterialModel::query()
+                ->when($storeId !== null, fn (Builder $query) => $query->where('store_id', $storeId));
+        }
+
+        if ($module === 'raw-material-stock') {
+            return RawMaterialStockMovementModel::query()
+                ->when($storeId !== null, fn (Builder $query) => $query->where('store_id', $storeId))
+                ->with('material:id,store_id,code,name,unit,average_cost');
+        }
+
+        if ($module === 'product-costing') {
+            return ProductCostingModel::query()
+                ->when($storeId !== null, fn (Builder $query) => $query->where('store_id', $storeId))
+                ->with(['product:id,store_id,name,slug', 'store:id,name']);
+        }
+
+        if ($module === 'review') {
+            return ProductReviewModel::query()
+                ->when($storeId !== null, fn (Builder $query) => $query->whereHas('product', fn (Builder $productQuery) => $productQuery->where('store_id', $storeId)))
+                ->with(['product:id,store_id,name,slug', 'user:id,name,email', 'order:id,order_number']);
+        }
+
+        if ($module === 'cost-impact') {
+            return ProductCostingImpactModel::query()
+                ->when($storeId !== null, fn (Builder $query) => $query->where('store_id', $storeId))
+                ->with(['product:id,name,slug', 'material:id,code,name,unit', 'costHistory:id,old_average_cost,new_average_cost,direction,reference_type,reference_number']);
+        }
+
+        if ($module === 'customer') {
+            $summary = DB::table('orders')
+                ->join('sub_orders', 'sub_orders.order_id', '=', 'orders.id')
+                ->selectRaw('orders.user_id, COUNT(DISTINCT orders.id) as orders_count, SUM(sub_orders.total_items_price + sub_orders.shipping_cost) as total_spent, MAX(orders.created_at) as last_order_at')
+                ->when($storeId !== null, fn ($query) => $query->where('sub_orders.store_id', $storeId))
+                ->whereNotIn('orders.status', ['cancelled'])
+                ->groupBy('orders.user_id');
+
+            return User::query()
+                ->joinSub($summary, 'customer_summary', fn ($join) => $join->on('customer_summary.user_id', '=', 'users.id'))
+                ->select(['users.id', 'users.name', 'users.email', 'users.is_active', 'users.created_at', 'customer_summary.orders_count', 'customer_summary.total_spent', 'customer_summary.last_order_at']);
+        }
+
         return FinancialTransactionModel::query()
             ->where('type', $module)
             ->when($storeId !== null, fn (Builder $query) => $query->where('store_id', $storeId))
@@ -70,7 +125,11 @@ final class AdvancedSpreadsheetTransferService
         match ($module) {
             'order' => $this->persistOrder($request, $row),
             'stock' => $this->persistStock($request, $row),
+            'raw-material' => $this->persistRawMaterial($request, $row),
+            'raw-material-stock' => $this->persistRawMaterialStock($request, $row),
+            'product-costing' => $this->persistProductCosting($request, $row),
             'income', 'expense', 'receivable', 'payable' => $this->persistFinance($request, $module, $row),
+            'customer', 'review', 'cost-impact' => throw new InvalidArgumentException('Modul ini hanya mendukung export karena datanya merupakan hasil transaksi atau histori audit.'),
             default => throw new InvalidArgumentException('Modul spreadsheet lanjutan tidak didukung.'),
         };
     }
@@ -78,13 +137,147 @@ final class AdvancedSpreadsheetTransferService
     public function exportRows(string $module, iterable $models): array
     {
         $rows = [];
+        $models = collect($models);
+        $storeNames = collect();
+        $recipes = collect();
+        $buyers = collect();
+        $variants = collect();
+
+        if (in_array($module, ['raw-material', 'raw-material-stock'], true)) {
+            $storeIds = $models->pluck('store_id')->filter()->map(fn ($id) => (int) $id)->unique()->values();
+            $storeNames = StoreModel::query()->whereIn('id', $storeIds)->pluck('name', 'id');
+        }
+
+        if ($module === 'product-costing') {
+            $productIds = $models->pluck('product_id')->filter()->map(fn ($id) => (int) $id)->unique()->values();
+            $recipes = DB::table('product_materials as pm')
+                ->join('raw_materials as rm', 'rm.id', '=', 'pm.raw_material_id')
+                ->whereIn('pm.product_id', $productIds)
+                ->orderBy('rm.code')
+                ->get(['pm.product_id', 'rm.code', 'pm.quantity'])
+                ->groupBy('product_id');
+        }
+
+        if ($module === 'order') {
+            $buyerIds = $models->pluck('user_id')->filter()->unique()->values();
+            $buyers = User::query()->whereIn('id', $buyerIds)->get(['id', 'email'])->keyBy('id');
+            $variantIds = $models->flatMap(fn ($order) => $order->subOrders->flatMap(fn ($subOrder) => $subOrder->items->pluck('variant_id')))->filter()->unique()->values();
+            $variants = ProductVariantModel::query()->whereIn('id', $variantIds)->get(['id', 'name'])->keyBy('id');
+        }
 
         foreach ($models as $model) {
+            if ($module === 'raw-material') {
+                $storeName = (string) ($storeNames->get((int) $model->store_id) ?: '');
+                $rows[] = [
+                    'id' => $model->id,
+                    'store_name' => $storeName,
+                    'code' => $model->code,
+                    'name' => $model->name,
+                    'unit' => $model->unit,
+                    'minimum_stock' => $model->minimum_stock,
+                    'average_cost' => $model->average_cost,
+                    'is_active' => $model->is_active ? 1 : 0,
+                ];
+                continue;
+            }
+
+            if ($module === 'raw-material-stock') {
+                $storeName = (string) ($storeNames->get((int) $model->store_id) ?: '');
+                $rows[] = [
+                    'id' => $model->id,
+                    'store_name' => $storeName,
+                    'raw_material_code' => $model->material?->code ?: '',
+                    'raw_material_name' => $model->material?->name ?: '',
+                    'movement_type' => $model->type,
+                    'quantity_delta' => $model->quantity_delta,
+                    'balance_after' => $model->balance_after,
+                    'unit_cost' => $model->unit_cost,
+                    'reference_type' => $model->reference_type,
+                    'reference_number' => $model->reference_number,
+                    'notes' => $model->notes,
+                    'occurred_at' => $this->formatDate($model->occurred_at),
+                ];
+                continue;
+            }
+
+            if ($module === 'product-costing') {
+                $recipe = collect($recipes->get((int) $model->product_id, []))
+                    ->map(fn ($row) => $row->code.':'.rtrim(rtrim(number_format((float) $row->quantity, 4, '.', ''), '0'), '.'))
+                    ->implode('|');
+                $rows[] = [
+                    'id' => $model->id,
+                    'store_name' => $model->store?->name ?: '',
+                    'product_id' => $model->product_id,
+                    'product_name' => $model->product?->name ?: '',
+                    'materials' => $recipe,
+                    'labor_cost' => $model->labor_cost,
+                    'overhead_cost' => $model->overhead_cost,
+                    'other_cost' => $model->other_cost,
+                    'hpp' => $model->hpp,
+                    'margin_percent' => $model->margin_percent,
+                    'suggested_price' => $model->suggested_price,
+                    'selling_price' => $model->selling_price,
+                    'apply_to_variants' => 0,
+                ];
+                continue;
+            }
+
+            if ($module === 'customer') {
+                $rows[] = [
+                    'id' => $model->id,
+                    'name' => $model->name,
+                    'email' => $model->email,
+                    'orders_count' => $model->orders_count,
+                    'total_spent' => $model->total_spent,
+                    'last_order_at' => $this->formatDate($model->last_order_at),
+                    'is_active' => $model->is_active ? 1 : 0,
+                    'registered_at' => $this->formatDate($model->created_at),
+                ];
+                continue;
+            }
+
+            if ($module === 'review') {
+                $rows[] = [
+                    'id' => $model->id,
+                    'product_name' => $model->product?->name ?: '',
+                    'order_number' => $model->order?->order_number ?: '',
+                    'buyer_name' => $model->user?->name ?: '',
+                    'buyer_email' => $model->user?->email ?: '',
+                    'rating' => $model->rating,
+                    'review' => $model->review,
+                    'is_active' => $model->is_active ? 1 : 0,
+                    'created_at' => $this->formatDate($model->created_at),
+                ];
+                continue;
+            }
+
+            if ($module === 'cost-impact') {
+                $history = $model->costHistory;
+                $rows[] = [
+                    'id' => $model->id,
+                    'product_name' => $model->product?->name ?: '',
+                    'raw_material_code' => $model->material?->code ?: '',
+                    'raw_material_name' => $model->material?->name ?: '',
+                    'old_average_cost' => $history?->old_average_cost ?? '',
+                    'new_average_cost' => $history?->new_average_cost ?? '',
+                    'old_hpp' => $model->old_hpp,
+                    'new_hpp' => $model->new_hpp,
+                    'hpp_change_amount' => $model->hpp_change_amount,
+                    'hpp_change_percent' => $model->hpp_change_percent,
+                    'old_suggested_price' => $model->old_suggested_price,
+                    'new_suggested_price' => $model->new_suggested_price,
+                    'direction' => $history?->direction ?? '',
+                    'reference_number' => $history?->reference_number ?? '',
+                    'occurred_at' => $this->formatDate($model->occurred_at),
+                ];
+                continue;
+            }
+
             if ($module === 'order') {
                 foreach ($model->subOrders as $subOrder) {
                     foreach ($subOrder->items as $item) {
-                        $variant = $item->variant_id ? ProductVariantModel::query()->find($item->variant_id) : null;
-                        $buyer = User::query()->find($model->user_id);
+                        $variant = $item->variant_id ? $variants->get((int) $item->variant_id) : null;
+                        $buyer = $buyers->get($model->user_id);
                         $rows[] = [
                             'id' => $model->id,
                             'order_number' => $model->order_number,
@@ -166,7 +359,7 @@ final class AdvancedSpreadsheetTransferService
             $row = (array) ($item['data'] ?? []);
             $store = $sellerStoreId ? StoreModel::query()->find($sellerStoreId) : $this->findStore($row['store_name'] ?? null);
 
-            if (! $store && in_array($module, ['order', 'stock'], true)) {
+            if (! $store && in_array($module, ['order', 'stock', 'raw-material', 'raw-material-stock', 'product-costing'], true)) {
                 $this->addMissing($missing, 'store', $this->clean($row['store_name'] ?? ''), $rowNumber);
             }
 
@@ -181,7 +374,22 @@ final class AdvancedSpreadsheetTransferService
                 if ($store && ! $this->findVariant((int) $store->id, $row['sku'] ?? null)) {
                     $this->addMissing($missing, 'product_variant', $this->clean($row['sku'] ?? ''), $rowNumber);
                 }
-            } else {
+            } elseif ($module === 'raw-material-stock') {
+                if ($store && ! $this->findRawMaterial((int) $store->id, $row['raw_material_code'] ?? null)) {
+                    $this->addMissing($missing, 'raw_material', $this->clean($row['raw_material_code'] ?? ''), $rowNumber);
+                }
+            } elseif ($module === 'product-costing') {
+                if ($store && ! $this->findProductForCosting((int) $store->id, $row)) {
+                    $this->addMissing($missing, 'product', $this->clean($row['product_name'] ?? $row['product_id'] ?? ''), $rowNumber);
+                }
+                if ($store) {
+                    foreach ($this->parseMaterialRecipe($row['materials'] ?? '') as $recipe) {
+                        if (! $this->findRawMaterial((int) $store->id, $recipe['code'])) {
+                            $this->addMissing($missing, 'raw_material', $recipe['code'], $rowNumber);
+                        }
+                    }
+                }
+            } elseif (! in_array($module, ['raw-material', 'customer', 'cost-impact'], true)) {
                 if ($this->clean($row['store_name'] ?? '') !== '' && ! $store) {
                     $this->addMissing($missing, 'store', $this->clean($row['store_name'] ?? ''), $rowNumber);
                 }
@@ -229,12 +437,17 @@ final class AdvancedSpreadsheetTransferService
             : new FinancialTransactionModel();
         $amount = $this->positiveFloat($row['amount'] ?? null, 'Nominal transaksi');
         $settlement = in_array($module, ['payable', 'receivable'], true);
-        $paidAmount = max(0, $this->floatValue($row['paid_amount'] ?? 0));
+        $hasPaidAmount = $this->clean($row['paid_amount'] ?? '') !== '';
+        $requestedPaidAmount = $hasPaidAmount ? max(0, $this->floatValue($row['paid_amount'])) : 0.0;
+        $paidAmount = $model->exists ? (float) $model->paid_amount : $requestedPaidAmount;
 
+        if ($model->exists && $settlement && $hasPaidAmount && abs($requestedPaidAmount - $paidAmount) >= 0.01) {
+            throw new InvalidArgumentException('Nilai terbayar hutang/piutang tidak dapat diubah melalui import. Gunakan fitur Bayar agar histori cicilan tetap lengkap.');
+        }
         if ($paidAmount > $amount) {
             throw new InvalidArgumentException('Jumlah dibayar tidak boleh melebihi nominal transaksi.');
         }
-        if (! $settlement && $paidAmount !== 0.0) {
+        if (! $settlement && $requestedPaidAmount !== 0.0) {
             throw new InvalidArgumentException('paid_amount harus 0 untuk pemasukan dan pengeluaran.');
         }
 
@@ -255,6 +468,8 @@ final class AdvancedSpreadsheetTransferService
             throw new InvalidArgumentException('Judul transaksi wajib diisi.');
         }
 
+        $wasNew = ! $model->exists;
+        $occurredAt = $this->requiredDate($row['occurred_at'] ?? null, 'Tanggal transaksi');
         $model->fill([
             'store_id' => $storeId,
             'order_id' => $order?->id,
@@ -267,12 +482,27 @@ final class AdvancedSpreadsheetTransferService
             'paid_amount' => $paidAmount,
             'status' => $status,
             'due_date' => $this->nullableDate($row['due_date'] ?? null, 'Y-m-d'),
-            'occurred_at' => $this->requiredDate($row['occurred_at'] ?? null, 'Tanggal transaksi'),
+            'occurred_at' => $occurredAt,
             'settled_at' => $settlement && $status === 'paid' ? ($this->nullableDate($row['settled_at'] ?? null) ?: now()) : null,
             'is_active' => $this->boolValue($row['is_active'] ?? true),
             'created_by' => $model->created_by ?: $request->user()?->id,
             'updated_by' => $request->user()?->id,
         ])->save();
+
+        if ($wasNew && $settlement && $paidAmount > 0) {
+            FinancialPaymentHistoryModel::query()->create([
+                'financial_transaction_id' => $model->id,
+                'store_id' => $storeId,
+                'recorded_by' => $request->user()?->id,
+                'amount' => $paidAmount,
+                'balance_before' => $amount,
+                'balance_after' => max(0, $amount - $paidAmount),
+                'payment_method' => 'spreadsheet_initial',
+                'reference_number' => $reference,
+                'notes' => 'Pembayaran awal saat import transaksi',
+                'paid_at' => $occurredAt,
+            ]);
+        }
     }
 
     private function persistStock(Request $request, array $row): void
@@ -290,29 +520,22 @@ final class AdvancedSpreadsheetTransferService
         }
 
         $variant = $referenceMovement
-            ? ProductVariantModel::query()->lockForUpdate()->find($referenceMovement->variant_id)
+            ? ProductVariantModel::query()->find($referenceMovement->variant_id)
             : $this->findVariant((int) $store->id, $row['sku'] ?? null, true);
         if (! $variant) {
             throw new InvalidArgumentException('SKU variant tidak ditemukan pada toko.');
         }
+
         $requestedSku = $this->clean($row['sku'] ?? '');
         if ($referenceMovement && $requestedSku !== '' && Str::lower($requestedSku) !== Str::lower((string) $variant->sku)) {
             throw new InvalidArgumentException('SKU tidak sesuai dengan ID Stock Movement yang dipilih.');
         }
 
-        $variant = ProductVariantModel::query()->lockForUpdate()->findOrFail($variant->id);
         $currentBalance = (int) $variant->stock;
-        if ($mode === 'update' && $this->clean($row['balance_after'] ?? '') !== '') {
-            $targetBalance = $this->nonNegativeInt($row['balance_after'], 'Saldo akhir');
-            $delta = $targetBalance - $currentBalance;
-        } else {
-            $delta = $this->nonZeroInt($row['quantity_delta'] ?? null, 'Perubahan stok');
-            $targetBalance = $currentBalance + $delta;
-        }
+        $delta = $mode === 'update' && $this->clean($row['balance_after'] ?? '') !== ''
+            ? $this->nonNegativeInt($row['balance_after'], 'Saldo akhir') - $currentBalance
+            : $this->nonZeroInt($row['quantity_delta'] ?? null, 'Perubahan stok');
 
-        if ($targetBalance < 0) {
-            throw new InvalidArgumentException('Stok akhir tidak boleh negatif.');
-        }
         if ($delta === 0) {
             throw new InvalidArgumentException('Perubahan stok menghasilkan saldo yang sama.');
         }
@@ -330,23 +553,152 @@ final class AdvancedSpreadsheetTransferService
             throw new InvalidArgumentException('movement_type barang keluar atau reservation harus memakai quantity_delta negatif.');
         }
 
-        $variant->forceFill(['stock' => $targetBalance])->save();
-        StockMovementModel::create([
-            'store_id' => $store->id,
-            'product_id' => $variant->product_id,
+        $this->stockMovementService->adjust([
             'variant_id' => $variant->id,
-            'order_id' => $order?->id,
-            'movement_key' => 'spreadsheet-'.Str::uuid(),
-            'type' => $movementType,
             'quantity_delta' => $delta,
-            'balance_after' => $targetBalance,
+            'movement_type' => $movementType,
             'reference_type' => $this->nullable($row['reference_type'] ?? null) ?: 'spreadsheet_import',
-            'reference_id' => $this->nullable($row['reference_id'] ?? null),
+            'reference_id' => $this->nullable($row['reference_id'] ?? null) ?: $order?->order_number,
             'notes' => $this->nullable($row['notes'] ?? null),
             'occurred_at' => $this->requiredDate($row['occurred_at'] ?? null, 'Tanggal movement'),
-            'created_by' => $request->user()?->id,
-            'updated_by' => $request->user()?->id,
-        ]);
+        ], (int) $store->id);
+    }
+
+    private function persistRawMaterial(Request $request, array $row): void
+    {
+        $mode = $this->importMode($request);
+        $role = $this->activeRole($request);
+        $store = $role === 'seller' ? StoreModel::query()->findOrFail($this->sellerStoreId($request)) : $this->findStore($row['store_name'] ?? null);
+        if (! $store) {
+            throw new InvalidArgumentException('Nama toko wajib diisi dan harus tersedia.');
+        }
+
+        $id = $mode === 'update' ? (int) ($row['id'] ?? 0) : null;
+        if ($mode === 'update' && ! $id) {
+            throw new InvalidArgumentException('ID bahan baku wajib pada mode update.');
+        }
+
+        $existing = $id ? RawMaterialModel::query()->where('store_id', $store->id)->findOrFail($id) : null;
+        $code = $this->clean($row['code'] ?? '') ?: (string) ($existing?->code ?? '');
+        $name = $this->clean($row['name'] ?? '') ?: (string) ($existing?->name ?? '');
+        $unit = $this->clean($row['unit'] ?? '') ?: (string) ($existing?->unit ?? 'pcs');
+        if ($code === '' || $name === '') {
+            throw new InvalidArgumentException('Kode dan nama bahan baku wajib diisi.');
+        }
+
+        $this->rawMaterialService->save([
+            'store_id' => $store->id,
+            'code' => $code,
+            'name' => $name,
+            'unit' => $unit,
+            'minimum_stock' => $this->clean($row['minimum_stock'] ?? '') !== '' ? max(0, (float) $row['minimum_stock']) : (float) ($existing?->minimum_stock ?? 0),
+            'average_cost' => $this->clean($row['average_cost'] ?? '') !== '' ? max(0, (float) $row['average_cost']) : (float) ($existing?->average_cost ?? 0),
+            'is_active' => $this->clean($row['is_active'] ?? '') !== '' ? $this->boolValue($row['is_active']) : (bool) ($existing?->is_active ?? true),
+        ], $id, (int) $store->id);
+    }
+
+    private function persistRawMaterialStock(Request $request, array $row): void
+    {
+        $mode = $this->importMode($request);
+        $role = $this->activeRole($request);
+        $store = $role === 'seller' ? StoreModel::query()->findOrFail($this->sellerStoreId($request)) : $this->findStore($row['store_name'] ?? null);
+        if (! $store) {
+            throw new InvalidArgumentException('Nama toko wajib diisi dan harus tersedia.');
+        }
+
+        $material = $this->findRawMaterial((int) $store->id, $row['raw_material_code'] ?? null);
+        if (! $material) {
+            throw new InvalidArgumentException('Kode bahan baku tidak ditemukan pada toko. Import stok tidak membuat master bahan baku baru.');
+        }
+
+        if ($mode === 'update') {
+            $movementId = (int) ($row['id'] ?? 0);
+            if ($movementId <= 0) {
+                throw new InvalidArgumentException('ID movement bahan baku wajib pada mode update.');
+            }
+            $referenceMovement = RawMaterialStockMovementModel::query()->where('store_id', $store->id)->find($movementId);
+            if (! $referenceMovement) {
+                throw new InvalidArgumentException('ID movement bahan baku tidak ditemukan pada toko.');
+            }
+            if ((int) $referenceMovement->raw_material_id !== (int) $material->id) {
+                throw new InvalidArgumentException('Kode bahan baku tidak sesuai dengan ID movement yang dipilih.');
+            }
+        }
+
+        $current = (float) $material->stock;
+        if ($mode === 'update' && $this->clean($row['balance_after'] ?? '') !== '') {
+            $target = max(0, (float) $row['balance_after']);
+            $delta = $target - $current;
+        } else {
+            if (! is_numeric($row['quantity_delta'] ?? null) || abs((float) $row['quantity_delta']) < 0.0000001) {
+                throw new InvalidArgumentException('Perubahan stok bahan baku harus berupa angka selain nol.');
+            }
+            $delta = (float) $row['quantity_delta'];
+        }
+
+        if (abs($delta) < 0.0000001) {
+            throw new InvalidArgumentException('Perubahan stok bahan baku menghasilkan saldo yang sama.');
+        }
+
+        $movementType = strtolower($this->clean($row['movement_type'] ?? ($delta > 0 ? 'restock' : 'usage')));
+        if (! in_array($movementType, ['restock', 'usage', 'adjustment'], true)) {
+            throw new InvalidArgumentException('movement_type bahan baku harus restock, usage, atau adjustment.');
+        }
+
+        $this->rawMaterialService->adjust($material->id, [
+            'quantity_delta' => $delta,
+            'movement_type' => $movementType,
+            'unit_cost' => $this->clean($row['unit_cost'] ?? '') !== '' ? max(0, (float) $row['unit_cost']) : null,
+            'reference_type' => $this->nullable($row['reference_type'] ?? null) ?: 'spreadsheet_import',
+            'reference_number' => $this->nullable($row['reference_number'] ?? null),
+            'notes' => $this->nullable($row['notes'] ?? null),
+            'occurred_at' => $this->requiredDate($row['occurred_at'] ?? null, 'Tanggal movement'),
+        ], (int) $store->id);
+    }
+
+    private function persistProductCosting(Request $request, array $row): void
+    {
+        $mode = $this->importMode($request);
+        $role = $this->activeRole($request);
+        $store = $role === 'seller' ? StoreModel::query()->findOrFail($this->sellerStoreId($request)) : $this->findStore($row['store_name'] ?? null);
+        if (! $store) {
+            throw new InvalidArgumentException('Nama toko wajib diisi dan harus tersedia.');
+        }
+
+        $product = $this->findProductForCosting((int) $store->id, $row);
+        if (! $product) {
+            throw new InvalidArgumentException('Produk HPP tidak ditemukan pada toko.');
+        }
+
+        $existing = ProductCostingModel::query()->where('product_id', $product->id)->first();
+        if ($mode === 'create' && $existing) {
+            throw new InvalidArgumentException('HPP produk sudah tersedia. Gunakan mode Import Update Data.');
+        }
+        if ($mode === 'update' && ! $existing) {
+            throw new InvalidArgumentException('HPP produk belum tersedia. Gunakan mode Import Data Baru.');
+        }
+        if ($mode === 'update' && $this->clean($row['id'] ?? '') !== '' && (int) $row['id'] !== (int) $existing?->id) {
+            throw new InvalidArgumentException('ID HPP tidak sesuai dengan produk yang dipilih.');
+        }
+
+        $materials = [];
+        foreach ($this->parseMaterialRecipe($row['materials'] ?? '') as $recipe) {
+            $material = $this->findRawMaterial((int) $store->id, $recipe['code']);
+            if (! $material) {
+                throw new InvalidArgumentException('Bahan baku '.$recipe['code'].' tidak ditemukan. HPP tidak membuat master bahan baku baru.');
+            }
+            $materials[] = ['raw_material_id' => $material->id, 'quantity' => $recipe['quantity']];
+        }
+
+        $this->productCostingService->save($product->id, [
+            'materials' => $materials,
+            'labor_cost' => max(0, (float) ($row['labor_cost'] ?? 0)),
+            'overhead_cost' => max(0, (float) ($row['overhead_cost'] ?? 0)),
+            'other_cost' => max(0, (float) ($row['other_cost'] ?? 0)),
+            'margin_percent' => max(0, (float) ($row['margin_percent'] ?? 0)),
+            'selling_price' => $this->clean($row['selling_price'] ?? '') !== '' ? max(0, (float) $row['selling_price']) : null,
+            'apply_to_variants' => $this->boolValue($row['apply_to_variants'] ?? false),
+        ], (int) $store->id);
     }
 
     private function persistOrder(Request $request, array $row): void
@@ -578,6 +930,57 @@ final class AdvancedSpreadsheetTransferService
         return ProductVariantModel::query()->when($withProduct, fn (Builder $query) => $query->with('product:id,name'))->where('store_id', $storeId)->whereRaw('LOWER(TRIM(sku)) = ?', [Str::lower($value)])->first();
     }
 
+    private function findRawMaterial(int $storeId, mixed $code): ?RawMaterialModel
+    {
+        $value = Str::lower($this->clean($code));
+        if ($value === '') {
+            return null;
+        }
+        return RawMaterialModel::query()->where('store_id', $storeId)->whereRaw('LOWER(TRIM(code)) = ?', [$value])->first();
+    }
+
+    private function findProductForCosting(int $storeId, array $row): ?ProductModel
+    {
+        $productId = (int) ($row['product_id'] ?? 0);
+        if ($productId > 0) {
+            return ProductModel::query()->where('store_id', $storeId)->find($productId);
+        }
+        $name = Str::lower($this->clean($row['product_name'] ?? ''));
+        if ($name === '') {
+            return null;
+        }
+        return ProductModel::query()->where('store_id', $storeId)->whereRaw('LOWER(TRIM(name)) = ?', [$name])->first();
+    }
+
+    private function parseMaterialRecipe(mixed $value): array
+    {
+        $text = trim((string) ($value ?? ''));
+        if ($text === '') {
+            return [];
+        }
+
+        $rows = [];
+        $seen = [];
+        foreach (preg_split('/[|;]+/', $text) ?: [] as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+            [$code, $quantity] = array_pad(explode(':', $part, 2), 2, '');
+            $code = trim($code);
+            if ($code === '' || ! is_numeric(trim($quantity)) || (float) $quantity <= 0) {
+                throw new InvalidArgumentException('Format bahan HPP harus KODE:QTY dan dipisahkan dengan |. Contoh RM-BOX:1|RM-LABEL:2.');
+            }
+            $key = Str::lower($code);
+            if (isset($seen[$key])) {
+                throw new InvalidArgumentException('Kode bahan baku HPP tidak boleh duplikat: '.$code);
+            }
+            $seen[$key] = true;
+            $rows[] = ['code' => $code, 'quantity' => (float) $quantity];
+        }
+        return $rows;
+    }
+
     private function findOrder(mixed $number): ?OrderModel
     {
         $value = $this->clean($number);
@@ -616,7 +1019,7 @@ final class AdvancedSpreadsheetTransferService
     private function stockType(mixed $requested, int $delta): string
     {
         $value = strtolower($this->clean($requested));
-        $map = ['in' => 'inbound', 'out' => 'outbound', 'adjustment' => 'adjustment', 'reservation' => 'reservation', 'release' => 'release', 'inbound' => 'inbound', 'outbound' => 'outbound'];
+        $map = ['in' => 'inbound', 'out' => 'outbound', 'adjustment' => 'adjustment', 'reservation' => 'reservation', 'release' => 'release', 'production' => 'production', 'inbound' => 'inbound', 'outbound' => 'outbound'];
         return $map[$value] ?? ($delta > 0 ? 'inbound' : 'outbound');
     }
 

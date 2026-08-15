@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Domains\Seller\Stock\Application\Services;
 
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductVariantModel;
+use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialModel;
+use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialStockMovementModel;
 use App\Domains\Seller\Stock\Domain\Repositories\StockMovementRepositoryInterface;
 use App\Domains\Seller\Stock\Infrastructure\Persistence\Models\StockMovementModel;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 final class StockMovementService
@@ -46,19 +49,44 @@ final class StockMovementService
                 throw new InvalidArgumentException('Stok tidak mencukupi untuk pengurangan tersebut.');
             }
 
+            $referenceType = (string) ($data['reference_type'] ?? 'manual');
+            $referenceId = $data['reference_id'] ?? null;
+            $occurredAt = $data['occurred_at'] ?? now();
+            $requestedType = strtolower(trim((string) ($data['movement_type'] ?? '')));
+            $allowedTypes = ['inbound', 'outbound', 'adjustment', 'release', 'reservation', 'production'];
+
+            if ($requestedType !== '' && ! in_array($requestedType, $allowedTypes, true)) {
+                throw new InvalidArgumentException('Tipe pergerakan stok tidak valid.');
+            }
+
+            $movementType = $requestedType !== ''
+                ? $requestedType
+                : ($delta > 0 ? 'inbound' : 'outbound');
+
+            if ($delta > 0 && $movementType !== 'release') {
+                $this->consumeRawMaterialsForProduction(
+                    productId: (int) $variant->product_id,
+                    storeId: $storeId,
+                    producedQuantity: $delta,
+                    referenceType: $referenceType,
+                    referenceId: $referenceId,
+                    occurredAt: $occurredAt
+                );
+            }
+
             $variant->forceFill(['stock' => $nextBalance])->save();
 
             return $this->repository->save(new StockMovementModel([
                 'store_id' => $storeId,
                 'product_id' => $variant->product_id,
                 'variant_id' => $variant->id,
-                'type' => $delta > 0 ? 'inbound' : 'outbound',
+                'type' => $movementType,
                 'quantity_delta' => $delta,
                 'balance_after' => $nextBalance,
-                'reference_type' => $data['reference_type'] ?? 'manual',
-                'reference_id' => $data['reference_id'] ?? null,
+                'reference_type' => $referenceType,
+                'reference_id' => $referenceId,
                 'notes' => $data['notes'] ?? null,
-                'occurred_at' => $data['occurred_at'] ?? now(),
+                'occurred_at' => $occurredAt,
             ]));
         });
     }
@@ -312,6 +340,63 @@ final class StockMovementService
                 ]));
             }
         });
+    }
+
+    private function consumeRawMaterialsForProduction(int $productId, int $storeId, int $producedQuantity, string $referenceType, mixed $referenceId, mixed $occurredAt): void
+    {
+        $product = DB::table('products')->where('id', $productId)->where('store_id', $storeId)->lockForUpdate()->first();
+        if (! $product) {
+            throw new InvalidArgumentException('Produk untuk pembentukan stok tidak ditemukan.');
+        }
+
+        $recipe = DB::table('product_materials as pm')
+            ->join('raw_materials as rm', 'rm.id', '=', 'pm.raw_material_id')
+            ->where('pm.product_id', $productId)
+            ->where('rm.store_id', $storeId)
+            ->select('pm.raw_material_id', 'pm.quantity', 'rm.code', 'rm.name', 'rm.is_active', 'rm.deleted_at')
+            ->orderBy('pm.raw_material_id')
+            ->get();
+
+        if ($recipe->isEmpty()) {
+            return;
+        }
+
+        $lockedMaterials = [];
+        foreach ($recipe as $row) {
+            if ($row->deleted_at !== null || ! (bool) $row->is_active) {
+                throw new InvalidArgumentException('Bahan baku '.$row->code.' - '.$row->name.' pada resep produk sudah nonaktif atau dihapus. Perbarui HPP sebelum menambah stok produk.');
+            }
+
+            $material = RawMaterialModel::query()->where('store_id', $storeId)->lockForUpdate()->find((int) $row->raw_material_id);
+            if (! $material) {
+                throw new InvalidArgumentException('Bahan baku untuk pembentukan produk tidak ditemukan.');
+            }
+
+            $required = (float) $row->quantity * $producedQuantity;
+            if ((float) $material->stock + 0.0000001 < $required) {
+                throw new InvalidArgumentException('Stok bahan baku '.$material->code.' - '.$material->name.' tidak mencukupi. Dibutuhkan '.rtrim(rtrim(number_format($required, 4, '.', ''), '0'), '.').' '.$material->unit.'.');
+            }
+            $lockedMaterials[] = [$material, $required];
+        }
+
+        $productionReference = $referenceId ?: 'PROD-'.$productId.'-'.Str::upper(Str::random(8));
+        foreach ($lockedMaterials as [$material, $required]) {
+            $nextBalance = (float) $material->stock - $required;
+            $material->forceFill(['stock' => $nextBalance])->save();
+            RawMaterialStockMovementModel::query()->create([
+                'store_id' => $storeId,
+                'raw_material_id' => $material->id,
+                'type' => 'production_usage',
+                'quantity_delta' => -1 * $required,
+                'balance_after' => $nextBalance,
+                'unit_cost' => (float) $material->average_cost,
+                'total_cost' => $required * (float) $material->average_cost,
+                'reference_type' => 'product_production',
+                'reference_number' => (string) $productionReference,
+                'notes' => 'Pemakaian otomatis untuk penambahan stok produk dari '.$referenceType,
+                'occurred_at' => $occurredAt,
+            ]);
+        }
     }
 
 }

@@ -42,7 +42,7 @@ final class UpdateProductVariantUseCase
                 sku: $computedSku,
                 name: $computedName,
                 price: (float) ($data['price'] ?? $current->price()),
-                stock: (int) ($data['stock'] ?? $current->stock()),
+                stock: (int) $current->stock(),
                 isDefault: array_key_exists('is_default', $data) ? (bool) $data['is_default'] : $current->isDefault()
             ));
 

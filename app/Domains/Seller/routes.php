@@ -11,6 +11,7 @@ Route::prefix('seller')->group(function (): void {
         app_path('Domains/Seller/Stock/Presentation/routes.php'),
         app_path('Domains/Seller/Showcase/Presentation/routes.php'),
         app_path('Domains/Seller/Customers/Presentation/routes.php'),
+        app_path('Domains/Seller/Inventory/Presentation/routes.php'),
     ];
 
     foreach ($routeFiles as $routeFile) {

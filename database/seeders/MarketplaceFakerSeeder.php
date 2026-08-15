@@ -18,7 +18,7 @@ final class MarketplaceFakerSeeder extends Seeder
 
     public function run(): void
     {
-        $count = max(1, (int) env('MARKETPLACE_FAKER_COUNT', 100));
+        $count = max(100, (int) env('MARKETPLACE_FAKER_COUNT', 100));
         $faker = Factory::create('id_ID');
         $faker->seed(20260727);
         $now = now();
@@ -44,14 +44,56 @@ final class MarketplaceFakerSeeder extends Seeder
 
     private function cleanPreviousData(): void
     {
+        $productIds = DB::table('products')
+            ->where('slug', 'like', 'produk-faker-%')
+            ->pluck('id');
+
+        $storeIds = DB::table('stores')
+            ->where('slug', 'like', 'toko-faker-%')
+            ->pluck('id');
+
+        $orderIds = DB::table('orders')
+            ->where('order_number', 'like', 'FKR-%')
+            ->pluck('id');
+
+        if ($productIds->isNotEmpty()) {
+            $productOrderIds = DB::table('order_items')
+                ->join('sub_orders', 'sub_orders.id', '=', 'order_items.sub_order_id')
+                ->whereIn('order_items.product_id', $productIds)
+                ->pluck('sub_orders.order_id');
+
+            $orderIds = $orderIds->merge($productOrderIds);
+        }
+
+        if ($storeIds->isNotEmpty()) {
+            $storeOrderIds = DB::table('sub_orders')
+                ->whereIn('store_id', $storeIds)
+                ->pluck('order_id');
+
+            $orderIds = $orderIds->merge($storeOrderIds);
+        }
+
+        $orderIds = $orderIds->filter()->unique()->values();
+
+        if ($orderIds->isNotEmpty()) {
+            DB::table('orders')->whereIn('id', $orderIds)->delete();
+        }
+
         DB::table('payments')->where('order_number', 'like', 'FKR-%')->delete();
-        DB::table('orders')->where('order_number', 'like', 'FKR-%')->delete();
         DB::table('vouchers')->where('code', 'like', 'fkr%')->delete();
         DB::table('promotions')->where('name', 'like', 'promotion faker %')->delete();
-        DB::table('products')->where('slug', 'like', 'produk-faker-%')->delete();
+
+        if ($productIds->isNotEmpty()) {
+            DB::table('products')->whereIn('id', $productIds)->delete();
+        }
+
         DB::table('categories')->where('full_slug', 'like', '%kategori-faker-%')->delete();
         DB::table('catalog_groups')->where('slug', 'like', 'faker-group-%')->delete();
-        DB::table('stores')->where('slug', 'like', 'toko-faker-%')->delete();
+
+        if ($storeIds->isNotEmpty()) {
+            DB::table('stores')->whereIn('id', $storeIds)->delete();
+        }
+
         DB::table('users')->where('email', 'like', 'faker.%@marketku.test')->delete();
     }
 

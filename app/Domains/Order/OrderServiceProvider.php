@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Order;
 
+use App\Domains\Admin\AdminServiceProvider;
 use App\Domains\Engagement\EngagementServiceProvider;
+use App\Domains\Identity\IdentityServiceProvider;
+use App\Domains\Seller\SellerServiceProvider;
 use App\Domains\Order\Addresses\Domain\Repositories\AddressRepositoryInterface;
 use App\Domains\Order\Addresses\Domain\Services\DestinationResolverInterface;
 use App\Domains\Order\Addresses\Infrastructure\Persistence\Repositories\EloquentAddressRepository;
@@ -32,6 +35,9 @@ final class OrderServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->register(AdminServiceProvider::class);
+        $this->app->register(IdentityServiceProvider::class);
+        $this->app->register(SellerServiceProvider::class);
         $this->app->register(EngagementServiceProvider::class);
         $this->app->bind(CartRepositoryInterface::class, EloquentCartRepository::class);
         $this->app->bind(ProductForCartReaderInterface::class, EloquentProductForCartReader::class);

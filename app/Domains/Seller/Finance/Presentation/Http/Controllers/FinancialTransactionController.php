@@ -65,14 +65,30 @@ final class FinancialTransactionController extends Controller
 
     public function recordPayment(Request $request, int $id): JsonResponse
     {
-        $validated = $request->validate(['amount' => ['required', 'numeric', 'gt:0']]);
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'payment_method' => ['nullable', 'string', 'max:50'],
+            'reference_number' => ['nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string'],
+            'paid_at' => ['nullable', 'date'],
+        ]);
 
         try {
-            $row = $this->service->recordPayment($id, (float) $validated['amount'], $this->sellerStoreScope($request));
+            $row = $this->service->recordPayment($id, (float) $validated['amount'], $this->sellerStoreScope($request), $validated);
 
             return (new FinancialTransactionResource($row))->additional(['success' => true, 'message' => 'Pembayaran berhasil dicatat.'])->response();
         } catch (InvalidArgumentException $exception) {
             return $this->invalid($exception);
+        }
+    }
+
+
+    public function paymentHistory(Request $request, int $id): JsonResponse
+    {
+        try {
+            return response()->json(['success' => true, 'data' => $this->service->paymentHistory($id, $this->sellerStoreScope($request))]);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 404);
         }
     }
 

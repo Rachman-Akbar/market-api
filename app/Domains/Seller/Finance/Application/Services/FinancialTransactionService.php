@@ -6,6 +6,7 @@ namespace App\Domains\Seller\Finance\Application\Services;
 
 use App\Domains\Seller\Finance\Domain\Repositories\FinancialTransactionRepositoryInterface;
 use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialTransactionModel;
+use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialPaymentHistoryModel;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -40,16 +41,34 @@ final class FinancialTransactionService
                 throw new InvalidArgumentException('Order tidak terhubung dengan toko transaksi keuangan.');
             }
 
+            $type = (string) $data['type'];
             $amount = round((float) $data['amount'], 2);
-            $paidAmount = min($amount, max(0, round((float) ($data['paid_amount'] ?? 0), 2)));
-            $status = $this->resolveStatus((string) $data['type'], $amount, $paidAmount, (string) ($data['status'] ?? 'open'));
+            $existingPaidAmount = $model->exists ? round((float) $model->paid_amount, 2) : 0.0;
+            $existingType = $model->exists ? (string) $model->type : $type;
+            $isDebt = in_array($type, ['payable', 'receivable'], true);
+            $wasDebt = in_array($existingType, ['payable', 'receivable'], true);
+
+            if ($model->exists && $existingPaidAmount > 0 && $existingType !== $type) {
+                throw new InvalidArgumentException('Jenis transaksi tidak dapat diubah setelah memiliki riwayat pembayaran.');
+            }
+
+            if ($model->exists && $wasDebt && $amount < $existingPaidAmount) {
+                throw new InvalidArgumentException('Nominal transaksi tidak boleh lebih kecil dari total pembayaran yang sudah tercatat.');
+            }
+
+            $paidAmount = $isDebt
+                ? ($model->exists && $wasDebt
+                    ? $existingPaidAmount
+                    : min($amount, max(0, round((float) ($data['paid_amount'] ?? 0), 2))))
+                : 0.0;
+            $status = $this->resolveStatus($type, $amount, $paidAmount, (string) ($data['status'] ?? 'open'));
 
             $model->fill([
                 'store_id' => $storeId,
                 'order_id' => $orderId,
                 'user_id' => $data['user_id'] ?? null,
                 'reference_number' => $model->reference_number ?: $this->referenceNumber((string) $data['type']),
-                'type' => $data['type'],
+                'type' => $type,
                 'title' => trim((string) $data['title']),
                 'description' => $data['description'] ?? null,
                 'amount' => $amount,
@@ -62,13 +81,30 @@ final class FinancialTransactionService
                 'metadata' => $data['metadata'] ?? null,
             ]);
 
-            return $this->repository->save($model);
+            $saved = $this->repository->save($model);
+
+            if (! $id && $isDebt && $paidAmount > 0) {
+                FinancialPaymentHistoryModel::query()->create([
+                    'financial_transaction_id' => $saved->id,
+                    'store_id' => $saved->store_id,
+                    'recorded_by' => auth()->id(),
+                    'amount' => $paidAmount,
+                    'balance_before' => $amount,
+                    'balance_after' => max(0, $amount - $paidAmount),
+                    'payment_method' => 'opening_balance',
+                    'reference_number' => null,
+                    'notes' => 'Pembayaran awal saat transaksi dibuat.',
+                    'paid_at' => $saved->occurred_at ?? now(),
+                ]);
+            }
+
+            return $saved;
         });
     }
 
-    public function recordPayment(int $id, float $amount, ?int $storeId): FinancialTransactionModel
+    public function recordPayment(int $id, float $amount, ?int $storeId, array $paymentData = []): FinancialTransactionModel
     {
-        return DB::transaction(function () use ($id, $amount, $storeId): FinancialTransactionModel {
+        return DB::transaction(function () use ($id, $amount, $storeId, $paymentData): FinancialTransactionModel {
             $model = FinancialTransactionModel::query()
                 ->when($storeId !== null, fn ($query) => $query->where('store_id', $storeId))
                 ->lockForUpdate()
@@ -82,12 +118,34 @@ final class FinancialTransactionService
                 throw new InvalidArgumentException('Pembayaran hanya berlaku untuk hutang atau piutang.');
             }
 
-            $model->paid_amount = min((float) $model->amount, (float) $model->paid_amount + max(0, $amount));
+            $balanceBefore = max(0, (float) $model->amount - (float) $model->paid_amount);
+            $paymentAmount = min($balanceBefore, max(0, $amount));
+            if ($paymentAmount <= 0) { throw new InvalidArgumentException('Transaksi sudah lunas atau nominal pembayaran tidak valid.'); }
+            $model->paid_amount = min((float) $model->amount, (float) $model->paid_amount + $paymentAmount);
             $model->status = $this->resolveStatus($model->type, (float) $model->amount, (float) $model->paid_amount, $model->status);
             $model->settled_at = $model->status === 'paid' ? now() : null;
 
-            return $this->repository->save($model);
+            $saved = $this->repository->save($model);
+            FinancialPaymentHistoryModel::query()->create([
+                'financial_transaction_id' => $saved->id,
+                'store_id' => $saved->store_id,
+                'recorded_by' => auth()->id(),
+                'amount' => $paymentAmount,
+                'balance_before' => $balanceBefore,
+                'balance_after' => max(0, (float) $saved->amount - (float) $saved->paid_amount),
+                'payment_method' => $paymentData['payment_method'] ?? 'manual',
+                'reference_number' => $paymentData['reference_number'] ?? null,
+                'notes' => $paymentData['notes'] ?? null,
+                'paid_at' => $paymentData['paid_at'] ?? now(),
+            ]);
+            return $saved;
         });
+    }
+
+    public function paymentHistory(int $id, ?int $storeId)
+    {
+        $this->find($id, $storeId);
+        return FinancialPaymentHistoryModel::query()->where('financial_transaction_id', $id)->latest('paid_at')->get();
     }
 
     public function delete(int $id, ?int $storeId): void

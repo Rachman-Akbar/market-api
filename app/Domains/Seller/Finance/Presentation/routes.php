@@ -13,5 +13,6 @@ Route::middleware(['auth:sanctum', 'active.user', 'verified.email', 'role:seller
         Route::get('{id}', [FinancialTransactionController::class, 'show'])->whereNumber('id');
         Route::put('{id}', [FinancialTransactionController::class, 'update'])->whereNumber('id');
         Route::patch('{id}/payments', [FinancialTransactionController::class, 'recordPayment'])->whereNumber('id');
+        Route::get('{id}/payments', [FinancialTransactionController::class, 'paymentHistory'])->whereNumber('id');
         Route::delete('{id}', [FinancialTransactionController::class, 'destroy'])->whereNumber('id');
     });

@@ -15,7 +15,7 @@ final class EloquentShowcaseRepository implements ShowcaseRepositoryInterface
     public function paginate(array $filters, int $perPage, ?int $storeId): LengthAwarePaginator
     {
         return ShowcaseModel::query()
-            ->with(['store:id,name', 'products:id,store_id,name,slug,thumbnail,status,is_active'])
+            ->with(['store:id,name', 'products' => fn ($query) => $query->select(['products.id', 'products.store_id', 'products.name', 'products.slug', 'products.thumbnail', 'products.status', 'products.is_active'])->with(['variants' => fn ($variantQuery) => $variantQuery->orderByDesc('is_default')->orderBy('id')])])
             ->withCount('products')
             ->when($storeId !== null, fn (Builder $query) => $query->where('store_id', $storeId))
             ->when(isset($filters['is_active']), fn (Builder $query) => $query->where('is_active', filter_var($filters['is_active'], FILTER_VALIDATE_BOOLEAN)))
@@ -31,7 +31,7 @@ final class EloquentShowcaseRepository implements ShowcaseRepositoryInterface
     public function find(int $id, ?int $storeId): ?ShowcaseModel
     {
         return ShowcaseModel::query()
-            ->with(['store:id,name', 'products:id,store_id,name,slug,thumbnail,status,is_active'])
+            ->with(['store:id,name', 'products' => fn ($query) => $query->select(['products.id', 'products.store_id', 'products.name', 'products.slug', 'products.thumbnail', 'products.status', 'products.is_active'])->with(['variants' => fn ($variantQuery) => $variantQuery->orderByDesc('is_default')->orderBy('id')])])
             ->when($storeId !== null, fn (Builder $query) => $query->where('store_id', $storeId))
             ->find($id);
     }
@@ -48,7 +48,7 @@ final class EloquentShowcaseRepository implements ShowcaseRepositoryInterface
 
             $model->products()->sync($sync);
 
-            return $model->refresh()->load(['store:id,name', 'products:id,store_id,name,slug,thumbnail,status,is_active'])->loadCount('products');
+            return $model->refresh()->load(['store:id,name', 'products' => fn ($query) => $query->select(['products.id', 'products.store_id', 'products.name', 'products.slug', 'products.thumbnail', 'products.status', 'products.is_active'])->with(['variants' => fn ($variantQuery) => $variantQuery->orderByDesc('is_default')->orderBy('id')])])->loadCount('products');
         });
     }
 

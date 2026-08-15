@@ -7,11 +7,17 @@ namespace App\Domains\Shared\Spreadsheet\Application;
 use App\Domains\Catalog\Banner\Infrastructure\Persistence\Models\BannerModel;
 use App\Domains\Catalog\CatalogGroup\Infrastructure\Persistence\Models\CatalogGroupModel;
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
+use App\Domains\Catalog\Product\Costing\Infrastructure\Persistence\Models\ProductCostingImpactModel;
+use App\Domains\Catalog\Product\Costing\Infrastructure\Persistence\Models\ProductCostingModel;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
 use App\Domains\Catalog\Promotion\Infrastructure\Persistence\Models\PromotionModel;
 use App\Domains\Order\Voucher\Domain\Entities\Voucher;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
+use App\Domains\Order\Review\Infrastructure\Persistence\Models\ProductReviewModel;
 use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialTransactionModel;
+use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialModel;
+use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialStockMovementModel;
+use App\Domains\Identity\User\Domain\Entities\User;
 use App\Domains\Seller\Stock\Infrastructure\Persistence\Models\StockMovementModel;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
@@ -52,12 +58,12 @@ final class SpreadsheetModuleRegistry
                 'roles' => ['admin', 'seller'],
                 'image_fields' => ['thumbnail', 'image_url'],
                 'headers' => [
-                    'id', 'store_name', 'catalog_group_name', 'name', 'slug', 'description', 'brand', 'primary_category_name', 'category_names', 'status', 'is_active', 'thumbnail', 'image_url', 'image_alt', 'sku', 'variant_name', 'price', 'stock', 'is_default',
+                    'id', 'store_name', 'catalog_group_name', 'name', 'slug', 'description', 'brand', 'primary_category_name', 'category_names', 'status', 'is_active', 'thumbnail', 'image_url', 'image_alt', 'sku', 'variant_name', 'price', 'is_default',
                 ],
                 'examples' => self::productExamples(),
                 'guides' => [
-                    ['Produk dijual tanpa pilihan', 'Isi satu baris variant bernama Default, price, stock, dan is_default=1. SKU boleh dikosongkan karena backend akan membentuk SKU unik otomatis.'],
-                    ['Produk benar-benar tanpa variant', 'Kosongkan sku, variant_name, price, stock, dan is_default. Hanya data Product yang dibuat. Produk belum dapat dibeli sampai variant ditambahkan.'],
+                    ['Produk dijual tanpa pilihan', 'Isi satu baris variant bernama Default, price, dan is_default=1. SKU boleh dikosongkan karena backend akan membentuk SKU unik otomatis. Stok dikelola terpisah melalui modul Stok.'],
+                    ['Produk benar-benar tanpa variant', 'Kosongkan sku, variant_name, price, dan is_default. Hanya data Product yang dibuat. Produk belum dapat dibeli sampai variant ditambahkan.'],
                     ['Produk dengan banyak variant', 'Gunakan beberapa baris dengan store_name dan name yang sama atau ID Product yang sama. Ulangi seluruh data utama Product. Gunakan SKU berbeda untuk tiap variant dan hanya satu is_default=1.'],
                     ['Mode Import Data Baru', 'Pilih Import Data Baru pada frontend. Kolom id harus kosong. Product yang telah ada akan ditolak, bukan diperbarui. Beberapa baris dengan nama Product yang sama hanya dipakai untuk membentuk multi-variant dalam file yang sama.'],
                     ['Mode Import Update Data', 'Pilih Import Update Data pada frontend dan isi id Product. SKU lama memperbarui variant terkait; SKU baru atau SKU kosong dapat menambah variant baru dengan SKU otomatis.'],
@@ -96,13 +102,100 @@ final class SpreadsheetModuleRegistry
                 'headers' => ['id', 'store_name', 'sku', 'product_name', 'variant_name', 'movement_type', 'quantity_delta', 'balance_after', 'reference_type', 'reference_id', 'order_number', 'notes', 'occurred_at'],
                 'examples' => self::stockExamples(),
                 'guides' => [
-                    ['Barang masuk', 'Isi movement_type=in dan quantity_delta positif.'],
+                    ['Barang masuk / produksi', 'Isi movement_type=in dan quantity_delta positif. Jika Product mempunyai resep HPP, backend otomatis mengurangi bahan baku sesuai quantity resep.'],
                     ['Barang keluar', 'Isi movement_type=out dan quantity_delta negatif. Stok akhir tidak boleh negatif.'],
                     ['Penyesuaian', 'Gunakan movement_type=adjustment. Pada mode update, balance_after menjadi target stok terbaru dan sistem membuat movement koreksi.'],
                     ['SKU', 'SKU wajib dan harus milik toko yang dipilih atau toko sesi Seller.'],
                     ['Audit stok', 'Import tidak mengubah history lama. Setiap perubahan selalu membuat Stock Movement baru.'],
                 ],
                 'descriptions' => self::stockDescriptions(),
+            ],
+            'raw-material' => [
+                'label' => 'Bahan Baku',
+                'model' => RawMaterialModel::class,
+                'roles' => ['admin', 'seller'],
+                'image_fields' => [],
+                'bulk_delete_enabled' => false,
+                'headers' => ['id', 'store_name', 'code', 'name', 'unit', 'minimum_stock', 'average_cost', 'is_active'],
+                'examples' => self::rawMaterialExamples(),
+                'guides' => [
+                    ['Master terpisah dari stok', 'Import Bahan Baku mengelola kode, nama, satuan, minimum stok, status, dan biaya awal saat data baru. Kuantitas serta perubahan biaya setelah bahan tersedia dikelola melalui Stok Bahan Baku.'],
+                    ['Stok bahan baku', 'Gunakan modul Import Stok Bahan Baku untuk restock atau pemakaian. Master yang belum ada harus dibuat lebih dahulu.'],
+                    ['Biaya rata-rata', 'average_cost hanya boleh diisi sebagai biaya awal saat membuat bahan baru. Setelah bahan tersedia, perubahan biaya dilakukan melalui Restock pada modul Stok Bahan Baku agar weighted average dan laporan dampak HPP tercatat.'],
+                    ['Hak Seller', 'Seller otomatis menggunakan toko dari sesi dan tidak dapat memindahkan bahan baku ke toko lain.'],
+                ],
+                'descriptions' => self::rawMaterialDescriptions(),
+            ],
+            'raw-material-stock' => [
+                'label' => 'Stok Bahan Baku',
+                'model' => RawMaterialStockMovementModel::class,
+                'roles' => ['admin', 'seller'],
+                'image_fields' => [],
+                'headers' => ['id', 'store_name', 'raw_material_code', 'raw_material_name', 'movement_type', 'quantity_delta', 'balance_after', 'unit_cost', 'reference_type', 'reference_number', 'notes', 'occurred_at'],
+                'examples' => self::rawMaterialStockExamples(),
+                'guides' => [
+                    ['Tidak membuat master', 'Import stok bahan baku hanya menerima kode bahan yang sudah tersedia. Kode yang tidak ditemukan akan masuk file error.'],
+                    ['Restock', 'Isi quantity_delta positif dan unit_cost pembelian. Sistem menghitung average cost tertimbang.'],
+                    ['Pemakaian', 'Isi quantity_delta negatif. Sistem tidak mengubah average cost karena tidak ada pembelian baru.'],
+                    ['Dampak HPP', 'Jika restock mengubah average cost, HPP semua produk terkait dihitung ulang dan histori dampaknya dicatat.'],
+                ],
+                'descriptions' => self::rawMaterialStockDescriptions(),
+                'bulk_delete_enabled' => false,
+            ],
+            'product-costing' => [
+                'label' => 'HPP & Harga Jual',
+                'model' => ProductCostingModel::class,
+                'roles' => ['admin', 'seller'],
+                'image_fields' => [],
+                'headers' => ['id', 'store_name', 'product_id', 'product_name', 'materials', 'labor_cost', 'overhead_cost', 'other_cost', 'hpp', 'margin_percent', 'suggested_price', 'selling_price', 'apply_to_variants'],
+                'examples' => self::productCostingExamples(),
+                'guides' => [
+                    ['Resep bahan', 'Isi materials dengan format KODE:QTY dan pisahkan beberapa bahan menggunakan |, contoh RM-BOX:1|RM-LABEL:2.'],
+                    ['Biaya bahan realtime', 'Harga bahan pada HPP selalu diambil dari average_cost master bahan baku saat import dijalankan. Kolom unit cost tidak dicampur ke template HPP.'],
+                    ['Perhitungan', 'HPP = biaya bahan + tenaga kerja + overhead + biaya lain. suggested_price dihitung dari HPP dan margin.'],
+                    ['Harga jual', 'selling_price dapat diisi manual. apply_to_variants=1 menerapkan harga jual ke seluruh variant produk.'],
+                    ['Stok', 'Import HPP tidak menambah atau mengurangi stok produk maupun bahan baku. Produksi dilakukan melalui Stock / Restock Produk.'],
+                ],
+                'descriptions' => self::productCostingDescriptions(),
+                'bulk_delete_enabled' => false,
+            ],
+            'customer' => [
+                'label' => 'Pelanggan',
+                'model' => User::class,
+                'roles' => ['admin', 'seller'],
+                'image_fields' => [],
+                'headers' => ['id', 'name', 'email', 'orders_count', 'total_spent', 'last_order_at', 'is_active', 'registered_at'],
+                'examples' => [],
+                'guides' => [['Export pelanggan', 'Pelanggan merupakan hasil transaksi riil buyer dengan toko. Modul ini export-only agar import tidak membuat relasi transaksi palsu atau customer yang tidak pernah berbelanja.']],
+                'descriptions' => self::customerDescriptions(),
+                'import_enabled' => false,
+                'bulk_delete_enabled' => false,
+            ],
+            'review' => [
+                'label' => 'Review & Rating',
+                'model' => ProductReviewModel::class,
+                'roles' => ['admin', 'seller'],
+                'image_fields' => [],
+                'headers' => ['id', 'product_name', 'order_number', 'buyer_name', 'buyer_email', 'rating', 'review', 'is_active', 'created_at'],
+                'examples' => [],
+                'guides' => [
+                    ['Export saja', 'Review berasal dari Buyer dan transaksi selesai. Seller dapat mengekspor data untuk analisis tetapi tidak mengimport review palsu.'],
+                ],
+                'descriptions' => [],
+                'import_enabled' => false,
+                'bulk_delete_enabled' => false,
+            ],
+            'cost-impact' => [
+                'label' => 'Laporan Dampak HPP',
+                'model' => ProductCostingImpactModel::class,
+                'roles' => ['admin', 'seller'],
+                'image_fields' => [],
+                'headers' => ['id', 'product_name', 'raw_material_code', 'raw_material_name', 'old_average_cost', 'new_average_cost', 'old_hpp', 'new_hpp', 'hpp_change_amount', 'hpp_change_percent', 'old_suggested_price', 'new_suggested_price', 'direction', 'reference_number', 'occurred_at'],
+                'examples' => [],
+                'guides' => [['Audit biaya', 'Laporan ini dibentuk otomatis saat average cost bahan baku berubah dan memengaruhi HPP produk. Data bersifat audit sehingga hanya dapat diexport.']],
+                'descriptions' => self::costImpactDescriptions(),
+                'import_enabled' => false,
+                'bulk_delete_enabled' => false,
             ],
             'category' => [
                 'label' => 'Category',
@@ -191,41 +284,41 @@ final class SpreadsheetModuleRegistry
     private static function productExamples(): array
     {
         $simpleAutoSku = [
-            'id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Kebutuhan Harian', 'name' => 'Kecap Manis Premium 600 ml', 'slug' => '', 'description' => 'Kecap manis botol 600 ml untuk kebutuhan keluarga', 'brand' => 'Rasa Kita', 'primary_category_name' => 'Kecap', 'category_names' => 'Kecap, Bumbu Masak', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/kecap-600.jpg', 'image_url' => 'https://example.com/kecap-600-detail.jpg', 'image_alt' => 'Kecap Manis Premium 600 ml', 'sku' => '', 'variant_name' => 'Default', 'price' => '25000', 'stock' => '100', 'is_default' => '1',
+            'id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Kebutuhan Harian', 'name' => 'Kecap Manis Premium 600 ml', 'slug' => '', 'description' => 'Kecap manis botol 600 ml untuk kebutuhan keluarga', 'brand' => 'Rasa Kita', 'primary_category_name' => 'Kecap', 'category_names' => 'Kecap, Bumbu Masak', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/kecap-600.jpg', 'image_url' => 'https://example.com/kecap-600-detail.jpg', 'image_alt' => 'Kecap Manis Premium 600 ml', 'sku' => '', 'variant_name' => 'Default', 'price' => '25000', 'is_default' => '1',
         ];
 
         return [
-            self::example($simpleAutoSku, 'Product Baru Sederhana', 'Toko menjual satu Product dengan satu harga dan tidak memiliki pilihan warna atau ukuran.', 'Pilih Import Data Baru. Kosongkan id dan sku, isi variant_name=Default, price, stock, serta is_default=1.', 'Product baru dan default variant dibuat. Backend membentuk SKU unik otomatis.', 'Ini pola yang disarankan untuk barang biasa yang hanya memiliki satu harga.'),
+            self::example($simpleAutoSku, 'Product Baru Sederhana', 'Toko menjual satu Product dengan satu harga dan tidak memiliki pilihan warna atau ukuran. Stok tidak dibentuk dari import Product.', 'Pilih Import Data Baru. Kosongkan id dan sku, isi variant_name=Default, price, serta is_default=1. Saldo stok diisi terpisah melalui import Stok Produk.', 'Product baru dan default variant dibuat. Backend membentuk SKU unik otomatis.', 'Ini pola yang disarankan untuk barang biasa yang hanya memiliki satu harga.'),
             self::example([
-                ...$simpleAutoSku, 'name' => 'Kecap Manis Refill 500 ml', 'description' => 'Kecap manis kemasan refill', 'thumbnail' => 'https://example.com/kecap-refill.jpg', 'image_url' => '', 'image_alt' => 'Kecap Manis Refill 500 ml', 'sku' => 'KECAP-REFILL-500', 'price' => '18000', 'stock' => '80',
+                ...$simpleAutoSku, 'name' => 'Kecap Manis Refill 500 ml', 'description' => 'Kecap manis kemasan refill', 'thumbnail' => 'https://example.com/kecap-refill.jpg', 'image_url' => '', 'image_alt' => 'Kecap Manis Refill 500 ml', 'sku' => 'KECAP-REFILL-500', 'price' => '18000',
             ], 'Product Baru dengan SKU Manual', 'Toko mempunyai kode SKU internal sendiri untuk Product sederhana.', 'Pilih Import Data Baru, kosongkan id, lalu isi SKU manual yang belum pernah digunakan di toko tersebut.', 'Product dibuat menggunakan SKU KECAP-REFILL-500.', 'SKU manual harus unik dalam file dan unik pada toko yang sama.'),
             self::exampleRows([
-                ['id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Fashion', 'name' => 'Kaos Polos Premium', 'slug' => '', 'description' => 'Kaos katun combed 30s', 'brand' => 'Basic Wear', 'primary_category_name' => 'Kaos', 'category_names' => 'Kaos, Pakaian', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/kaos.jpg', 'image_url' => '', 'image_alt' => 'Kaos Polos Premium', 'sku' => '', 'variant_name' => 'Hitam - M', 'price' => '85000', 'stock' => '20', 'is_default' => '1'],
-                ['id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Fashion', 'name' => 'Kaos Polos Premium', 'slug' => '', 'description' => 'Kaos katun combed 30s', 'brand' => 'Basic Wear', 'primary_category_name' => 'Kaos', 'category_names' => 'Kaos, Pakaian', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/kaos.jpg', 'image_url' => '', 'image_alt' => 'Kaos Polos Premium', 'sku' => '', 'variant_name' => 'Hitam - L', 'price' => '85000', 'stock' => '15', 'is_default' => '0'],
-                ['id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Fashion', 'name' => 'Kaos Polos Premium', 'slug' => '', 'description' => 'Kaos katun combed 30s', 'brand' => 'Basic Wear', 'primary_category_name' => 'Kaos', 'category_names' => 'Kaos, Pakaian', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/kaos.jpg', 'image_url' => '', 'image_alt' => 'Kaos Polos Premium', 'sku' => '', 'variant_name' => 'Putih - M', 'price' => '82000', 'stock' => '12', 'is_default' => '0'],
+                ['id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Fashion', 'name' => 'Kaos Polos Premium', 'slug' => '', 'description' => 'Kaos katun combed 30s', 'brand' => 'Basic Wear', 'primary_category_name' => 'Kaos', 'category_names' => 'Kaos, Pakaian', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/kaos.jpg', 'image_url' => '', 'image_alt' => 'Kaos Polos Premium', 'sku' => '', 'variant_name' => 'Hitam - M', 'price' => '85000', 'is_default' => '1'],
+                ['id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Fashion', 'name' => 'Kaos Polos Premium', 'slug' => '', 'description' => 'Kaos katun combed 30s', 'brand' => 'Basic Wear', 'primary_category_name' => 'Kaos', 'category_names' => 'Kaos, Pakaian', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/kaos.jpg', 'image_url' => '', 'image_alt' => 'Kaos Polos Premium', 'sku' => '', 'variant_name' => 'Hitam - L', 'price' => '85000', 'is_default' => '0'],
+                ['id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Fashion', 'name' => 'Kaos Polos Premium', 'slug' => '', 'description' => 'Kaos katun combed 30s', 'brand' => 'Basic Wear', 'primary_category_name' => 'Kaos', 'category_names' => 'Kaos, Pakaian', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/kaos.jpg', 'image_url' => '', 'image_alt' => 'Kaos Polos Premium', 'sku' => '', 'variant_name' => 'Putih - M', 'price' => '82000', 'is_default' => '0'],
             ], 'Product Baru Multi-Variant', 'Satu Product Kaos memiliki beberapa pilihan warna dan ukuran.', 'Pilih Import Data Baru. Gunakan beberapa baris dengan store_name dan name yang sama, ulangi data utama, lalu bedakan variant_name. SKU boleh kosong dan hanya satu baris memakai is_default=1.', 'Satu Product dibuat dengan tiga variant dan tiga SKU unik otomatis.', 'Jangan mengubah nama Product pada baris variant berikutnya. Variant name dalam Product yang sama tidak boleh kembar.'),
             self::example([
-                'id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Informasi', 'name' => 'Layanan Pesanan Khusus', 'slug' => '', 'description' => 'Halaman informasi untuk pesanan yang memerlukan konsultasi', 'brand' => '', 'primary_category_name' => 'Informasi', 'category_names' => 'Informasi', 'status' => 'draft', 'is_active' => '1', 'thumbnail' => '', 'image_url' => '', 'image_alt' => '', 'sku' => '', 'variant_name' => '', 'price' => '', 'stock' => '', 'is_default' => '',
-            ], 'Product Tanpa Variant', 'Admin ingin menyiapkan Product informasi yang belum mempunyai harga dan stok.', 'Pilih Import Data Baru dan kosongkan seluruh kolom variant: sku, variant_name, price, stock, serta is_default.', 'Hanya Product draft yang dibuat tanpa record variant.', 'Product belum dapat dibeli sampai variant, harga, dan stok ditambahkan.'),
+                'id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Informasi', 'name' => 'Layanan Pesanan Khusus', 'slug' => '', 'description' => 'Halaman informasi untuk pesanan yang memerlukan konsultasi', 'brand' => '', 'primary_category_name' => 'Informasi', 'category_names' => 'Informasi', 'status' => 'draft', 'is_active' => '1', 'thumbnail' => '', 'image_url' => '', 'image_alt' => '', 'sku' => '', 'variant_name' => '', 'price' => '', 'is_default' => '',
+            ], 'Product Tanpa Variant', 'Admin ingin menyiapkan Product informasi yang belum mempunyai harga.', 'Pilih Import Data Baru dan kosongkan seluruh kolom variant: sku, variant_name, price, serta is_default.', 'Hanya Product draft yang dibuat tanpa record variant.', 'Product belum dapat dibeli sampai variant dan harga tersedia; saldo stok kemudian dikelola melalui Persediaan.'),
             self::example([
-                'id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Makanan', 'name' => 'Sambal Bawang 200 ml', 'slug' => '', 'description' => 'Sambal bawang rumahan', 'brand' => 'Dapur Ibu', 'primary_category_name' => 'Sambal', 'category_names' => 'Sambal, Bumbu Masak', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/sambal-thumb.webp', 'image_url' => 'products/sambal-detail.webp', 'image_alt' => 'Sambal Bawang 200 ml', 'sku' => '', 'variant_name' => 'Default', 'price' => '22000', 'stock' => '40', 'is_default' => '1',
+                'id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Makanan', 'name' => 'Sambal Bawang 200 ml', 'slug' => '', 'description' => 'Sambal bawang rumahan', 'brand' => 'Dapur Ibu', 'primary_category_name' => 'Sambal', 'category_names' => 'Sambal, Bumbu Masak', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/sambal-thumb.webp', 'image_url' => 'products/sambal-detail.webp', 'image_alt' => 'Sambal Bawang 200 ml', 'sku' => '', 'variant_name' => 'Default', 'price' => '22000', 'is_default' => '1',
             ], 'Product dengan Gambar', 'Product memakai gambar utama dari URL dan gambar detail dari storage atau gambar yang ditempel ke cell.', 'Isi thumbnail/image_url dengan URL atau path. Gambar juga dapat ditempel tepat pada cell dan baris terkait.', 'Gambar disimpan atau dinormalisasi ke storage Laravel, lalu Product dibuat dengan SKU otomatis.', 'Gunakan gambar JPG, JPEG, PNG, atau WEBP dengan ukuran yang wajar.'),
             self::example([
-                'id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Kuliner Tradisional', 'name' => 'Tape Singkong Manis', 'slug' => '', 'description' => 'Tape singkong segar', 'brand' => 'Dapur Desa', 'primary_category_name' => 'Tape', 'category_names' => 'Tape, Makanan Fermentasi', 'status' => 'draft', 'is_active' => '1', 'thumbnail' => '', 'image_url' => '', 'image_alt' => '', 'sku' => '', 'variant_name' => '500 gram', 'price' => '15000', 'stock' => '25', 'is_default' => '1',
+                'id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Kuliner Tradisional', 'name' => 'Tape Singkong Manis', 'slug' => '', 'description' => 'Tape singkong segar', 'brand' => 'Dapur Desa', 'primary_category_name' => 'Tape', 'category_names' => 'Tape, Makanan Fermentasi', 'status' => 'draft', 'is_active' => '1', 'thumbnail' => '', 'image_url' => '', 'image_alt' => '', 'sku' => '', 'variant_name' => '500 gram', 'price' => '15000', 'is_default' => '1',
             ], 'Product dengan Relasi Baru', 'Catalog Group Kuliner Tradisional dan Category Tape belum tersedia saat Product diimport.', 'Pilih Import Data Baru dan isi nama relasi yang diinginkan. Jalankan validasi import.', 'Permintaan pembuatan Catalog Group dan Category masuk ke tab Antrean untuk dipilih Lanjutkan atau Batal.', 'Relasi aman dapat dibuat otomatis setelah disetujui; Toko tidak dibuat otomatis.'),
             self::example([
-                'id' => '', 'store_name' => '  toko nusantara ', 'catalog_group_name' => ' makanan ', 'name' => 'Keripik Singkong Balado', 'slug' => '', 'description' => 'Keripik singkong balado', 'brand' => 'Cemilan Kita', 'primary_category_name' => ' keripik ', 'category_names' => ' Keripik , Cemilan , Makanan Pedas ', 'status' => 'PUBLISHED', 'is_active' => 'YA', 'thumbnail' => '', 'image_url' => '', 'image_alt' => '', 'sku' => '', 'variant_name' => 'Default', 'price' => '12000', 'stock' => '75', 'is_default' => 'YA',
+                'id' => '', 'store_name' => '  toko nusantara ', 'catalog_group_name' => ' makanan ', 'name' => 'Keripik Singkong Balado', 'slug' => '', 'description' => 'Keripik singkong balado', 'brand' => 'Cemilan Kita', 'primary_category_name' => ' keripik ', 'category_names' => ' Keripik , Cemilan , Makanan Pedas ', 'status' => 'PUBLISHED', 'is_active' => 'YA', 'thumbnail' => '', 'image_url' => '', 'image_alt' => '', 'sku' => '', 'variant_name' => 'Default', 'price' => '12000', 'is_default' => 'YA',
             ], 'Product Banyak Category', 'Product mempunyai Category utama dan beberapa Category tambahan, sementara kapital dan spasi data sumber tidak konsisten.', 'Pisahkan category_names dengan koma. Sistem membersihkan spasi serta mencocokkan nama tanpa peka kapital.', 'Relasi lama dipakai tanpa membuat duplikasi dan SKU dibentuk otomatis.', 'Kapitalisasi nama yang sudah tersimpan di database tetap dipertahankan.'),
             self::example([
-                ...$simpleAutoSku, 'id' => '109', 'name' => 'Kecap Manis Premium 600 ml', 'description' => 'Deskripsi dan harga diperbarui', 'sku' => 'KECAP-600', 'price' => '27000', 'stock' => '90',
+                ...$simpleAutoSku, 'id' => '109', 'name' => 'Kecap Manis Premium 600 ml', 'description' => 'Deskripsi dan harga diperbarui', 'sku' => 'KECAP-600', 'price' => '27000',
             ], 'Update Product dan Variant', 'Product ID 109 dan variant dengan SKU KECAP-600 sudah tersedia dan perlu diperbarui.', 'Pilih Import Update Data, isi id Product, gunakan SKU lama untuk menunjuk variant, lalu isi nilai terbaru.', 'Product ID 109 dan variant yang sesuai diperbarui tanpa membuat Product baru.', 'Mode Update mewajibkan id. SKU milik Product lain akan ditolak.'),
             self::exampleRows([
-                ['id' => '109', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Kebutuhan Harian', 'name' => 'Kecap Manis Premium 600 ml', 'slug' => '', 'description' => 'Menambah ukuran baru', 'brand' => 'Rasa Kita', 'primary_category_name' => 'Kecap', 'category_names' => 'Kecap, Bumbu Masak', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/kecap-600.jpg', 'image_url' => '', 'image_alt' => 'Kecap Manis Premium', 'sku' => 'KECAP-600', 'variant_name' => '600 ml', 'price' => '27000', 'stock' => '90', 'is_default' => '1'],
-                ['id' => '109', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Kebutuhan Harian', 'name' => 'Kecap Manis Premium 600 ml', 'slug' => '', 'description' => 'Menambah ukuran baru', 'brand' => 'Rasa Kita', 'primary_category_name' => 'Kecap', 'category_names' => 'Kecap, Bumbu Masak', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/kecap-600.jpg', 'image_url' => '', 'image_alt' => 'Kecap Manis Premium', 'sku' => '', 'variant_name' => '1 Liter', 'price' => '42000', 'stock' => '30', 'is_default' => '0'],
+                ['id' => '109', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Kebutuhan Harian', 'name' => 'Kecap Manis Premium 600 ml', 'slug' => '', 'description' => 'Menambah ukuran baru', 'brand' => 'Rasa Kita', 'primary_category_name' => 'Kecap', 'category_names' => 'Kecap, Bumbu Masak', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/kecap-600.jpg', 'image_url' => '', 'image_alt' => 'Kecap Manis Premium', 'sku' => 'KECAP-600', 'variant_name' => '600 ml', 'price' => '27000', 'is_default' => '1'],
+                ['id' => '109', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Kebutuhan Harian', 'name' => 'Kecap Manis Premium 600 ml', 'slug' => '', 'description' => 'Menambah ukuran baru', 'brand' => 'Rasa Kita', 'primary_category_name' => 'Kecap', 'category_names' => 'Kecap, Bumbu Masak', 'status' => 'published', 'is_active' => '1', 'thumbnail' => 'https://example.com/kecap-600.jpg', 'image_url' => '', 'image_alt' => 'Kecap Manis Premium', 'sku' => '', 'variant_name' => '1 Liter', 'price' => '42000', 'is_default' => '0'],
             ], 'Update Product dan Tambah Variant', 'Product lama tetap diperbarui sekaligus mendapat variant ukuran 1 Liter yang belum tersedia.', 'Pilih Import Update Data dan isi id yang sama pada kedua baris. Gunakan SKU lama untuk variant lama; kosongkan SKU pada variant baru agar backend membuatnya otomatis.', 'Variant lama diperbarui dan variant 1 Liter ditambahkan dengan SKU baru tanpa mengganti default.', 'Variant baru tetap berada pada Product ID yang sama.'),
             self::exampleRows([
-                ['id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Makanan', 'name' => 'Madu Hutan 250 ml', 'slug' => '', 'description' => 'Madu hutan', 'brand' => 'Alam', 'primary_category_name' => 'Madu', 'category_names' => 'Madu', 'status' => 'published', 'is_active' => '1', 'thumbnail' => '', 'image_url' => '', 'image_alt' => '', 'sku' => 'MADU-250', 'variant_name' => '250 ml', 'price' => '65000', 'stock' => '20', 'is_default' => '1'],
-                ['id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Makanan', 'name' => 'Madu Hutan 500 ml', 'slug' => '', 'description' => 'Madu hutan', 'brand' => 'Alam', 'primary_category_name' => 'Madu', 'category_names' => 'Madu', 'status' => 'published', 'is_active' => '1', 'thumbnail' => '', 'image_url' => '', 'image_alt' => '', 'sku' => 'MADU-250', 'variant_name' => '500 ml', 'price' => '110000', 'stock' => '10', 'is_default' => '1'],
+                ['id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Makanan', 'name' => 'Madu Hutan 250 ml', 'slug' => '', 'description' => 'Madu hutan', 'brand' => 'Alam', 'primary_category_name' => 'Madu', 'category_names' => 'Madu', 'status' => 'published', 'is_active' => '1', 'thumbnail' => '', 'image_url' => '', 'image_alt' => '', 'sku' => 'MADU-250', 'variant_name' => '250 ml', 'price' => '65000', 'is_default' => '1'],
+                ['id' => '', 'store_name' => 'Toko Nusantara', 'catalog_group_name' => 'Makanan', 'name' => 'Madu Hutan 500 ml', 'slug' => '', 'description' => 'Madu hutan', 'brand' => 'Alam', 'primary_category_name' => 'Madu', 'category_names' => 'Madu', 'status' => 'published', 'is_active' => '1', 'thumbnail' => '', 'image_url' => '', 'image_alt' => '', 'sku' => 'MADU-250', 'variant_name' => '500 ml', 'price' => '110000', 'is_default' => '1'],
             ], 'Validasi SKU Kembar', 'Dua baris Product berbeda memakai SKU manual yang sama dalam satu file.', 'Import file pada mode Data Baru untuk menguji validasi SKU.', 'Preview menolak file dan menjelaskan baris SKU yang kembar. Tidak ada data yang disimpan.', 'Ubah salah satu SKU atau kosongkan SKU agar backend membuat SKU unik otomatis.'),
         ];
     }
@@ -250,8 +343,7 @@ final class SpreadsheetModuleRegistry
             ['sku', 'Optional', 'Teks unik per toko', 'KECAP-600', 'Jika kosong, backend membentuk SKU unik otomatis. SKU manual yang kembar di file atau sudah dipakai Product lain akan ditolak.', 'Pada mode Update, SKU lama memperbarui variant terkait; SKU kosong pada variant baru akan menghasilkan SKU otomatis.'],
             ['variant_name', 'Wajib saat membuat variant', 'Teks', 'Default atau Hitam - M', 'Jika variant dibuat dan nama kosong, sistem menggunakan Default.', 'Untuk barang tanpa pilihan, gunakan nama Default.'],
             ['price', 'Wajib saat membuat variant', 'Angka ≥ 0', '25000', 'Tidak memakai pemisah ribuan atau simbol Rp.', 'Harga berada pada variant, bukan Product utama.'],
-            ['stock', 'Wajib saat membuat variant', 'Angka bulat ≥ 0', '100', 'Stok disimpan pada variant.', 'Kosong hanya untuk Product tanpa variant.'],
-            ['is_default', 'Wajib untuk multi-variant, optional untuk variant pertama', '1|0|ya|tidak', '1', 'Hanya satu variant per Product boleh bernilai aktif sebagai default.', 'Jika kosong pada variant pertama, sistem menjadikannya default. Variant berikutnya yang kosong tidak mengganti default lama.'],
+                        ['is_default', 'Wajib untuk multi-variant, optional untuk variant pertama', '1|0|ya|tidak', '1', 'Hanya satu variant per Product boleh bernilai aktif sebagai default.', 'Jika kosong pada variant pertama, sistem menjadikannya default. Variant berikutnya yang kosong tidak mengganti default lama.'],
         ];
     }
 
@@ -586,7 +678,7 @@ final class SpreadsheetModuleRegistry
             ['sku', 'Wajib', 'SKU variant', 'PRODUK-001', 'Harus tersedia pada toko.', 'Kunci utama import stok.'],
             ['product_name', 'Optional', 'Teks', 'Produk Contoh', 'Digunakan untuk pemeriksaan tambahan.', 'Tidak membuat Product baru.'],
             ['variant_name', 'Optional', 'Teks', 'Default', 'Digunakan untuk informasi.', 'SKU tetap menjadi pencocokan.'],
-            ['movement_type', 'Wajib', 'in|out|adjustment|reservation|release', 'adjustment', 'Harus sesuai pilihan.', 'Jenis perubahan stok.'],
+            ['movement_type', 'Wajib', 'in|out|adjustment|reservation|release', 'adjustment', 'Harus sesuai arah perubahan. Delta positif selain release dianggap penambahan stok produksi dan memakai resep bahan bila tersedia.', 'release hanya untuk pengembalian barang jadi dan tidak memakai bahan baku.'],
             ['quantity_delta', 'Kondisional', 'Angka bulat bukan 0', '10', 'Wajib create. Positif menambah, negatif mengurangi.', 'Tidak boleh membuat stok negatif.'],
             ['balance_after', 'Kondisional', 'Angka bulat ≥ 0', '100', 'Dapat dipakai sebagai target pada mode update.', 'Sistem menghitung delta koreksi.'],
             ['reference_type', 'Optional', 'Teks', 'manual_import', 'Default manual_import.', 'Jenis sumber movement.'],
@@ -594,6 +686,122 @@ final class SpreadsheetModuleRegistry
             ['order_number', 'Optional', 'Nomor pesanan', 'ORD-202608-0001', 'Harus tersedia bila diisi.', 'Relasi order.'],
             ['notes', 'Optional', 'Teks', 'Penyesuaian stok', 'Maksimum 1000 karakter.', 'Alasan perubahan.'],
             ['occurred_at', 'Wajib', 'Tanggal dan waktu', '2026-08-04 10:00:00', 'Format Excel didukung.', 'Waktu movement.'],
+        ];
+    }
+
+    private static function rawMaterialExamples(): array
+    {
+        $base = ['id' => '', 'store_name' => 'Toko Nusantara', 'code' => 'RM-BOX', 'name' => 'Box Kemasan', 'unit' => 'pcs', 'minimum_stock' => '20', 'average_cost' => '2500', 'is_active' => '1'];
+        return [
+            self::example($base, 'Master Baru', 'Membuat bahan baku baru tanpa menyentuh stok.', 'Pilih Import Data Baru dan kosongkan id.', 'Master bahan baku dibuat.'),
+            self::example([...$base, 'code' => 'RM-LABEL', 'name' => 'Label Produk', 'unit' => 'lembar'], 'Satuan Lain', 'Membuat bahan dengan satuan lembar.', 'Isi unit sesuai penggunaan.', 'Satuan tersimpan.'),
+            self::example([...$base, 'minimum_stock' => '100'], 'Minimum Stok', 'Menentukan batas stok minimum.', 'Isi minimum_stock 100.', 'Batas minimum tersimpan.'),
+            self::example([...$base, 'average_cost' => '2750'], 'Biaya Awal', 'Menetapkan biaya rata-rata awal.', 'Isi average_cost tanpa stok.', 'HPP terkait akan mengikuti biaya saat resep dibuat.'),
+            self::example([...$base, 'is_active' => '0'], 'Nonaktif', 'Menyimpan bahan nonaktif.', 'Isi is_active=0.', 'Bahan tidak dapat dipilih untuk resep baru.'),
+            self::example([...$base, 'store_name' => ''], 'Seller Auto Store', 'Seller tidak perlu mengisi toko.', 'Kosongkan store_name.', 'Toko diambil dari sesi.'),
+            self::example([...$base, 'id' => '10', 'name' => 'Box Premium'], 'Update Master', 'Memperbarui master bahan baku.', 'Pilih mode update dan isi id.', 'Data master diperbarui.'),
+            self::example([...$base, 'id' => '10', 'average_cost' => '3000'], 'Biaya Tidak Diubah dari Master', 'Mencegah perubahan average cost tanpa histori pembelian.', 'Pilih mode update lalu ubah average_cost.', 'Baris ditolak dan diarahkan melakukan restock melalui modul Stok Bahan Baku.'),
+            self::example([...$base, 'code' => ''], 'Kode Kosong', 'Validasi kode wajib.', 'Kosongkan code.', 'Baris ditolak.'),
+            self::example([...$base, 'code' => 'RM-BOX'], 'Kode Duplikat', 'Mencegah kode ganda pada toko.', 'Import sebagai data baru dengan kode yang sudah ada.', 'Baris ditolak dan diarahkan memakai mode update.'),
+        ];
+    }
+
+    private static function rawMaterialDescriptions(): array
+    {
+        return [
+            ['id', 'Kondisional', 'Angka bulat', '10', 'Wajib mode update, kosong mode data baru.', 'ID master bahan baku.'],
+            ['store_name', 'Wajib Admin, otomatis Seller', 'Nama toko', 'Toko Nusantara', 'Harus tersedia.', 'Tidak membuat toko baru.'],
+            ['code', 'Wajib', 'Teks unik per toko', 'RM-BOX', 'Maksimum 100 karakter.', 'Kunci pencarian stok bahan baku.'],
+            ['name', 'Wajib', 'Teks', 'Box Kemasan', 'Maksimum 255 karakter.', 'Nama bahan.'],
+            ['unit', 'Wajib', 'Teks', 'pcs', 'Maksimum 50 karakter.', 'Satuan konsumsi resep.'],
+            ['minimum_stock', 'Optional', 'Angka ≥ 0', '20', 'Tidak boleh negatif.', 'Batas minimum.'],
+            ['average_cost', 'Data baru saja', 'Angka ≥ 0', '2500', 'Biaya awal bahan. Pada mode update nilainya tidak boleh diubah.', 'Perubahan biaya setelah bahan dibuat dilakukan melalui import Stok Bahan Baku / restock agar weighted average dan histori HPP tercatat.'],
+            ['is_active', 'Optional', '0|1', '1', 'Default aktif.', 'Bahan aktif dapat dipakai resep.'],
+        ];
+    }
+
+    private static function rawMaterialStockExamples(): array
+    {
+        $base = ['id' => '', 'store_name' => 'Toko Nusantara', 'raw_material_code' => 'RM-BOX', 'raw_material_name' => 'Box Kemasan', 'movement_type' => 'restock', 'quantity_delta' => '100', 'balance_after' => '', 'unit_cost' => '3000', 'reference_type' => 'purchase', 'reference_number' => 'PO-001', 'notes' => 'Restock bahan', 'occurred_at' => '2026-08-15 10:00:00'];
+        return [
+            self::example($base, 'Restock', 'Menambah stok bahan baku dengan harga beli baru.', 'Isi delta positif dan unit_cost.', 'Stok dan average cost diperbarui.'),
+            self::example([...$base, 'quantity_delta' => '-5', 'unit_cost' => '', 'movement_type' => 'usage'], 'Pemakaian', 'Mengurangi stok bahan baku manual.', 'Isi delta negatif.', 'Stok berkurang tanpa mengubah average cost.'),
+            self::example([...$base, 'reference_number' => 'INV-SUP-1001'], 'Referensi', 'Mencatat nomor dokumen pembelian.', 'Isi reference_number.', 'Audit movement lebih mudah.'),
+            self::example([...$base, 'store_name' => ''], 'Seller Auto Store', 'Seller memakai toko sesi.', 'Kosongkan store_name.', 'Toko seller digunakan.'),
+            self::example([...$base, 'unit_cost' => '4500'], 'Harga Naik', 'Harga pembelian naik.', 'Restock dengan unit_cost lebih tinggi.', 'Average cost dan HPP terkait diperbarui serta laporan dampak dibuat.'),
+            self::example([...$base, 'unit_cost' => '1800'], 'Harga Turun', 'Harga pembelian turun.', 'Restock dengan unit_cost lebih rendah.', 'Average cost dan HPP ikut turun.'),
+            self::example([...$base, 'id' => '40', 'balance_after' => '250', 'quantity_delta' => ''], 'Target Saldo', 'Mode update menyesuaikan ke saldo target.', 'Isi id dan balance_after.', 'Sistem membuat movement koreksi.'),
+            self::example([...$base, 'raw_material_code' => 'RM-TIDAK-ADA'], 'Master Tidak Ada', 'Stok tidak boleh membuat master baru.', 'Isi kode yang tidak tersedia.', 'Baris ditolak.'),
+            self::example([...$base, 'quantity_delta' => '-999999'], 'Stok Negatif', 'Pengeluaran melebihi saldo.', 'Isi delta negatif besar.', 'Baris ditolak.'),
+            self::example([...$base, 'quantity_delta' => '0'], 'Delta Nol', 'Movement harus mengubah saldo.', 'Isi delta 0.', 'Baris ditolak.'),
+        ];
+    }
+
+    private static function rawMaterialStockDescriptions(): array
+    {
+        return [
+            ['id', 'Kondisional', 'Angka bulat', '40', 'Wajib mode update.', 'ID movement referensi.'],
+            ['store_name', 'Wajib Admin, otomatis Seller', 'Nama toko', 'Toko Nusantara', 'Harus tersedia.', 'Tidak membuat toko.'],
+            ['raw_material_code', 'Wajib', 'Kode bahan baku', 'RM-BOX', 'Harus sudah ada.', 'Tidak membuat master bahan.'],
+            ['raw_material_name', 'Optional', 'Teks', 'Box Kemasan', 'Informasi saja.', 'Pencocokan tetap memakai code.'],
+            ['movement_type', 'Wajib', 'restock|usage|adjustment', 'restock', 'Disesuaikan dengan arah delta.', 'Jenis movement.'],
+            ['quantity_delta', 'Kondisional', 'Angka ≠ 0', '100', 'Positif masuk, negatif keluar.', 'Tidak boleh membuat saldo negatif.'],
+            ['balance_after', 'Kondisional', 'Angka ≥ 0', '250', 'Dipakai sebagai target mode update.', 'Sistem menghitung delta.'],
+            ['unit_cost', 'Restock', 'Angka ≥ 0', '3000', 'Harga per unit pembelian.', 'Dipakai menghitung average cost tertimbang.'],
+            ['reference_type', 'Optional', 'Teks', 'purchase', 'Default spreadsheet_import.', 'Jenis sumber movement.'],
+            ['reference_number', 'Optional', 'Teks', 'PO-001', 'Maksimum 100 karakter.', 'Nomor sumber.'],
+            ['notes', 'Optional', 'Teks', 'Restock bahan', 'Catatan audit.', 'Tidak mengubah master.'],
+            ['occurred_at', 'Wajib', 'Tanggal dan waktu', '2026-08-15 10:00:00', 'Format Excel didukung.', 'Waktu movement.'],
+        ];
+    }
+
+    private static function productCostingExamples(): array
+    {
+        $base = ['id' => '', 'store_name' => 'Toko Nusantara', 'product_id' => '1', 'product_name' => 'Produk Contoh', 'materials' => 'RM-BOX:1|RM-LABEL:2', 'labor_cost' => '5000', 'overhead_cost' => '2500', 'other_cost' => '1000', 'hpp' => '', 'margin_percent' => '30', 'suggested_price' => '', 'selling_price' => '25000', 'apply_to_variants' => '0'];
+        return [
+            self::example($base, 'HPP Baru', 'Membentuk HPP dari resep bahan.', 'Pilih create dan isi product serta materials.', 'HPP dihitung dari average cost bahan saat import.'),
+            self::example([...$base, 'materials' => 'RM-BOX:2'], 'Satu Bahan', 'Produk hanya memakai satu bahan.', 'Isi satu KODE:QTY.', 'Material cost mengikuti quantity.'),
+            self::example([...$base, 'materials' => 'RM-BOX:1.5|RM-LABEL:0.5'], 'Quantity Pecahan', 'Resep memakai quantity pecahan.', 'Gunakan angka desimal.', 'HPP menghitung pecahan.'),
+            self::example([...$base, 'labor_cost' => '10000'], 'Tenaga Kerja', 'Menambah biaya tenaga kerja.', 'Isi labor_cost.', 'HPP bertambah.'),
+            self::example([...$base, 'overhead_cost' => '8000'], 'Overhead', 'Menambah biaya operasional.', 'Isi overhead_cost.', 'HPP bertambah.'),
+            self::example([...$base, 'margin_percent' => '40'], 'Margin', 'Mengubah target margin.', 'Isi margin 40.', 'Saran harga jual diperbarui.'),
+            self::example([...$base, 'selling_price' => '30000', 'apply_to_variants' => '1'], 'Terapkan Harga', 'Menerapkan harga jual ke variant.', 'Isi apply_to_variants=1.', 'Harga variant diperbarui.'),
+            self::example([...$base, 'id' => '5'], 'Update HPP', 'Memperbarui resep HPP.', 'Pilih update dan isi id HPP.', 'Resep lama diganti secara atomik.'),
+            self::example([...$base, 'materials' => 'RM-TIDAK-ADA:1'], 'Bahan Tidak Ada', 'HPP tidak membuat bahan otomatis.', 'Gunakan kode tidak tersedia.', 'Baris ditolak.'),
+            self::example([...$base, 'materials' => 'RM-BOX:0'], 'Quantity Salah', 'Quantity harus lebih dari nol.', 'Isi qty 0.', 'Baris ditolak.'),
+        ];
+    }
+
+    private static function productCostingDescriptions(): array
+    {
+        return [
+            ['id', 'Kondisional', 'Angka bulat', '5', 'Wajib pada mode update bila diisi.', 'ID product_costings.'],
+            ['store_name', 'Wajib Admin, otomatis Seller', 'Nama toko', 'Toko Nusantara', 'Harus tersedia.', 'Tidak membuat toko.'],
+            ['product_id', 'Disarankan', 'ID Product', '1', 'Harus milik toko.', 'Lebih stabil daripada nama.'],
+            ['product_name', 'Fallback', 'Nama produk', 'Produk Contoh', 'Dipakai bila product_id kosong.', 'Harus unik pada toko.'],
+            ['materials', 'Optional', 'KODE:QTY|KODE:QTY', 'RM-BOX:1|RM-LABEL:2', 'Semua kode harus tersedia dan qty > 0.', 'Biaya unit selalu average_cost database.'],
+            ['labor_cost', 'Optional', 'Angka ≥ 0', '5000', 'Tidak boleh negatif.', 'Biaya tenaga kerja.'],
+            ['overhead_cost', 'Optional', 'Angka ≥ 0', '2500', 'Tidak boleh negatif.', 'Biaya overhead.'],
+            ['other_cost', 'Optional', 'Angka ≥ 0', '1000', 'Tidak boleh negatif.', 'Biaya lain.'],
+            ['hpp', 'Output', 'Angka', '', 'Diabaikan saat import.', 'Dihitung backend.'],
+            ['margin_percent', 'Optional', 'Angka ≥ 0', '30', 'Tidak boleh negatif.', 'Dasar suggested price.'],
+            ['suggested_price', 'Output', 'Angka', '', 'Diabaikan saat import.', 'Dihitung backend.'],
+            ['selling_price', 'Optional', 'Angka ≥ 0', '25000', 'Kosong memakai suggested price.', 'Harga jual pilihan seller.'],
+            ['apply_to_variants', 'Optional', '0|1', '0', 'Default 0.', 'Jika 1 harga jual diterapkan ke variant.'],
+        ];
+    }
+
+    private static function customerDescriptions(): array
+    {
+        return [
+            ['id', 'Output', 'UUID', '', 'Export only.', 'ID buyer.'], ['name', 'Output', 'Teks', '', 'Export only.', 'Nama buyer.'], ['email', 'Output', 'Email', '', 'Export only.', 'Email buyer.'], ['orders_count', 'Output', 'Angka', '', 'Export only.', 'Jumlah order non-cancelled pada toko.'], ['total_spent', 'Output', 'Angka', '', 'Export only.', 'Total transaksi pada toko.'], ['last_order_at', 'Output', 'Tanggal', '', 'Export only.', 'Transaksi terakhir.'], ['is_active', 'Output', '0|1', '', 'Export only.', 'Status akun.'], ['registered_at', 'Output', 'Tanggal', '', 'Export only.', 'Tanggal registrasi buyer.'],
+        ];
+    }
+
+    private static function costImpactDescriptions(): array
+    {
+        return [
+            ['id', 'Output', 'Angka', '', 'Export only.', 'ID histori dampak.'], ['product_name', 'Output', 'Teks', '', 'Export only.', 'Produk terdampak.'], ['raw_material_code', 'Output', 'Teks', '', 'Export only.', 'Kode bahan pemicu.'], ['raw_material_name', 'Output', 'Teks', '', 'Export only.', 'Bahan pemicu.'], ['old_average_cost', 'Output', 'Angka', '', 'Export only.', 'Biaya rata-rata lama.'], ['new_average_cost', 'Output', 'Angka', '', 'Export only.', 'Biaya rata-rata baru.'], ['old_hpp', 'Output', 'Angka', '', 'Export only.', 'HPP sebelum perubahan.'], ['new_hpp', 'Output', 'Angka', '', 'Export only.', 'HPP sesudah perubahan.'], ['hpp_change_amount', 'Output', 'Angka', '', 'Export only.', 'Selisih HPP.'], ['hpp_change_percent', 'Output', 'Persen', '', 'Export only.', 'Persentase dampak.'], ['old_suggested_price', 'Output', 'Angka', '', 'Export only.', 'Saran harga lama.'], ['new_suggested_price', 'Output', 'Angka', '', 'Export only.', 'Saran harga baru.'], ['direction', 'Output', 'increase|decrease', '', 'Export only.', 'Arah perubahan.'], ['reference_number', 'Output', 'Teks', '', 'Export only.', 'Referensi restock/update.'], ['occurred_at', 'Output', 'Tanggal', '', 'Export only.', 'Waktu dampak.'],
         ];
     }
 

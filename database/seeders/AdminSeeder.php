@@ -19,7 +19,7 @@ final class AdminSeeder extends Seeder
                 'id' => SeederIds::SUPER_ADMIN,
                 'name' => 'Budi Administrator',
                 'email' => 'budi@gmail.com',
-                'roles' => ['super_admin', 'admin'],
+                'roles' => ['super_admin', 'admin', 'seller', 'buyer'],
             ],
             [
                 'id' => SeederIds::CATALOG_ADMIN,

@@ -51,6 +51,9 @@ final class SpreadsheetTransferController extends Controller
     {
         try {
             $config = $this->authorizeModule($request, $module);
+            if (($config['import_enabled'] ?? true) !== true) {
+                throw new InvalidArgumentException('Modul ini hanya mendukung export dan tidak menyediakan template import.');
+            }
             $spreadsheet = $this->createTemplateWorkbook($config);
             return $this->downloadSpreadsheet($spreadsheet, Str::slug($config['label']).'-template.xlsx');
         } catch (Throwable $exception) {
@@ -84,6 +87,9 @@ final class SpreadsheetTransferController extends Controller
         try {
             $this->prepareSpreadsheetRequest(180);
             $config = $this->authorizeModule($request, $module);
+            if (($config['import_enabled'] ?? true) !== true) {
+                throw new InvalidArgumentException('Modul ini hanya mendukung export karena datanya merupakan hasil transaksi atau histori audit.');
+            }
             $validated = $request->validate([
                 'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:20480'],
                 'import_mode' => ['required', 'in:create,update'],
@@ -134,6 +140,9 @@ final class SpreadsheetTransferController extends Controller
         try {
             $this->prepareSpreadsheetRequest(600);
             $config = $this->authorizeModule($request, $module);
+            if (($config['import_enabled'] ?? true) !== true) {
+                throw new InvalidArgumentException('Modul ini hanya mendukung export karena datanya merupakan hasil transaksi atau histori audit.');
+            }
             $request->validate([
                 'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:20480'],
                 'import_mode' => ['required', 'in:create,update'],
@@ -232,7 +241,10 @@ final class SpreadsheetTransferController extends Controller
     {
         try {
             $config = $this->authorizeModule($request, $module);
-            if ($module === 'stock') {
+            if (($config['bulk_delete_enabled'] ?? true) !== true) {
+                throw new InvalidArgumentException('Modul ini tidak mendukung bulk delete karena data bersifat histori, audit, atau relasi perhitungan.');
+            }
+            if (in_array($module, ['stock', 'raw-material-stock'], true)) {
                 throw new InvalidArgumentException('Riwayat stok tidak dapat dihapus melalui bulk delete. Gunakan movement koreksi agar audit trail tetap utuh.');
             }
             if ($module === 'order' && $this->activeRole($request) === 'seller') {
@@ -489,7 +501,8 @@ final class SpreadsheetTransferController extends Controller
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Data Export');
-        $headers = [...$config['headers'], 'preview_image'];
+        $hasPreviewImage = ! empty($config['image_fields']);
+        $headers = $hasPreviewImage ? [...$config['headers'], 'preview_image'] : $config['headers'];
         $this->writeHeader($sheet, $headers);
         $rowNumber = 2;
 
@@ -501,12 +514,16 @@ final class SpreadsheetTransferController extends Controller
             foreach ($config['headers'] as $index => $header) {
                 $sheet->setCellValue([$index + 1, $rowNumber], $row[$header] ?? '');
             }
-            $this->attachExportImage($sheet, $row, $config, $rowNumber, count($headers));
+            if ($hasPreviewImage) {
+                $this->attachExportImage($sheet, $row, $config, $rowNumber, count($headers));
+            }
             $rowNumber++;
         }
 
         $this->formatSheet($sheet, count($headers));
-        $sheet->getColumnDimension(Coordinate::stringFromColumnIndex(count($headers)))->setWidth(14);
+        if ($hasPreviewImage) {
+            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex(count($headers)))->setWidth(14);
+        }
         return $spreadsheet;
     }
 
@@ -613,22 +630,18 @@ final class SpreadsheetTransferController extends Controller
             );
         }
 
-        if ($this->hasAnyValue($row, ['sku', 'variant_name', 'price', 'stock'])) {
+        if ($this->hasAnyValue($row, ['sku', 'variant_name', 'price'])) {
             $variantName = $this->cleanName($row['variant_name'] ?? null) ?: 'Default';
             $sku = $this->nullableString($row['sku'] ?? null);
             $price = $this->nullableFloat($row['price'] ?? null);
-            $stock = $this->nullableInt($row['stock'] ?? null);
-
             Validator::make([
                 'variant_name' => $variantName,
                 'sku' => $sku,
                 'price' => $price,
-                'stock' => $stock,
             ], [
                 'variant_name' => ['required', 'string', 'max:255'],
                 'sku' => ['nullable', 'string', 'max:255'],
                 'price' => ['required', 'numeric', 'min:0'],
-                'stock' => ['required', 'integer', 'min:0'],
             ])->validate();
 
             $variantQuery = ProductVariantModel::query()->where('product_id', $product->id);
@@ -676,7 +689,7 @@ final class SpreadsheetTransferController extends Controller
                 'sku' => $sku,
                 'name' => $variantName,
                 'price' => $price,
-                'stock' => $stock,
+                'stock' => $variant->exists ? (int) $variant->stock : 0,
                 'is_default' => $isDefault,
             ])->save();
         }
@@ -939,7 +952,6 @@ final class SpreadsheetTransferController extends Controller
             $row['sku'] = $variant?->sku ?: '';
             $row['variant_name'] = $variant?->name ?: '';
             $row['price'] = $variant?->price ?: '';
-            $row['stock'] = $variant?->stock ?: '';
             $row['is_default'] = $variant ? ($variant->is_default ? 1 : 0) : '';
         }
 
@@ -1276,7 +1288,7 @@ final class SpreadsheetTransferController extends Controller
                 continue;
             }
 
-            $hasVariant = $this->hasAnyValue($row, ['sku', 'variant_name', 'price', 'stock']);
+            $hasVariant = $this->hasAnyValue($row, ['sku', 'variant_name', 'price']);
             $productIdentity = $mode === 'update'
                 ? 'id:'.$id
                 : $this->normalizedName($row['store_name'] ?? '').'|'.$this->normalizedName($row['name'] ?? '');

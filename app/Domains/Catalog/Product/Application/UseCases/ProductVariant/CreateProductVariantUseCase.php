@@ -39,7 +39,7 @@ final class CreateProductVariantUseCase
                 sku: $sku,   // AMAN: Menggunakan variabel hasil kalkulasi, bukan $data['sku'] langsung
                 name: $name, // AMAN: Menggunakan variabel hasil kalkulasi, bukan $data['name'] langsung
                 price: (float) ($data['price'] ?? 0),
-                stock: (int) ($data['stock'] ?? 0),
+                stock: 0,
                 isDefault: (bool) ($data['is_default'] ?? false)
             ));
 

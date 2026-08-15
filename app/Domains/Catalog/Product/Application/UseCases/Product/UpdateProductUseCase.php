@@ -93,7 +93,7 @@ final class UpdateProductUseCase
                         sku: $computedSku,
                         name: trim((string) preg_replace('/\s+/u', ' ', (string) ($variantData['name'] ?? ($oldVariant?->name() ?? $product->name())))),
                         price: (float) ($variantData['price'] ?? ($oldVariant?->price() ?? 0.0)),
-                        stock: (int) ($variantData['stock'] ?? ($oldVariant?->stock() ?? 0)),
+                        stock: (int) ($oldVariant?->stock() ?? 0),
                         isDefault: $index === 0
                     ));
 
@@ -107,6 +107,9 @@ final class UpdateProductUseCase
 
                 foreach ($currentVariants as $currentVariant) {
                     if (! in_array((int) $currentVariant->id(), $retainedIds, true)) {
+                        if ($currentVariant->stock() > 0) {
+                            throw new InvalidArgumentException('Stok variant harus 0 sebelum variant dihapus. Kurangi stok melalui Persediaan terlebih dahulu.');
+                        }
                         $this->variants->delete((int) $currentVariant->id());
                     }
                 }

@@ -77,6 +77,22 @@ final class SellerSeeder extends Seeder
 
         $stores = [
             [
+                'user_id' => SeederIds::SUPER_ADMIN,
+                'name' => 'budi marketplace lab',
+                'slug' => 'budi-marketplace-lab',
+                'description' => 'Toko testing utama untuk menguji akses multi-role Admin, Seller, dan Buyer.',
+                'short_description' => 'Toko testing multi-role Budi.',
+                'phone' => '081234567800',
+                'email' => 'toko.budi@gmail.com',
+                'city' => 'Jakarta Pusat',
+                'province' => 'DKI Jakarta',
+                'address' => 'Jl. Testing Marketplace No. 1',
+                'status' => 'approved',
+                'is_active' => true,
+                'logo' => 'https://picsum.photos/seed/budi-marketplace-lab-logo/300/300',
+                'banner_url' => 'https://picsum.photos/seed/budi-marketplace-lab-banner/1600/500',
+            ],
+            [
                 'user_id' => SeederIds::SELLER_ONE,
                 'name' => 'sari nusantara',
                 'slug' => 'sari-nusantara',
@@ -124,13 +140,17 @@ final class SellerSeeder extends Seeder
             );
         }
 
-        $storeRows = DB::table('stores')->whereIn('user_id', [SeederIds::SELLER_ONE, SeederIds::SELLER_TWO])->get();
+        $storeRows = DB::table('stores')->whereIn('user_id', [SeederIds::SUPER_ADMIN, SeederIds::SELLER_ONE, SeederIds::SELLER_TWO])->get();
 
         foreach ($storeRows as $store) {
             DB::table('store_details')->updateOrInsert(
                 ['store_id' => $store->id],
                 [
-                    'owner_name' => $store->user_id === SeederIds::SELLER_ONE ? 'Sari Lestari' : 'Raka Wibowo',
+                    'owner_name' => match ((string) $store->user_id) {
+                        SeederIds::SUPER_ADMIN => 'Budi Administrator',
+                        SeederIds::SELLER_ONE => 'Sari Lestari',
+                        default => 'Raka Wibowo',
+                    },
                     'owner_phone' => $store->phone,
                     'description' => 'Toko aktif untuk pengujian marketplace.',
                     'shipping_policy' => 'Pesanan diproses maksimal dua hari kerja setelah pembayaran terverifikasi.',
