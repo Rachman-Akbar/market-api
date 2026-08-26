@@ -23,7 +23,7 @@ final class MissionRequest extends FormRequest
             'name' => ['required', 'string', 'max:160'],
             'code' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'event_type' => ['required', Rule::in(['order_completed', 'review_submitted', 'login', 'purchase_amount', 'product_purchased'])],
+            'event_type' => ['required', Rule::in(['order_completed', 'review_submitted', 'login', 'purchase_amount', 'product_purchased', 'quiz_completed', 'trash_sort_completed', 'myth_fact_completed', 'match_card_completed', 'clean_river_completed'])],
             'target_value' => ['required', 'integer', 'min:1'],
             'conditions' => ['nullable', 'array'],
             'starts_at' => ['required', 'date'],

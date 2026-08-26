@@ -5,16 +5,23 @@ declare(strict_types=1);
 namespace App\Domains\Identity\Auth\Presentation\Http\Controllers;
 
 use App\Domains\Identity\Auth\Application\UseCases\BuildAuthPayloadUseCase;
+use App\Domains\Identity\Auth\Application\UseCases\ChangePasswordUseCase;
 use App\Domains\Identity\Auth\Application\UseCases\LoginUserUseCase;
 use App\Domains\Identity\Auth\Application\UseCases\LoginWithFirebaseUseCase;
 use App\Domains\Identity\Auth\Application\UseCases\LogoutUserUseCase;
 use App\Domains\Identity\Auth\Application\UseCases\RegisterUserUseCase;
+use App\Domains\Identity\Auth\Application\UseCases\ResetPasswordUseCase;
 use App\Domains\Identity\Auth\Application\UseCases\SwitchRoleUseCase;
+use App\Domains\Identity\Auth\Infrastructure\Mail\PasswordChangedMail;
+use App\Domains\Identity\Auth\Infrastructure\Mail\PasswordResetMail;
+use App\Domains\Identity\Auth\Presentation\Http\Requests\ChangePasswordRequest;
+use App\Domains\Identity\Auth\Presentation\Http\Requests\ResetPasswordRequest;
 use App\Domains\Identity\User\Application\UseCases\DeleteUserUseCase;
 use App\Domains\Identity\User\Domain\Exceptions\EmailAlreadyExistsException;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
@@ -93,18 +100,64 @@ final class AuthController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        $status = Password::sendResetLink([
-            'email' => strtolower(trim($validated['email'])),
-        ]);
+        $email = mb_strtolower(trim($validated['email']));
 
-        if ($status !== Password::RESET_LINK_SENT) {
-            throw ValidationException::withMessages([
-                'email' => [__($status)],
-            ]);
+        $userClass = config('auth.providers.users.model');
+        $user = $userClass::where('email', $email)->first();
+
+        if ($user) {
+            $tokenRepository = app(\Illuminate\Auth\Passwords\TokenRepositoryInterface::class);
+            $rawToken = $tokenRepository->create($user);
+
+            $resetUrl = env('FRONTEND_URL', config('app.url'))
+                . '/auth/reset-password?token=' . $rawToken . '&email=' . urlencode($email);
+
+            try {
+                Mail::to($user->email)->queue(new PasswordResetMail($resetUrl));
+            } catch (\Throwable) {
+                // Email sending failure should not block the response
+            }
+        }
+
+        // Always return the same message to prevent email enumeration
+        return response()->json([
+            'message' => 'Jika email terdaftar, link reset password akan dikirim dalam beberapa menit.',
+        ]);
+    }
+
+    public function resetPassword(ResetPasswordRequest $request, ResetPasswordUseCase $useCase): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $useCase->execute(
+            email: $validated['email'],
+            token: $validated['token'],
+            password: $validated['password'],
+        );
+
+        return response()->json([
+            'message' => 'Password berhasil diubah. Silakan masuk dengan password baru.',
+        ]);
+    }
+
+    public function changePassword(ChangePasswordRequest $request, ChangePasswordUseCase $useCase): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $useCase->execute(
+            user: $request->user(),
+            currentPassword: $validated['current_password'],
+            newPassword: $validated['new_password'],
+        );
+
+        try {
+            Mail::to($request->user()->email)->queue(new PasswordChangedMail($request->user()->name));
+        } catch (\Throwable) {
+            // Email sending failure should not block the response
         }
 
         return response()->json([
-            'message' => __($status),
+            'message' => 'Password berhasil diubah. Semua sesi login lain telah logout.',
         ]);
     }
 

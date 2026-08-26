@@ -23,6 +23,24 @@ class ProcessPaymentUseCase
 
         $finalPay = $order->getFinalPay();
 
+        $existingPending = DB::table('payments')
+            ->where('order_number', $orderNumber)
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($existingPending) {
+            $existingPayment = DB::table('payments')
+                ->where('order_number', $orderNumber)
+                ->where('status', 'pending')
+                ->first();
+
+            return [
+                'payment_method' => $existingPayment->payment_method,
+                'snap_token' => $order->snapToken,
+                'status' => 'pending'
+            ];
+        }
+
         // 1. Logika Jika Ambil Sendiri / COD / Transfer Manual
         if (in_array($paymentMethod, ['cod', 'transfer_manual', 'tunai_toko'])) {
             DB::table('payments')->insert([
@@ -42,7 +60,6 @@ class ProcessPaymentUseCase
 
         // 2. Logika Jika Menggunakan Midtrans
         if ($paymentMethod === 'midtrans') {
-            // Jika token belum ada atau ingin di-regenerate
             $snapToken = $order->snapToken;
             if (!$snapToken) {
                 $snapToken = $this->midtransService->createSnapToken([
@@ -51,7 +68,6 @@ class ProcessPaymentUseCase
                     'user_id' => $order->userId,
                 ]);
 
-                // Update token di domain order
                 $order->snapToken = $snapToken;
                 $this->orderRepository->update($order);
             }

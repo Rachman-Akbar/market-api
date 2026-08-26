@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Template\Cart\Infrastructure\Persistence\Models;
 
-use App\Models\User;
+use App\Domains\Identity\User\Domain\Entities\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,8 +21,6 @@ final class CartModel extends Model
 
     protected $fillable = [
         'user_id',
-        'active_user_id',
-        'status',
     ];
 
     protected $casts = [
@@ -35,20 +33,9 @@ final class CartModel extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    /** @return BelongsTo<User, CartModel> */
-    public function activeUser(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'active_user_id');
-    }
-
     /** @return HasMany<CartItemModel> */
     public function items(): HasMany
     {
         return $this->hasMany(CartItemModel::class, 'cart_id');
-    }
-
-    public function scopeActive(Builder $query): Builder
-    {
-        return $query->where('status', 'active');
     }
 }

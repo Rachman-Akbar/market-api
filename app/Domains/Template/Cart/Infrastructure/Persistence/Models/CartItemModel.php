@@ -18,18 +18,14 @@ final class CartItemModel extends Model
 
     protected $fillable = [
         'cart_id',
-        'product_id',
+        'product_variant_id',
         'quantity',
-        'price_snapshot',
-        'product_name_snapshot',
-        'product_image_snapshot',
     ];
 
     protected $casts = [
         'cart_id' => 'integer',
-        'product_id' => 'integer',
+        'product_variant_id' => 'integer',
         'quantity' => 'integer',
-        'price_snapshot' => 'integer',
         'deleted_at' => 'datetime',
     ];
 

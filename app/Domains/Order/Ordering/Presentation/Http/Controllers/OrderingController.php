@@ -196,6 +196,7 @@ class OrderingController extends Controller
         $validated = $request->validate([
             'status' => ['required', 'string', 'in:pending,processing,shipped,received,completed,cancelled'],
             'tracking_number' => ['nullable', 'string', 'max:255'],
+            'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
         $role = $this->activeRole($request);
@@ -305,7 +306,7 @@ class OrderingController extends Controller
             return response()->json(['success' => true, 'message' => 'Status sub-order berhasil diperbarui.']);
         }
 
-        $this->updateOrderStatusUseCase->execute($id, $validated['status']);
+        $this->updateOrderStatusUseCase->execute($id, $validated['status'], $validated['reason'] ?? null);
 
         return response()->json(['success' => true, 'message' => 'Status order berhasil diperbarui.']);
     }

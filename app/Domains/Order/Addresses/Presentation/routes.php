@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Domains\Order\Addresses\Presentation\Http\Controllers\AddressController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:sanctum', 'active.user'])
+Route::middleware(['auth:sanctum', 'active.user', 'verified.email'])
     ->prefix('addresses')
     ->name('addresses.')
     ->group(function (): void {

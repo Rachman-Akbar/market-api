@@ -40,7 +40,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamp('paid_at');
             $table->timestamps();
-            $table->index(['financial_transaction_id', 'paid_at']);
+            $table->index(['financial_transaction_id', 'paid_at'], 'fph_txn_paid_index');
         });
     }
 

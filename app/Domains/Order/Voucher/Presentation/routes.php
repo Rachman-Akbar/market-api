@@ -40,5 +40,8 @@ Route::prefix('vouchers')->name('vouchers.')->group(function (): void {
             Route::delete('/{id}', [VoucherController::class, 'destroy'])->whereNumber('id')->name('destroy');
         });
 
-    Route::get('/{id}', [VoucherController::class, 'show'])->whereNumber('id')->name('show');
+    Route::middleware(['auth:sanctum', 'active.user', 'verified.email'])
+        ->group(function (): void {
+            Route::get('/{id}', [VoucherController::class, 'show'])->whereNumber('id')->name('show');
+        });
 });

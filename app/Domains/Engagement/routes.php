@@ -11,6 +11,7 @@ Route::middleware(['auth:sanctum', 'active.user', 'verified.email', 'permission:
         Route::get('/', [MissionController::class, 'index']);
         Route::get('me', [MissionController::class, 'userMissions']);
         Route::post('/', [MissionController::class, 'store']);
+        Route::post('report', [MissionController::class, 'reportEvent']);
         Route::put('{id}', [MissionController::class, 'update'])->whereNumber('id');
         Route::delete('{id}', [MissionController::class, 'destroy'])->whereNumber('id');
     });

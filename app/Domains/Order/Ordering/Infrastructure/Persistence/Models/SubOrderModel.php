@@ -13,6 +13,13 @@ class SubOrderModel extends Model
     protected $table = 'sub_orders';
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'total_items_price' => 'decimal:2',
+        'shipping_cost' => 'decimal:2',
+        'admin_fee' => 'decimal:2',
+        'seller_net' => 'decimal:2',
+    ];
+
     public function parentOrder(): BelongsTo
     {
         return $this->belongsTo(OrderModel::class, 'order_id');

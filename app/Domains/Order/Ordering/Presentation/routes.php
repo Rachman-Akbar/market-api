@@ -3,7 +3,7 @@
 use App\Domains\Order\Ordering\Presentation\Http\Controllers\OrderingController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:sanctum', 'active.user'])
+Route::middleware(['auth:sanctum', 'active.user', 'verified.email'])
     ->prefix('orderings')
     ->name('orderings.')
     ->group(function (): void {

@@ -72,9 +72,6 @@ class CreateOrderUseCase
             if (!$details) {
                 throw new RuntimeException('Data varian produk tidak ditemukan.');
             }
-            if ($details->getStock() < (int) $cartItem->quantity) {
-                throw new RuntimeException("Stok {$details->getProductName()} tidak mencukupi.");
-            }
 
             $lineTotal = $details->getPrice()->getAmount() * (int) $cartItem->quantity;
             $itemsTotal += $lineTotal;
@@ -207,14 +204,18 @@ class CreateOrderUseCase
                 $storeItemsTotal = 0.0;
 
                 foreach ($items as $item) {
-                    $affected = DB::table('product_variants')
+                    $lockedVariant = DB::table('product_variants')
                         ->where('id', $item['variant_id'])
-                        ->where('stock', '>=', $item['quantity'])
-                        ->decrement('stock', $item['quantity']);
+                        ->lockForUpdate()
+                        ->first();
 
-                    if ($affected !== 1) {
-                        throw new RuntimeException("Stok {$item['product_name']} berubah dan tidak lagi mencukupi.");
+                    if (!$lockedVariant || (int) $lockedVariant->stock < (int) $item['quantity']) {
+                        throw new RuntimeException("Stok {$item['product_name']} tidak mencukupi.");
                     }
+
+                    DB::table('product_variants')
+                        ->where('id', $item['variant_id'])
+                        ->decrement('stock', $item['quantity']);
 
                     $storeItemsTotal += $item['price'] * $item['quantity'];
                     $label = $item['variant_name'] && $item['variant_name'] !== $item['product_name']

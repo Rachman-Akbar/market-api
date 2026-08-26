@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Domains\Order\Cart\Presentation\Http\Controllers\CartController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:sanctum', 'active.user'])
+Route::middleware(['auth:sanctum', 'active.user', 'verified.email'])
     ->prefix('carts')
     ->name('carts.')
     ->group(function (): void {

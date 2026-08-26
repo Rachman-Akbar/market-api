@@ -51,7 +51,7 @@ final class StoreModel extends Model
     public function scopePubliclyAvailable(Builder $query): Builder
     {
         return $query
-            ->whereIn($this->qualifyColumn('status'), ['approved', 'active'])
+            ->where($this->qualifyColumn('status'), 'approved')
             ->where($this->qualifyColumn('is_active'), true);
     }
 

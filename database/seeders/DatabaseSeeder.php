@@ -23,6 +23,7 @@ final class DatabaseSeeder extends Seeder
             ComprehensiveRealtimeSeeder::class,
             RealtimeMarketplaceSeeder::class,
             BudiSellerPanelSeeder::class,
+            MarketAkbarSeeder::class,
         ]);
     }
 }

@@ -8,12 +8,22 @@ use App\Domains\Seller\Stores\Presentation\Http\Controllers\StoreController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->name('auth.')->group(function (): void {
-    Route::post('/password-register', [AuthController::class, 'passwordRegister'])->name('password-register');
-    Route::post('/password-login', [AuthController::class, 'passwordLogin'])->name('password-login');
+    Route::post('/password-register', [AuthController::class, 'passwordRegister'])
+        ->middleware('throttle:10,1')
+        ->name('password-register');
+    Route::post('/password-login', [AuthController::class, 'passwordLogin'])
+        ->middleware('throttle:30,1')
+        ->name('password-login');
     Route::post('/firebase-login', [AuthController::class, 'firebaseLogin'])
-        ->middleware(ValidateFirebaseToken::class)
+        ->middleware([ValidateFirebaseToken::class, 'throttle:10,1'])
         ->name('firebase-login');
-    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->name('forgot-password');
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])
+        ->middleware('throttle:5,1')
+        ->name('forgot-password');
+
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])
+        ->middleware('throttle:5,1')
+        ->name('reset-password');
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/logout', [AuthController::class, 'logoutCurrentDevice'])->name('logout');
@@ -27,6 +37,10 @@ Route::prefix('auth')->name('auth.')->group(function (): void {
             Route::post('/register-seller', [StoreController::class, 'registerStore'])
                 ->middleware('verified.email')
                 ->name('register-seller');
+
+            Route::post('/change-password', [AuthController::class, 'changePassword'])
+                ->middleware('throttle:3,1')
+                ->name('change-password');
         });
     });
 });

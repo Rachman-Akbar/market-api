@@ -1198,14 +1198,26 @@ final class SpreadsheetTransferController extends Controller
         $rawId = trim((string) ($row['id'] ?? ''));
 
         if ($mode === 'update') {
-            if ($rawId === '' || ! ctype_digit($rawId)) {
-                throw new InvalidArgumentException('Kolom id wajib diisi dengan ID '.$label.' pada mode Import Update Data.');
+            if ($rawId !== '' && ctype_digit($rawId)) {
+                $model = (clone $query)->find((int) $rawId);
+                if (! $model) {
+                    throw new InvalidArgumentException($label.' dengan ID '.$rawId.' tidak ditemukan atau tidak berada dalam akses pengguna.');
+                }
+                return $model;
             }
-            $model = (clone $query)->find((int) $rawId);
-            if (! $model) {
-                throw new InvalidArgumentException($label.' dengan ID '.$rawId.' tidak ditemukan atau tidak berada dalam akses pengguna.');
+
+            $displayName = $this->cleanName($value);
+            if ($displayName === '') {
+                throw new InvalidArgumentException('Kolom id atau '.$column.' wajib diisi pada mode Import Update Data untuk '.$label.'.');
             }
-            return $model;
+            $matches = $this->allByNormalizedName(clone $query, $column, $displayName);
+            if ($matches->isEmpty()) {
+                throw new InvalidArgumentException($label.' dengan '.$column.' "'.$displayName.'" tidak ditemukan atau tidak berada dalam akses pengguna.');
+            }
+            if ($matches->count() > 1) {
+                throw new InvalidArgumentException($column.' "'.$displayName.'" tidak unik untuk '.$label.'. Gunakan kolom id untuk mode Import Update Data.');
+            }
+            return $matches->first();
         }
 
         if ($rawId !== '') {
@@ -1280,8 +1292,8 @@ final class SpreadsheetTransferController extends Controller
             if ($mode === 'create' && $id !== '') {
                 throw new InvalidArgumentException('Baris '.$rowNumber.': kolom id harus kosong pada mode Import Data Baru.');
             }
-            if ($mode === 'update' && ($id === '' || ! ctype_digit($id))) {
-                throw new InvalidArgumentException('Baris '.$rowNumber.': kolom id wajib diisi pada mode Import Update Data.');
+            if ($mode === 'update' && $id !== '' && ! ctype_digit($id)) {
+                throw new InvalidArgumentException('Baris '.$rowNumber.': kolom id harus berisi angka pada mode Import Update Data.');
             }
 
             if ($module !== 'product') {
