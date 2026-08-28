@@ -11,6 +11,7 @@ use App\Domains\Engagement\EngagementServiceProvider;
 use App\Domains\Finance\Commission\CommissionServiceProvider;
 use App\Domains\Identity\IdentityServiceProvider;
 use App\Domains\Order\OrderServiceProvider;
+use App\Domains\PPOB\PPOBServiceProvider;
 use App\Domains\Seller\Planner\PlannerServiceProvider;
 use App\Domains\Seller\SellerServiceProvider;
 use App\Domains\Support\SupportServiceProvider;
@@ -29,6 +30,7 @@ final class DomainServiceProvider extends ServiceProvider
         $this->app->register(EngagementServiceProvider::class);
         $this->app->register(CommunicationServiceProvider::class);
         $this->app->register(CommissionServiceProvider::class);
+        $this->app->register(PPOBServiceProvider::class);
         $this->app->register(PlannerServiceProvider::class);
     }
 }

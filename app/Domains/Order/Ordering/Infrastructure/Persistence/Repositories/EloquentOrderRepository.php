@@ -109,11 +109,16 @@ class EloquentOrderRepository implements OrderRepositoryInterface
         return $model ? $this->mapper->toDomain($model) : null;
     }
 
-    public function findByOrderNumber(string $orderNumber): ?DomainOrder
+    public function findByOrderNumber(string $orderNumber, bool $lock = false): ?DomainOrder
     {
-        $model = OrderModel::with(['subOrders.items', 'subOrders.store'])
-            ->where('order_number', $orderNumber)
-            ->first();
+        $query = OrderModel::with(['subOrders.items', 'subOrders.store'])
+            ->where('order_number', $orderNumber);
+
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        $model = $query->first();
 
         return $model ? $this->mapper->toDomain($model) : null;
     }

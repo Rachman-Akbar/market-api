@@ -11,10 +11,20 @@ use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
 use App\Domains\Finance\Commission\Infrastructure\Persistence\Models\SellerSettlementModel;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class AdminDashboardService
 {
+    private const CACHE_TTL = 300;
+
     public function getStats(string $period = 'monthly'): array
+    {
+        return Cache::remember("admin_dashboard_stats_{$period}", self::CACHE_TTL, function () use ($period) {
+            return $this->computeStats($period);
+        });
+    }
+
+    private function computeStats(string $period): array
     {
         $startDate = $this->getStartDate($period);
 
@@ -61,12 +71,19 @@ class AdminDashboardService
                 'new' => $newProducts,
             ],
             'finance' => [
-                'admin_fees_collected' => round($totalAdminFees, 2),
+                'admin_fees_collected' => round((float) $totalAdminFees, 2),
             ],
         ];
     }
 
     public function getOrderTrend(string $period = 'monthly'): array
+    {
+        return Cache::remember("admin_dashboard_trend_{$period}", self::CACHE_TTL, function () use ($period) {
+            return $this->computeOrderTrend($period);
+        });
+    }
+
+    private function computeOrderTrend(string $period): array
     {
         $startDate = $this->getStartDate($period);
         $endDate = now();
@@ -101,6 +118,13 @@ class AdminDashboardService
     }
 
     public function getTopStores(string $period = 'monthly', int $limit = 10): array
+    {
+        return Cache::remember("admin_dashboard_top_stores_{$period}_{$limit}", self::CACHE_TTL, function () use ($period, $limit) {
+            return $this->computeTopStores($period, $limit);
+        });
+    }
+
+    private function computeTopStores(string $period, int $limit): array
     {
         $startDate = $this->getStartDate($period);
 

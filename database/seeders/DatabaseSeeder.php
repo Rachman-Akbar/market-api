@@ -24,6 +24,8 @@ final class DatabaseSeeder extends Seeder
             RealtimeMarketplaceSeeder::class,
             BudiSellerPanelSeeder::class,
             MarketAkbarSeeder::class,
+            AkbarFahlevySellerSeeder::class,
+            PpobCatalogSeeder::class,
         ]);
     }
 }

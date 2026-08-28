@@ -13,6 +13,7 @@ Route::group([], app_path('Domains/Order/routes.php'));
 Route::group([], app_path('Domains/Support/routes.php'));
 Route::group([], app_path('Domains/Engagement/routes.php'));
 Route::group([], app_path('Domains/Finance/Commission/Presentation/routes.php'));
+Route::group([], app_path('Domains/PPOB/Presentation/routes.php'));
 
 if (app()->getProviders(CommunicationServiceProvider::class) === []) {
     app()->register(CommunicationServiceProvider::class);
