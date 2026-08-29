@@ -10,7 +10,7 @@ use App\Domains\Seller\Stores\Infrastructure\Persistence\Mappers\StoreMapper;
 use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
 
 final class EloquentStoreRepository implements StoreRepositoryInterface
@@ -96,7 +96,7 @@ final class EloquentStoreRepository implements StoreRepositoryInterface
         return StoreMapper::toEntity($model);
     }
 
-    public function listProductsByStoreSlug(string $slug, array $filters = []): Collection
+    public function listProductsByStoreSlug(string $slug, array $filters = []): CursorPaginator
     {
         $storeId = DB::table('stores')
             ->where('slug', trim($slug))
@@ -106,8 +106,10 @@ final class EloquentStoreRepository implements StoreRepositoryInterface
             ->value('id');
 
         if (! $storeId) {
-            return collect();
+            return new CursorPaginator(collect(), $filters['per_page'] ?? 24, $filters['cursor'] ?? null);
         }
+
+        $perPage = max(1, min(50, (int) ($filters['per_page'] ?? 24)));
 
         return DB::table('products')
             ->join('stores', 'stores.id', '=', 'products.store_id')
@@ -146,7 +148,7 @@ final class EloquentStoreRepository implements StoreRepositoryInterface
             ])
             ->orderByDesc('products.created_at')
             ->orderByDesc('products.id')
-            ->get();
+            ->cursorPaginate($perPage);
     }
 
     private function applyStoreFilters(Builder $query, array $filters): void

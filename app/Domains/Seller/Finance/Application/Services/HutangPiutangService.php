@@ -5,43 +5,41 @@ declare(strict_types=1);
 namespace App\Domains\Seller\Finance\Application\Services;
 
 use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialTransactionModel;
-use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialPaymentHistoryModel;
 use Carbon\Carbon;
 
 class HutangPiutangService
 {
     public function getSummary(int $storeId): array
     {
-        $transactions = FinancialTransactionModel::where('store_id', $storeId)
+        $base = FinancialTransactionModel::where('store_id', $storeId)
             ->whereIn('type', ['payable', 'receivable'])
-            ->where('is_active', true)
-            ->get();
+            ->where('is_active', true);
 
-        $payables = $transactions->where('type', 'payable');
-        $receivables = $transactions->where('type', 'receivable');
+        $totals = (clone $base)
+            ->selectRaw("type, COUNT(*) as count, SUM(amount) as total, SUM(paid_amount) as paid")
+            ->groupBy('type')
+            ->get()
+            ->keyBy('type');
 
-        $payableTotal = $payables->sum('amount');
-        $payablePaid = $payables->sum('paid_amount');
-        $receivableTotal = $receivables->sum('amount');
-        $receivablePaid = $receivables->sum('paid_amount');
+        $statusCounts = (clone $base)
+            ->selectRaw("type, status, COUNT(*) as count")
+            ->groupBy('type', 'status')
+            ->get()
+            ->groupBy('type');
+
+        $build = fn (string $type): array => [
+            'total' => round((float) ($totals[$type]->total ?? 0), 2),
+            'paid' => round((float) ($totals[$type]->paid ?? 0), 2),
+            'remaining' => round((float) (($totals[$type]->total ?? 0) - ($totals[$type]->paid ?? 0)), 2),
+            'count' => (int) ($totals[$type]->count ?? 0),
+            'open_count' => (int) ($statusCounts[$type]->firstWhere('status', 'open')?->count ?? 0)
+                + (int) ($statusCounts[$type]->firstWhere('status', 'partial')?->count ?? 0),
+            'paid_count' => (int) ($statusCounts[$type]->firstWhere('status', 'paid')?->count ?? 0),
+        ];
 
         return [
-            'payable' => [
-                'total' => round($payableTotal, 2),
-                'paid' => round($payablePaid, 2),
-                'remaining' => round($payableTotal - $payablePaid, 2),
-                'count' => $payables->count(),
-                'open_count' => $payables->whereIn('status', ['open', 'partial'])->count(),
-                'paid_count' => $payables->where('status', 'paid')->count(),
-            ],
-            'receivable' => [
-                'total' => round($receivableTotal, 2),
-                'paid' => round($receivablePaid, 2),
-                'remaining' => round($receivableTotal - $receivablePaid, 2),
-                'count' => $receivables->count(),
-                'open_count' => $receivables->whereIn('status', ['open', 'partial'])->count(),
-                'paid_count' => $receivables->where('status', 'paid')->count(),
-            ],
+            'payable' => $build('payable'),
+            'receivable' => $build('receivable'),
         ];
     }
 
@@ -69,7 +67,8 @@ class HutangPiutangService
 
     public function getDetail(int $storeId, string $type): array
     {
-        $transactions = FinancialTransactionModel::where('store_id', $storeId)
+        $transactions = FinancialTransactionModel::with(['payments' => fn ($q) => $q->orderBy('paid_at')])
+            ->where('store_id', $storeId)
             ->where('type', $type)
             ->whereIn('status', ['open', 'partial'])
             ->where('is_active', true)
@@ -77,9 +76,7 @@ class HutangPiutangService
             ->get();
 
         return $transactions->map(function ($t) {
-            $history = FinancialPaymentHistoryModel::where('financial_transaction_id', $t->id)
-                ->orderBy('paid_at')
-                ->get();
+            $history = $t->payments;
 
             return [
                 'id' => $t->id,

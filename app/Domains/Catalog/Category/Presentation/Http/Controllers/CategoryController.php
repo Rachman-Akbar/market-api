@@ -134,7 +134,7 @@ final class CategoryController extends Controller
 
         return response()->json([
             'success' => true,
-            'catalogGroups' => CatalogGroupResource::collection($catalogGroups),
+            'data' => CatalogGroupResource::collection($catalogGroups),
         ]);
     }
 

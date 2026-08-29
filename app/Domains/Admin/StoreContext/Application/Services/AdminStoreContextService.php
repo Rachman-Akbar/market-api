@@ -47,40 +47,53 @@ class AdminStoreContextService
     {
         $start = $this->startDate($period);
 
-        $subOrders = SubOrderModel::where('store_id', $storeId)
+        $orderRow = SubOrderModel::where('store_id', $storeId)
             ->where('created_at', '>=', $start)
-            ->get();
+            ->selectRaw(
+                "COUNT(*) as total, COALESCE(SUM(total_items_price), 0) as revenue, " .
+                "COALESCE(SUM(shipping_cost), 0) as shipping, COALESCE(SUM(admin_fee), 0) as admin_fees, " .
+                "COALESCE(SUM(seller_net), 0) as seller_net"
+            )
+            ->first();
 
         $store = StoreModel::find($storeId);
 
         $settlements = SellerSettlementModel::where('store_id', $storeId)
             ->where('created_at', '>=', $start)
-            ->get();
+            ->selectRaw(
+                "COUNT(*) as total, COALESCE(SUM(gross_amount), 0) as gross, " .
+                "COALESCE(SUM(admin_fee), 0) as admin_fee, COALESCE(SUM(net_amount), 0) as net"
+            )
+            ->selectRaw("SUM(CASE WHEN status = 'settled' THEN 1 ELSE 0 END) as settled")
+            ->selectRaw("SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending")
+            ->first();
 
-        $products = ProductModel::where('store_id', $storeId)->get();
+        $productRow = ProductModel::where('store_id', $storeId)
+            ->selectRaw("COUNT(*) as total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active")
+            ->first();
 
         return [
             'period' => $period,
             'start_date' => $start->toDateString(),
             'store' => $store ? ['id' => $store->id, 'name' => $store->name, 'status' => $store->status, 'is_active' => (bool) $store->is_active] : null,
             'orders' => [
-                'total' => $subOrders->count(),
-                'revenue' => round($subOrders->sum('total_items_price'), 2),
-                'shipping' => round($subOrders->sum('shipping_cost'), 2),
-                'admin_fees' => round($subOrders->sum('admin_fee'), 2),
-                'seller_net' => round($subOrders->sum('seller_net'), 2),
+                'total' => (int) ($orderRow->total ?? 0),
+                'revenue' => round((float) $orderRow->revenue, 2),
+                'shipping' => round((float) $orderRow->shipping, 2),
+                'admin_fees' => round((float) $orderRow->admin_fees, 2),
+                'seller_net' => round((float) $orderRow->seller_net, 2),
             ],
             'settlements' => [
-                'total' => $settlements->count(),
-                'settled' => $settlements->where('status', 'settled')->count(),
-                'pending' => $settlements->where('status', 'pending')->count(),
-                'gross' => round($settlements->sum('gross_amount'), 2),
-                'admin_fee' => round($settlements->sum('admin_fee'), 2),
-                'net' => round($settlements->sum('net_amount'), 2),
+                'total' => (int) ($settlements->total ?? 0),
+                'settled' => (int) ($settlements->settled ?? 0),
+                'pending' => (int) ($settlements->pending ?? 0),
+                'gross' => round((float) $settlements->gross, 2),
+                'admin_fee' => round((float) $settlements->admin_fee, 2),
+                'net' => round((float) $settlements->net, 2),
             ],
             'products' => [
-                'total' => $products->count(),
-                'active' => $products->where('is_active', true)->count(),
+                'total' => (int) ($productRow->total ?? 0),
+                'active' => (int) ($productRow->active ?? 0),
             ],
         ];
     }
@@ -99,22 +112,23 @@ class AdminStoreContextService
         $start = $this->startDate($period);
         $end = now();
 
-        $subOrders = SubOrderModel::where('store_id', $storeId)
+        $rows = SubOrderModel::where('store_id', $storeId)
             ->whereBetween('created_at', [$start, $end])
-            ->get();
-
-        $byDay = $subOrders->groupBy(fn ($o) => Carbon::parse($o->created_at)->toDateString());
+            ->selectRaw("DATE(created_at) as day, COUNT(*) as orders, COALESCE(SUM(total_items_price), 0) as revenue")
+            ->groupBy('day')
+            ->get()
+            ->keyBy('day');
 
         $trend = [];
         $current = Carbon::parse($start);
 
         while ($current->lte($end)) {
             $day = $current->toDateString();
-            $rows = $byDay[$day] ?? collect();
+            $row = $rows[$day] ?? null;
             $trend[] = [
                 'date' => $day,
-                'orders' => $rows->count(),
-                'revenue' => round($rows->sum('total_items_price'), 2),
+                'orders' => (int) ($row->orders ?? 0),
+                'revenue' => round((float) ($row->revenue ?? 0), 2),
             ];
             $current->addDay();
         }

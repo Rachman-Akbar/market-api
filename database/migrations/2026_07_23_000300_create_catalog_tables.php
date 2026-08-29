@@ -46,7 +46,9 @@ return new class extends Migration
             $table->index(['is_active', 'is_visible_in_menu', 'deleted_at'], 'categories_menu_status_index');
         });
 
-        DB::statement("ALTER TABLE categories ADD CONSTRAINT categories_level_media_check CHECK ((level = 3) OR (image_url IS NULL AND icon_url IS NULL))");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE categories ADD CONSTRAINT categories_level_media_check CHECK ((level = 3) OR (image_url IS NULL AND icon_url IS NULL))");
+        }
 
         Schema::create('product_attributes', function (Blueprint $table): void {
             $table->id();

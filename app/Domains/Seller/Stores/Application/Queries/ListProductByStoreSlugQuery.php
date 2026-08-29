@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Seller\Stores\Application\Queries;
 
 use App\Domains\Seller\Stores\Domain\Repositories\StoreRepositoryInterface;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\CursorPaginator;
 
 final class ListProductByStoreSlugQuery
 {
@@ -16,7 +16,7 @@ final class ListProductByStoreSlugQuery
         $this->storeRepository = $storeRepository;
     }
 
-    public function execute(string $slug, array $filters = []): Collection
+    public function execute(string $slug, array $filters = []): CursorPaginator
     {
         return $this->storeRepository->listProductsByStoreSlug($slug, $filters);
     }

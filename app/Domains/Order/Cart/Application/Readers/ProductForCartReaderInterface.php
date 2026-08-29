@@ -17,4 +17,12 @@ interface ProductForCartReaderInterface
      * Mengambil detail informasi varian produk beserta harga dan SKU.
      */
     public function getVariantDetails(int $productVariantId): ?VariantDetails;
+
+    /**
+     * Mengambil detail banyak varian sekaligus, keyed by variant id.
+     *
+     * @param array<int> $productVariantIds
+     * @return array<int, VariantDetails>
+     */
+    public function getVariantsDetails(array $productVariantIds): array;
 }

@@ -28,12 +28,16 @@ class AdminDashboardService
     {
         $startDate = $this->getStartDate($period);
 
-        $orders = OrderModel::where('created_at', '>=', $startDate)->get();
+        $orderStats = OrderModel::where('created_at', '>=', $startDate)
+            ->selectRaw("COUNT(*) as total_orders, SUM(CASE WHEN status != 'cancelled' THEN total_amount ELSE 0 END) as revenue")
+            ->selectRaw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_orders")
+            ->selectRaw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_orders")
+            ->first();
 
-        $totalRevenue = $orders->where('status', '!=', 'cancelled')->sum('total_amount');
-        $totalOrders = $orders->count();
-        $cancelledOrders = $orders->where('status', 'cancelled')->count();
-        $completedOrders = $orders->where('status', 'completed')->count();
+        $totalOrders = (int) ($orderStats->total_orders ?? 0);
+        $completedOrders = (int) ($orderStats->completed_orders ?? 0);
+        $cancelledOrders = (int) ($orderStats->cancelled_orders ?? 0);
+        $totalRevenue = (float) ($orderStats->revenue ?? 0);
 
         $totalUsers = User::count();
         $newUsers = User::where('created_at', '>=', $startDate)->count();
@@ -88,24 +92,27 @@ class AdminDashboardService
         $startDate = $this->getStartDate($period);
         $endDate = now();
 
-        $orders = OrderModel::where('created_at', '>=', $startDate)
+        $rows = OrderModel::where('created_at', '>=', $startDate)
             ->where('created_at', '<=', $endDate)
-            ->get();
-
-        $daily = $orders->groupBy(fn ($o) => Carbon::parse($o->created_at)->toDateString());
+            ->selectRaw("DATE(created_at) as day, COUNT(*) as orders")
+            ->selectRaw("SUM(CASE WHEN status != 'cancelled' THEN total_amount ELSE 0 END) as revenue")
+            ->selectRaw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
+            ->groupBy('day')
+            ->get()
+            ->keyBy('day');
 
         $trend = [];
         $current = Carbon::parse($startDate);
 
         while ($current->lte($endDate)) {
             $dayStr = $current->toDateString();
-            $dayOrders = $daily[$dayStr] ?? collect();
+            $row = $rows[$dayStr] ?? null;
 
             $trend[] = [
                 'date' => $dayStr,
-                'orders' => $dayOrders->count(),
-                'revenue' => round($dayOrders->where('status', '!=', 'cancelled')->sum('total_amount'), 2),
-                'completed' => $dayOrders->where('status', 'completed')->count(),
+                'orders' => (int) ($row->orders ?? 0),
+                'revenue' => round((float) ($row->revenue ?? 0), 2),
+                'completed' => (int) ($row->completed ?? 0),
             ];
 
             $current->addDay();
@@ -128,22 +135,25 @@ class AdminDashboardService
     {
         $startDate = $this->getStartDate($period);
 
-        $storeStats = SubOrderModel::where('created_at', '>=', $startDate)
-            ->select('store_id', \DB::raw('COUNT(*) as order_count'), \DB::raw('SUM(shipping_cost + total_items_price) as revenue'))
-            ->groupBy('store_id')
+        $storeStats = SubOrderModel::where('sub_orders.created_at', '>=', $startDate)
+            ->leftJoin('stores', 'stores.id', '=', 'sub_orders.store_id')
+            ->select(
+                'sub_orders.store_id',
+                \DB::raw('COALESCE(stores.name, "Unknown") as store_name'),
+                \DB::raw('COUNT(*) as order_count'),
+                \DB::raw('SUM(shipping_cost + total_items_price) as revenue')
+            )
+            ->groupBy('sub_orders.store_id', 'stores.name')
             ->orderByDesc('revenue')
             ->limit($limit)
             ->get();
 
-        return $storeStats->map(function ($stat) {
-            $store = StoreModel::find($stat->store_id);
-            return [
-                'store_id' => $stat->store_id,
-                'store_name' => $store?->name ?? 'Unknown',
-                'order_count' => $stat->order_count,
-                'revenue' => round((float) $stat->revenue, 2),
-            ];
-        })->all();
+        return $storeStats->map(fn ($stat) => [
+            'store_id' => $stat->store_id,
+            'store_name' => $stat->store_name,
+            'order_count' => $stat->order_count,
+            'revenue' => round((float) $stat->revenue, 2),
+        ])->all();
     }
 
     private function getStartDate(string $period): Carbon

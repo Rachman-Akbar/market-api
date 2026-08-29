@@ -115,8 +115,11 @@ final class GetShippingOptionsUseCase
 
         $contexts = [];
 
+        $variantIds = $selectedItems->pluck('product_variant_id')->map(fn ($id) => (int) $id)->all();
+        $detailsMap = $this->productReader->getVariantsDetails($variantIds);
+
         foreach ($selectedItems as $item) {
-            $details = $this->productReader->getVariantDetails((int) $item->product_variant_id);
+            $details = $detailsMap[(int) $item->product_variant_id] ?? null;
 
             if (!$details) {
                 throw new RuntimeException('Data varian produk tidak ditemukan.');

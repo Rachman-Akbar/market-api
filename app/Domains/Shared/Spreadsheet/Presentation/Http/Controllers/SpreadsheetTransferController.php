@@ -826,6 +826,12 @@ final class SpreadsheetTransferController extends Controller
 
     private function persistVoucher(Request $request, array $row): void
     {
+        // TODO(unify): voucher rules are duplicated across the Voucher domain entity,
+        // CreateOrderUseCase::calculateVoucher, and this importer. Not unified yet because
+        // this subset of imported rows overlaps with the (invalid) full set handled by
+        // StoreVoucherRequest/ManageVoucherUseCase, which validates the whole input as a
+        // mandatory create (unique code/name + used_count=0) and would break this importer's
+        // find-by-code upsert semantics. Kept EXACTLY as-is to avoid regressions.
         $role = $this->activeRole($request);
         $scope = $role === 'seller' ? 'store' : strtolower($this->cleanName($row['voucher_scope'] ?? 'platform'));
         $storeId = $role === 'seller'

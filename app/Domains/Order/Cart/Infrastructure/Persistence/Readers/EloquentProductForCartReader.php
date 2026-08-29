@@ -30,6 +30,15 @@ final class EloquentProductForCartReader implements ProductForCartReaderInterfac
 
     public function getVariantDetails(int $productVariantId): ?VariantDetails
     {
+        return $this->getVariantsDetails([$productVariantId])[$productVariantId] ?? null;
+    }
+
+    public function getVariantsDetails(array $productVariantIds): array
+    {
+        if (empty($productVariantIds)) {
+            return [];
+        }
+
         $select = [
             'product_variants.id',
             'product_variants.product_id',
@@ -52,45 +61,55 @@ final class EloquentProductForCartReader implements ProductForCartReaderInterfac
             }
         }
 
-        $variant = DB::table('product_variants')
+        $variants = DB::table('product_variants')
             ->join('products', 'products.id', '=', 'product_variants.product_id')
             ->join('stores', 'stores.id', '=', 'product_variants.store_id')
             ->select($select)
-            ->where('product_variants.id', $productVariantId)
+            ->whereIn('product_variants.id', $productVariantIds)
             ->where('products.is_active', true)
             ->where('products.status', 'published')
             ->whereNull('products.deleted_at')
             ->where('stores.status', 'approved')
             ->where('stores.is_active', true)
             ->whereNull('stores.deleted_at')
-            ->first();
+            ->get();
 
-        if (!$variant) {
-            return null;
+        if ($variants->isEmpty()) {
+            return [];
         }
 
-        $attributes = DB::table('product_variant_values')
+        // Fetch all variant attributes in a single query.
+        $attributeRows = DB::table('product_variant_values')
             ->join('product_attributes', 'product_variant_values.attribute_id', '=', 'product_attributes.id')
-            ->where('product_variant_values.variant_id', $productVariantId)
-            ->pluck('product_variant_values.value', 'product_attributes.name')
-            ->toArray();
+            ->whereIn('product_variant_values.variant_id', $variants->pluck('id'))
+            ->get(['product_variant_values.variant_id', 'product_variant_values.value', 'product_attributes.name']);
 
-        $rawWeight = $weightColumn ? (float) ($variant->product_weight ?? 0) : 0;
-        $weight = $rawWeight > 0 ? (int) ceil($rawWeight) : 1000;
+        $attributesByVariant = [];
+        foreach ($attributeRows as $attributeRow) {
+            $attributesByVariant[$attributeRow->variant_id][$attributeRow->name] = $attributeRow->value;
+        }
 
-        return new VariantDetails(
-            id: (int) $variant->id,
-            productId: (int) $variant->product_id,
-            name: (string) ($variant->variant_name ?: $variant->product_name),
-            productName: (string) $variant->product_name,
-            storeId: (int) $variant->store_id,
-            storeName: (string) $variant->store_name,
-            sku: (string) $variant->sku,
-            price: new Money((int) $variant->price),
-            stock: (int) $variant->stock,
-            weight: max(1, $weight),
-            thumbnail: $variant->thumbnail ? (string) $variant->thumbnail : null,
-            attributes: $attributes
-        );
+        $details = [];
+        foreach ($variants as $variant) {
+            $rawWeight = $weightColumn ? (float) ($variant->product_weight ?? 0) : 0;
+            $weight = $rawWeight > 0 ? (int) ceil($rawWeight) : 1000;
+
+            $details[(int) $variant->id] = new VariantDetails(
+                id: (int) $variant->id,
+                productId: (int) $variant->product_id,
+                name: (string) ($variant->variant_name ?: $variant->product_name),
+                productName: (string) $variant->product_name,
+                storeId: (int) $variant->store_id,
+                storeName: (string) $variant->store_name,
+                sku: (string) $variant->sku,
+                price: new Money((int) $variant->price),
+                stock: (int) $variant->stock,
+                weight: max(1, $weight),
+                thumbnail: $variant->thumbnail ? (string) $variant->thumbnail : null,
+                attributes: $attributesByVariant[(int) $variant->id] ?? []
+            );
+        }
+
+        return $details;
     }
 }

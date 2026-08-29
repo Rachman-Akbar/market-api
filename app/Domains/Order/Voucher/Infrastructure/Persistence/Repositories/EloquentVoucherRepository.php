@@ -16,6 +16,7 @@ final class EloquentVoucherRepository implements VoucherRepositoryInterface
     {
         $includeInactive = (bool) ($filters['include_inactive'] ?? false);
         $storeIds = array_values(array_unique(array_map('intval', (array) ($filters['store_ids'] ?? []))));
+        $limit = max(1, min(100, (int) ($filters['limit'] ?? 100)));
 
         return Voucher::query()
             ->with('store:id,name,status,is_active')
@@ -51,6 +52,7 @@ final class EloquentVoucherRepository implements VoucherRepositoryInterface
                     });
             })
             ->orderByDesc('created_at')
+            ->limit($limit)
             ->get();
     }
 

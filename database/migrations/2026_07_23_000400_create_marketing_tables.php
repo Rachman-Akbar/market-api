@@ -75,7 +75,9 @@ return new class extends Migration
             $table->index(['is_active', 'starts_at', 'ends_at', 'deleted_at'], 'vouchers_period_index');
         });
 
-        DB::statement("ALTER TABLE vouchers ADD CONSTRAINT vouchers_scope_store_check CHECK ((voucher_scope = 'platform' AND store_id IS NULL) OR (voucher_scope = 'store' AND store_id IS NOT NULL))");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE vouchers ADD CONSTRAINT vouchers_scope_store_check CHECK ((voucher_scope = 'platform' AND store_id IS NULL) OR (voucher_scope = 'store' AND store_id IS NOT NULL))");
+        }
     }
 
     public function down(): void

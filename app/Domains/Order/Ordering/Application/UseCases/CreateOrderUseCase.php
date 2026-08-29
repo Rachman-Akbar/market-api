@@ -65,10 +65,13 @@ class CreateOrderUseCase
             throw new RuntimeException('Sebagian item checkout tidak ditemukan di keranjang Anda.');
         }
 
+        $variantIds = $selectedItems->pluck('product_variant_id')->map(fn ($id) => (int) $id)->all();
+        $detailsMap = $this->productReader->getVariantsDetails($variantIds);
+
         $groups = [];
         $itemsTotal = 0.0;
         foreach ($selectedItems as $cartItem) {
-            $details = $this->productReader->getVariantDetails((int) $cartItem->product_variant_id);
+            $details = $detailsMap[(int) $cartItem->product_variant_id] ?? null;
             if (!$details) {
                 throw new RuntimeException('Data varian produk tidak ditemukan.');
             }

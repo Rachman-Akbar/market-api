@@ -70,10 +70,10 @@ final class StoreController extends Controller
     {
         $products = $this->listProductByStoreSlugQuery->execute(
             $slug,
-            $request->only(['search', 'category_id'])
+            $request->only(['search', 'category_id', 'per_page', 'cursor'])
         );
 
-        return response()->json(['data' => $products->values()]);
+        return response()->json($products->toArray());
     }
 
     public function registerStore(Request $request, CreateStoreUseCase $useCase): JsonResponse

@@ -11,6 +11,7 @@ use App\Domains\Shared\Infrastructure\Persistence\Concerns\HasActiveStatus;
 use App\Domains\Shared\Infrastructure\Persistence\Concerns\TracksUserChanges;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class FinancialTransactionModel extends Model
@@ -67,5 +68,10 @@ final class FinancialTransactionModel extends Model
     public function counterparty(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(FinancialPaymentHistoryModel::class, 'financial_transaction_id');
     }
 }
