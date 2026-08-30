@@ -132,8 +132,8 @@ final class StoreController extends Controller
             'detail.shipping_policy' => [$creating ? 'required' : 'nullable', 'string', 'min:10'],
             'detail.return_policy' => [$creating ? 'required' : 'nullable', 'string', 'min:10'],
             'detail.open_days' => [$creating ? 'required' : 'nullable', 'string', 'max:120'],
-            'detail.open_time' => [$creating ? 'required' : 'nullable', 'date_format:H:i'],
-            'detail.close_time' => [$creating ? 'required' : 'nullable', 'date_format:H:i', 'after:detail.open_time'],
+            'detail.open_time' => [$creating ? 'required' : 'nullable', $this->timeRule()],
+            'detail.close_time' => [$creating ? 'required' : 'nullable', $this->timeRule(), 'after:detail.open_time'],
             'detail.whatsapp_url' => ['nullable', 'url', 'max:255'],
             'detail.instagram_url' => ['nullable', 'url', 'max:255'],
             'detail.tiktok_url' => ['nullable', 'url', 'max:255'],
@@ -156,8 +156,54 @@ final class StoreController extends Controller
         return $validated;
     }
 
+    private function timeRule(): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail): void {
+            $time = is_string($value) ? trim($value) : '';
+
+            if ($time === '') {
+                return;
+            }
+
+            if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $time) || !$this->isValidTime($time)) {
+                $fail('The :attribute field must match the format H:i.');
+            }
+        };
+    }
+
+    private function isValidTime(string $value): bool
+    {
+        $parts = array_map('intval', explode(':', $value));
+
+        if ($parts[0] < 0 || $parts[0] > 23) {
+            return false;
+        }
+
+        if ($parts[1] < 0 || $parts[1] > 59) {
+            return false;
+        }
+
+        if (isset($parts[2]) && ($parts[2] < 0 || $parts[2] > 59)) {
+            return false;
+        }
+
+        return true;
+    }
+
     private function detailData(array $validated): array
     {
-        return Arr::where($validated['detail'] ?? [], fn (mixed $value): bool => $value !== null && $value !== '');
+        $detail = $validated['detail'] ?? [];
+
+        foreach (['open_time', 'close_time'] as $key) {
+            if (isset($detail[$key]) && is_string($detail[$key])) {
+                $time = str_contains($detail[$key], ':')
+                    ? implode(':', array_slice(explode(':', $detail[$key]), 0, 2))
+                    : $detail[$key];
+
+                $detail[$key] = trim($time);
+            }
+        }
+
+        return Arr::where($detail, fn (mixed $value): bool => $value !== null && $value !== '');
     }
 }

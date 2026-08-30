@@ -40,10 +40,13 @@ class PpoTransactionController extends Controller
         }
 
         try {
+            $user = $request->user();
             $result = $this->placeOrder->execute(
-                $request->user()->id,
+                $user->id,
                 (int) $validated['product_id'],
                 $validated['customer_id'],
+                $user->name ?? null,
+                $user->email ?? null,
             );
         } catch (\RuntimeException $e) {
             return response()->json([
@@ -56,8 +59,8 @@ class PpoTransactionController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => $this->storeMessage($result['status']),
-            'data' => $this->transactionArray($tx),
+            'message' => $result['message'],
+            'data' => $this->transactionArray($tx, false, true),
         ], 201);
     }
 
@@ -165,16 +168,7 @@ class PpoTransactionController extends Controller
         ]);
     }
 
-    private function storeMessage(string $status): string
-    {
-        return match ($status) {
-            'success' => 'Transaksi berhasil diproses.',
-            'failed' => 'Transaksi gagal diproses, silakan coba lagi.',
-            default => 'Transaksi sedang diproses, mohon menunggu.',
-        };
-    }
-
-    private function transactionArray(PpoTransactionModel $tx, bool $withBreakdown = false): array
+    private function transactionArray(PpoTransactionModel $tx, bool $withBreakdown = false, bool $withPayment = false): array
     {
         $data = [
             'id' => $tx->id,
@@ -186,10 +180,13 @@ class PpoTransactionController extends Controller
             'customer_name' => $tx->customer_name,
             'total_amount' => (float) $tx->total_amount,
             'status' => $tx->status,
+            'payment_status' => $tx->payment_status ?? 'pending',
+            'payment_method' => $tx->payment_method,
             'provider_message' => $tx->provider_message,
             'tr_id' => $tx->tr_id,
             'sn' => $tx->sn,
             'created_at' => $tx->created_at?->toDateTimeString(),
+            'paid_at' => $tx->paid_at?->toDateTimeString(),
             'completed_at' => $tx->completed_at?->toDateTimeString(),
             'operator' => $tx->operator ? [
                 'id' => $tx->operator->id,
@@ -197,6 +194,12 @@ class PpoTransactionController extends Controller
                 'icon_url' => $tx->operator->icon_url,
             ] : null,
         ];
+
+        if ($withPayment) {
+            $data['snap_token'] = $tx->midtrans_snap_token;
+            $data['midtrans_client_key'] = config('midtrans.client_key');
+            $data['midtrans_is_production'] = (bool) config('midtrans.is_production');
+        }
 
         return $data;
     }

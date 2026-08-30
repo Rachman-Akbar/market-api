@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\PPOB\Application\UseCases;
 
-use App\Domains\PPOB\Application\Services\IakProviderService;
-use App\Domains\PPOB\Application\Services\PpoFinanceService;
+use App\Domains\Order\Payment\Infrastructure\Services\MidtransService;
 use App\Domains\PPOB\Application\Services\PricingEngine;
 use App\Domains\PPOB\Domain\Entities\PpoTransaction;
 use App\Domains\PPOB\Domain\Entities\PpoTransactionStatus;
@@ -16,8 +15,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Handles placing a prepaid PPOB order and advancing it through the provider
- * lifecycle with a unique idempotency reference.
+ * Handles placing a prepaid PPOB order. A Midtrans Snap token is created and
+ * the transaction is held in a "pending payment" state until paid; the actual
+ * provider top-up is submitted after payment is confirmed.
  */
 class PlacePpoOrderUseCase
 {
@@ -25,14 +25,13 @@ class PlacePpoOrderUseCase
         private PpoProductRepositoryInterface $products,
         private PpoTransactionRepositoryInterface $transactions,
         private PricingEngine $pricing,
-        private IakProviderService $provider,
-        private PpoFinanceService $finance,
+        private MidtransService $midtrans,
     ) {}
 
     /**
-     * @return array{transaction: PpoTransactionModel|PpoTransaction, status: string, message: string, is_new: bool}
+     * @return array{transaction: PpoTransactionModel|PpoTransaction, status: string, message: string, is_new: bool, snap_token: ?string, total_amount: float}
      */
-    public function execute(string $userId, int $productId, string $customerId): array
+    public function execute(string $userId, int $productId, string $customerId, ?string $customerName = null, ?string $customerEmail = null): array
     {
         $product = $this->products->findById($productId);
 
@@ -40,12 +39,24 @@ class PlacePpoOrderUseCase
             throw new \RuntimeException('Produk tidak tersedia.', 404);
         }
 
+        if ((string) config('midtrans.server_key') === '') {
+            throw new \RuntimeException('Payment gateway belum dikonfigurasi.', 422);
+        }
+
         $priced = $this->pricing->priceProduct($product);
         $breakdown = $this->pricing->buildBreakdown($priced['product']);
 
         $referenceId = $this->generateReferenceId();
 
-        $transaction = DB::transaction(function () use ($userId, $product, $customerId, $referenceId, $breakdown) {
+        $snapToken = $this->midtrans->createSnapToken([
+            'order_id' => $referenceId,
+            'gross_amount' => (int) round($breakdown['total_amount']),
+            'user_id' => $userId,
+            'customer_name' => $customerName ?? 'Customer',
+            'customer_email' => $customerEmail ?? '',
+        ]);
+
+        $transaction = DB::transaction(function () use ($userId, $product, $customerId, $referenceId, $breakdown, $snapToken) {
             $tx = PpoTransactionModel::create([
                 'reference_id' => $referenceId,
                 'user_id' => $userId,
@@ -63,6 +74,9 @@ class PlacePpoOrderUseCase
                 'revenue' => $breakdown['revenue'],
                 'net_profit' => $breakdown['net_profit'],
                 'total_amount' => $breakdown['total_amount'],
+                'payment_method' => 'midtrans',
+                'payment_status' => 'pending',
+                'midtrans_snap_token' => $snapToken,
                 'status' => PpoTransactionStatus::Pending->value,
                 'created_by' => $userId,
                 'updated_by' => $userId,
@@ -72,62 +86,14 @@ class PlacePpoOrderUseCase
             return $tx;
         });
 
-        // Submit to IAK outside the transaction lock (network I/O).
-        $result = $this->provider->submitTopUp(
-            $referenceId,
-            $customerId,
-            $product->providerProductCode,
-            $transaction->id,
-        );
-
-        $this->finalizePrepaid($transaction, $result);
-
         return [
             'transaction' => $transaction->fresh(),
             'status' => $transaction->status,
-            'message' => $result['message'] ?? null,
+            'message' => 'Silakan selesaikan pembayaran Anda.',
             'is_new' => true,
+            'snap_token' => $snapToken,
+            'total_amount' => (float) $breakdown['total_amount'],
         ];
-    }
-
-    private function finalizePrepaid(PpoTransactionModel $tx, array $result): void
-    {
-        if ($result['status'] === 'success') {
-            DB::transaction(function () use ($tx, $result) {
-                $tx->status = PpoTransactionStatus::Success->value;
-                $tx->provider_status = $result['provider_status'];
-                $tx->provider_message = $result['message'];
-                $tx->tr_id = $result['tr_id'];
-                $tx->sn = $result['sn'];
-                $tx->pin = $result['pin'];
-                $tx->provider_raw_response = $result['response'];
-                $tx->completed_at = now();
-                $tx->paid_at = now();
-                $tx->save();
-
-                $this->finance->postForSuccess($tx);
-            });
-
-            return;
-        }
-
-        if ($result['status'] === 'failed') {
-            $tx->status = PpoTransactionStatus::Failed->value;
-            $tx->provider_status = $result['provider_status'];
-            $tx->provider_message = $result['message'];
-            $tx->provider_raw_response = $result['response'];
-            $tx->save();
-
-            return;
-        }
-
-        // processing / pending: await IAK callback.
-        $tx->status = PpoTransactionStatus::Processing->value;
-        $tx->provider_status = $result['provider_status'];
-        $tx->provider_message = $result['message'];
-        $tx->tr_id = $result['tr_id'];
-        $tx->provider_raw_response = $result['response'];
-        $tx->save();
     }
 
     private function generateReferenceId(): string
