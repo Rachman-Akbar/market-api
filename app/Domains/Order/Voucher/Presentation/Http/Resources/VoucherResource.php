@@ -20,6 +20,13 @@ final class VoucherResource extends JsonResource
                 : Storage::disk('public')->url((string) $this->image);
         }
 
+        $ownership = (array) $request->attributes->get('voucher_ownership', []);
+        $missionRewardIds = (array) ($ownership['mission_reward_ids'] ?? []);
+        $ownedIds = (array) ($ownership['owned_ids'] ?? []);
+
+        $isMissionReward = isset($missionRewardIds[(int) $this->id]);
+        $isOwned = ! $isMissionReward || isset($ownedIds[(int) $this->id]);
+
         return [
             'id' => $this->id,
             'code' => $this->code,
@@ -42,6 +49,9 @@ final class VoucherResource extends JsonResource
             'storeId' => $this->store_id,
             'storeName' => $this->relationLoaded('store') ? $this->store?->name : null,
             'isActive' => $this->is_active,
+            'isMissionReward' => $isMissionReward,
+            'isOwned' => $isOwned,
+            'isLocked' => $isMissionReward && ! $isOwned,
             'createdAt' => $this->created_at?->toDateTimeString(),
         ];
     }

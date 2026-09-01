@@ -16,6 +16,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
@@ -45,9 +46,37 @@ final class VoucherController extends Controller
             'store_ids' => $storeIds,
         ];
 
+        $vouchers = $this->useCase->listVouchers($filters);
+        $authUser = auth('sanctum')->user();
+        $userId = $authUser?->getAuthIdentifier();
+
+        $missionRewardIds = DB::table('missions')
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->whereNotNull('voucher_id')
+            ->pluck('voucher_id')
+            ->map(fn (mixed $value): int => (int) $value)
+            ->flip()
+            ->all();
+
+        $ownedVoucherIds = $userId === null
+            ? []
+            : DB::table('user_vouchers')
+                ->where('user_id', $userId)
+                ->where('status', 'available')
+                ->pluck('voucher_id')
+                ->map(fn (mixed $value): int => (int) $value)
+                ->flip()
+                ->all();
+
+        $request->attributes->set('voucher_ownership', [
+            'mission_reward_ids' => $missionRewardIds,
+            'owned_ids' => $ownedVoucherIds,
+        ]);
+
         return response()->json([
             'success' => true,
-            'data' => VoucherResource::collection($this->useCase->listVouchers($filters)),
+            'data' => VoucherResource::collection($vouchers),
         ]);
     }
 

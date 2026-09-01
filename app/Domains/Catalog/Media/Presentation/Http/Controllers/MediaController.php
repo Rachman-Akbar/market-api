@@ -21,6 +21,17 @@ final class MediaController extends Controller
         $scope = trim((string) ($validated['scope'] ?? 'general'));
         $scope = trim(Str::slug(str_replace('/', '-', $scope)), '-');
         $scope = $scope !== '' ? $scope : 'general';
+
+        $activeRole = strtolower((string) $request->attributes->get('active_role', ''));
+        if (! in_array($activeRole, ['seller', 'admin'], true)) {
+            $allowedScopes = ['reviews', 'profiles', 'general'];
+            if (! in_array($scope, $allowedScopes, true)) {
+                return response()->json([
+                    'message' => 'Forbidden. Role anda tidak diizinkan untuk mengunggah pada scope tersebut.',
+                ], 403);
+            }
+        }
+
         $file = $request->file('image');
         $path = $file->store("marketplace/{$scope}", 'public');
         $publicPath = '/storage/'.ltrim($path, '/');
