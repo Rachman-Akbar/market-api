@@ -23,7 +23,7 @@ class RajaOngkirShippingCalculator implements ShippingCalculatorInterface
             return $service === '' || strtoupper($option['service']) === $service;
         });
 
-        if (!$matched) {
+        if (! $matched) {
             throw new RuntimeException('Layanan ongkir yang dipilih tidak tersedia untuk rute ini.');
         }
 
@@ -86,7 +86,7 @@ class RajaOngkirShippingCalculator implements ShippingCalculatorInterface
             }
         }
 
-        if (!$rows && is_array($groups) && array_is_list($groups)) {
+        if (! $rows && is_array($groups) && array_is_list($groups)) {
             $rows = $groups;
         }
 
@@ -99,7 +99,7 @@ class RajaOngkirShippingCalculator implements ShippingCalculatorInterface
         $options = [];
 
         foreach ($rows as $row) {
-            if (!is_array($row)) {
+            if (! is_array($row)) {
                 continue;
             }
 
@@ -127,7 +127,7 @@ class RajaOngkirShippingCalculator implements ShippingCalculatorInterface
                 continue;
             }
 
-            if ($allowedCouriers && !in_array($courier, $allowedCouriers, true)) {
+            if ($allowedCouriers && ! in_array($courier, $allowedCouriers, true)) {
                 continue;
             }
 
@@ -139,7 +139,7 @@ class RajaOngkirShippingCalculator implements ShippingCalculatorInterface
             );
 
             $options[] = [
-                'id' => $courier . ':' . strtolower($service),
+                'id' => $courier.':'.strtolower($service),
                 'courier' => $courier,
                 'courier_label' => trim((string) ($row['name'] ?? '')) ?: strtoupper($courier),
                 'service' => $service,
@@ -153,7 +153,7 @@ class RajaOngkirShippingCalculator implements ShippingCalculatorInterface
             ];
         }
 
-        if (!$options) {
+        if (! $options) {
             throw new RuntimeException('API RajaOngkir tidak mengembalikan layanan yang dapat digunakan.');
         }
 
@@ -185,7 +185,7 @@ class RajaOngkirShippingCalculator implements ShippingCalculatorInterface
         $baseUrl = preg_replace('#/destination/domestic-destination$#', '', $baseUrl) ?? $baseUrl;
         $baseUrl = preg_replace('#/calculate$#', '', $baseUrl) ?? $baseUrl;
 
-        return rtrim($baseUrl, '/') . '/calculate/domestic-cost';
+        return rtrim($baseUrl, '/').'/calculate/domestic-cost';
     }
 
     private function courierCodes(array $allowedCouriers): array

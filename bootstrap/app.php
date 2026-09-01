@@ -1,9 +1,11 @@
 <?php
 
+use App\Domains\DomainServiceProvider;
 use App\Domains\Identity\Auth\Infrastructure\Middleware\ValidateFirebaseToken;
 use App\Domains\Identity\User\Infrastructure\Middleware\EnsureActiveRole;
 use App\Domains\Identity\User\Infrastructure\Middleware\EnsureEmailIsVerified;
 use App\Domains\Identity\User\Infrastructure\Middleware\EnsureUserHasRole;
+use App\Infrastructure\Logging\Middleware\RequestLogMiddleware;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -20,10 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withProviders([
-        App\Domains\DomainServiceProvider::class,
+        DomainServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(HandleCors::class);
+        $middleware->append(RequestLogMiddleware::class);
 
         $middleware->alias([
             'firebase.token' => ValidateFirebaseToken::class,

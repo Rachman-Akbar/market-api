@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Catalog\Banner\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Str;
 
 final class BannerRequest extends FormRequest
 {

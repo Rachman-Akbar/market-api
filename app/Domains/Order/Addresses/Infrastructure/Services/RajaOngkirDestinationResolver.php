@@ -19,7 +19,7 @@ final class RajaOngkirDestinationResolver implements DestinationResolverInterfac
         $target = $this->normalizeAddress($address);
         $this->validateTarget($target);
 
-        $cacheKey = 'rajaongkir:destination:' . hash(
+        $cacheKey = 'rajaongkir:destination:'.hash(
             'sha256',
             json_encode($target, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
         );
@@ -83,17 +83,18 @@ final class RajaOngkirDestinationResolver implements DestinationResolverInterfac
                     ?? $response->json('message')
                     ?? 'RajaOngkir gagal mencari tujuan logistik.'
                 );
+
                 continue;
             }
 
             $rows = $response->json('data');
 
-            if (!is_array($rows)) {
+            if (! is_array($rows)) {
                 continue;
             }
 
             foreach ($rows as $row) {
-                if (!is_array($row) || !isset($row['id'])) {
+                if (! is_array($row) || ! isset($row['id'])) {
                     continue;
                 }
 
@@ -165,15 +166,14 @@ final class RajaOngkirDestinationResolver implements DestinationResolverInterfac
                 return $candidate;
             })
             ->filter(
-                fn (array $candidate): bool =>
-                    (bool) ($candidate['_accepted'] ?? false)
+                fn (array $candidate): bool => (bool) ($candidate['_accepted'] ?? false)
             )
             ->sortByDesc('_score')
             ->values();
 
         $best = $ranked->first();
 
-        if (!$best) {
+        if (! $best) {
             return null;
         }
 
@@ -373,7 +373,7 @@ final class RajaOngkirDestinationResolver implements DestinationResolverInterfac
                 return $baseUrl;
             }
 
-            return $baseUrl . '/destination/domestic-destination';
+            return $baseUrl.'/destination/domestic-destination';
         }
 
         $baseUrl = rtrim(
@@ -397,7 +397,7 @@ final class RajaOngkirDestinationResolver implements DestinationResolverInterfac
             return $baseUrl;
         }
 
-        return $baseUrl . '/destination/domestic-destination';
+        return $baseUrl.'/destination/domestic-destination';
     }
 
     private function client(string $apiKey): PendingRequest

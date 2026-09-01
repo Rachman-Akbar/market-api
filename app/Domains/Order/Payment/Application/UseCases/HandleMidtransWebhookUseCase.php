@@ -20,7 +20,7 @@ final class HandleMidtransWebhookUseCase
     public function execute(array $payload): void
     {
         foreach (['order_id', 'status_code', 'gross_amount', 'transaction_status', 'signature_key'] as $field) {
-            if (!isset($payload[$field]) || $payload[$field] === '') {
+            if (! isset($payload[$field]) || $payload[$field] === '') {
                 throw new RuntimeException("Payload Midtrans tidak memiliki field {$field}.");
             }
         }
@@ -38,13 +38,13 @@ final class HandleMidtransWebhookUseCase
             throw new RuntimeException('MIDTRANS_SERVER_KEY belum dikonfigurasi.');
         }
 
-        $localSignature = hash('sha512', $orderNumber . $statusCode . $grossAmount . $serverKey);
-        if (!hash_equals($localSignature, $incomingSignature)) {
+        $localSignature = hash('sha512', $orderNumber.$statusCode.$grossAmount.$serverKey);
+        if (! hash_equals($localSignature, $incomingSignature)) {
             throw new RuntimeException('Signature Midtrans tidak valid.');
         }
 
         $order = $this->orderRepository->findByOrderNumber($orderNumber);
-        if (!$order) {
+        if (! $order) {
             throw new RuntimeException("Order {$orderNumber} tidak ditemukan.");
         }
 

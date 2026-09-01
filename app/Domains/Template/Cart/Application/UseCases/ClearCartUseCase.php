@@ -10,9 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 final readonly class ClearCartUseCase
 {
-    public function __construct(private CartRepositoryInterface $carts)
-    {
-    }
+    public function __construct(private CartRepositoryInterface $carts) {}
 
     public function execute(string $userId): CartSummaryData
     {

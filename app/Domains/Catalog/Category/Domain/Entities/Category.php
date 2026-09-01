@@ -37,7 +37,7 @@ final class Category
         $level = $parent ? $parent->level() + 1 : 1;
         $parentId = $parent?->id();
         $finalCatalogGroupId = $parent?->catalogGroupId() ?? $catalogGroupId;
-        $fullSlug = $parent ? $parent->fullSlug() . '/' . $slug : $slug;
+        $fullSlug = $parent ? $parent->fullSlug().'/'.$slug : $slug;
 
         return new self(
             id: null,
@@ -119,7 +119,7 @@ final class Category
         $this->parentId = $parent->id();
         $this->catalogGroupId = $parent->catalogGroupId();
         $this->level = $parent->level() + 1;
-        $this->fullSlug = $parent->fullSlug() . '/' . $this->slug;
+        $this->fullSlug = $parent->fullSlug().'/'.$this->slug;
     }
 
     public function setId(int $id): void

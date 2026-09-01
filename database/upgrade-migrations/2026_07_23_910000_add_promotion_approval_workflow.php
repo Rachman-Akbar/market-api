@@ -80,9 +80,7 @@ return new class extends Migration
         );
     }
 
-    public function down(): void
-    {
-    }
+    public function down(): void {}
 
     private function addIndexIfMissing(string $table, string $index, array $columns): void
     {

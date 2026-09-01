@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Seller\Finance\Application\Services;
 
 use App\Domains\Seller\Finance\Domain\Repositories\FinancialTransactionRepositoryInterface;
-use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialTransactionModel;
 use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialPaymentHistoryModel;
+use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialTransactionModel;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -30,7 +30,7 @@ final class FinancialTransactionService
     public function save(array $data, ?int $id, ?int $sellerStoreId): FinancialTransactionModel
     {
         return DB::transaction(function () use ($data, $id, $sellerStoreId): FinancialTransactionModel {
-            $model = $id ? $this->find($id, $sellerStoreId) : new FinancialTransactionModel();
+            $model = $id ? $this->find($id, $sellerStoreId) : new FinancialTransactionModel;
             $storeId = $sellerStoreId ?? ($data['store_id'] ?? null);
             $orderId = isset($data['order_id']) ? (int) $data['order_id'] : null;
 
@@ -120,7 +120,9 @@ final class FinancialTransactionService
 
             $balanceBefore = max(0, (float) $model->amount - (float) $model->paid_amount);
             $paymentAmount = min($balanceBefore, max(0, $amount));
-            if ($paymentAmount <= 0) { throw new InvalidArgumentException('Transaksi sudah lunas atau nominal pembayaran tidak valid.'); }
+            if ($paymentAmount <= 0) {
+                throw new InvalidArgumentException('Transaksi sudah lunas atau nominal pembayaran tidak valid.');
+            }
             $model->paid_amount = min((float) $model->amount, (float) $model->paid_amount + $paymentAmount);
             $model->status = $this->resolveStatus($model->type, (float) $model->amount, (float) $model->paid_amount, $model->status);
             $model->settled_at = $model->status === 'paid' ? now() : null;
@@ -138,6 +140,7 @@ final class FinancialTransactionService
                 'notes' => $paymentData['notes'] ?? null,
                 'paid_at' => $paymentData['paid_at'] ?? now(),
             ]);
+
             return $saved;
         });
     }
@@ -145,6 +148,7 @@ final class FinancialTransactionService
     public function paymentHistory(int $id, ?int $storeId)
     {
         $this->find($id, $storeId);
+
         return FinancialPaymentHistoryModel::query()->where('financial_transaction_id', $id)->latest('paid_at')->get();
     }
 
@@ -172,6 +176,6 @@ final class FinancialTransactionService
 
     private function referenceNumber(string $type): string
     {
-        return strtoupper(substr($type, 0, 3)) . '-' . now()->format('YmdHis') . '-' . Str::upper(Str::random(5));
+        return strtoupper(substr($type, 0, 3)).'-'.now()->format('YmdHis').'-'.Str::upper(Str::random(5));
     }
 }

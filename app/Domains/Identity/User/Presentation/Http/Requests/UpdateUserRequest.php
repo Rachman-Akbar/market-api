@@ -49,6 +49,7 @@ final class UpdateUserRequest extends FormRequest
             'is_email_verified' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
             'banned_at' => ['sometimes', 'nullable', 'date'],
+            'verification_code' => ['sometimes', 'string', 'digits:6'],
             'role_ids' => ['nullable', 'array'],
             'role_ids.*' => [
                 'integer',

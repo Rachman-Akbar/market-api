@@ -78,7 +78,7 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
     {
         $model = $catalogGroup->id()
             ? CatalogGroupModel::query()->findOrFail($catalogGroup->id())
-            : new CatalogGroupModel();
+            : new CatalogGroupModel;
 
         $model->name = $catalogGroup->name();
         $model->slug = $catalogGroup->slug();

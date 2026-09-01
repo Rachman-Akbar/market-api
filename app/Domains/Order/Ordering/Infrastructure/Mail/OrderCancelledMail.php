@@ -40,7 +40,7 @@ final class OrderCancelledMail extends Mailable implements ShouldQueue
                 'orderNumber' => $this->order->orderNumber,
                 'totalAmount' => number_format($this->order->getFinalPay(), 0, ',', '.'),
                 'reason' => $this->reason,
-                'orderUrl' => config('app.frontend_url') . "/orders/{$this->order->id}",
+                'orderUrl' => config('app.frontend_url')."/orders/{$this->order->id}",
             ],
         );
     }

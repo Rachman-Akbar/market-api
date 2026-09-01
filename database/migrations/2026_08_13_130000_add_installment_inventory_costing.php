@@ -17,9 +17,7 @@ return new class extends Migration
         $this->ensureProductMaterials();
     }
 
-    public function down(): void
-    {
-    }
+    public function down(): void {}
 
     private function ensureFinancialPaymentHistories(): void
     {

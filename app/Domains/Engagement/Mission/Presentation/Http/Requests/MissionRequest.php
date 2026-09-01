@@ -11,6 +11,7 @@ use Illuminate\Validation\Rule;
 final class MissionRequest extends FormRequest
 {
     use ResolvesActiveRole;
+
     public function authorize(): bool
     {
         return $this->hasActiveRole($this, 'admin');

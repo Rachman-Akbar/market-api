@@ -41,7 +41,7 @@ final class OrderConfirmedMail extends Mailable implements ShouldQueue
                 'orderType' => $this->order->orderType,
                 'paymentMethod' => $this->order->paymentMethod ?? '-',
                 'shippingAddress' => $this->order->shippingAddress,
-                'orderUrl' => config('app.frontend_url') . "/orders/{$this->order->id}",
+                'orderUrl' => config('app.frontend_url')."/orders/{$this->order->id}",
             ],
         );
     }

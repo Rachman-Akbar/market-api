@@ -4,8 +4,8 @@ namespace App\Domains\Order\Payment\Application\UseCases;
 
 use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
 use App\Domains\Order\Payment\Infrastructure\Services\MidtransService;
-use Illuminate\Support\Facades\DB;
 use Exception;
+use Illuminate\Support\Facades\DB;
 
 class ProcessPaymentUseCase
 {
@@ -20,8 +20,8 @@ class ProcessPaymentUseCase
             // Lock the order row inside the transaction so concurrent invocations
             // for the same order serialize here (prevents duplicate payment rows).
             $order = $this->orderRepository->findByOrderNumber($orderNumber, true);
-            if (!$order) {
-                throw new Exception("Order tidak ditemukan.");
+            if (! $order) {
+                throw new Exception('Order tidak ditemukan.');
             }
 
             $finalPay = $order->getFinalPay();
@@ -35,7 +35,7 @@ class ProcessPaymentUseCase
                 return [
                     'payment_method' => $existingPending->payment_method,
                     'snap_token' => $order->snapToken,
-                    'status' => 'pending'
+                    'status' => 'pending',
                 ];
             }
 
@@ -52,14 +52,14 @@ class ProcessPaymentUseCase
                 return [
                     'payment_method' => $paymentMethod,
                     'snap_token' => null,
-                    'status' => 'pending'
+                    'status' => 'pending',
                 ];
             }
 
             // 2. Logika Jika Menggunakan Midtrans
             if ($paymentMethod === 'midtrans') {
                 $snapToken = $order->snapToken;
-                if (!$snapToken) {
+                if (! $snapToken) {
                     $snapToken = $this->midtransService->createSnapToken([
                         'order_id' => $order->orderNumber,
                         'gross_amount' => $finalPay,
@@ -81,11 +81,11 @@ class ProcessPaymentUseCase
                 return [
                     'payment_method' => 'midtrans',
                     'snap_token' => $snapToken,
-                    'status' => 'pending'
+                    'status' => 'pending',
                 ];
             }
 
-            throw new Exception("Metode pembayaran tidak dikenali.");
+            throw new Exception('Metode pembayaran tidak dikenali.');
         });
     }
 }

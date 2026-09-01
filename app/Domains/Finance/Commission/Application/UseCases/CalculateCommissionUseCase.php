@@ -8,7 +8,6 @@ use App\Domains\Finance\Commission\Application\Services\AdminFeeConfigService;
 use App\Domains\Finance\Commission\Application\Services\SellerSettlementService;
 use App\Domains\Finance\Commission\Domain\Entities\SellerSettlement;
 use App\Domains\Order\Ordering\Domain\Entities\Order;
-use Illuminate\Support\Facades\DB;
 
 class CalculateCommissionUseCase
 {
@@ -42,6 +41,6 @@ class CalculateCommissionUseCase
 
     private function generateSettlementNumber(): string
     {
-        return 'STL-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -8));
+        return 'STL-'.date('Ymd').'-'.strtoupper(substr(uniqid(), -8));
     }
 }

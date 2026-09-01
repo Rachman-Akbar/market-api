@@ -15,4 +15,3 @@ final class GetCatalogGroupIdQuery
         return $this->repository->findById($id, $includeInactive);
     }
 }
-

@@ -61,7 +61,7 @@ final class EloquentPromotionRepository implements PromotionRepositoryInterface
     {
         $model = $promotion->id
             ? PromotionModel::query()->findOrFail($promotion->id)
-            : new PromotionModel();
+            : new PromotionModel;
 
         $model->fill([
             'store_id' => $promotion->storeId,

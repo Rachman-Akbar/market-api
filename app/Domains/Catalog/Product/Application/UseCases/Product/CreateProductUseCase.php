@@ -76,6 +76,7 @@ final class CreateProductUseCase
                     name: $name,
                     price: (float) ($data['price'] ?? 0),
                     stock: 0,
+                    poStock: max(0, (int) ($data['po_stock'] ?? 0)),
                     isDefault: true
                 ));
             } else {
@@ -91,6 +92,7 @@ final class CreateProductUseCase
                         name: $variantName !== '' ? $variantName : $name,
                         price: (float) ($variantData['price'] ?? 0),
                         stock: 0,
+                        poStock: max(0, (int) ($variantData['po_stock'] ?? 0)),
                         isDefault: array_key_exists('is_default', $variantData)
                             ? (bool) $variantData['is_default']
                             : $index === 0
@@ -133,7 +135,7 @@ final class CreateProductUseCase
         }
 
         if (! empty($payload['primary_category_id'])) {
-            $parts[] = 'CAT' . (string) $payload['primary_category_id'];
+            $parts[] = 'CAT'.(string) $payload['primary_category_id'];
         }
 
         $base = Str::upper(Str::slug(implode('-', array_filter($parts))));
@@ -142,7 +144,7 @@ final class CreateProductUseCase
         $counter = 1;
 
         do {
-            $sku = $base . '-' . $date . '-' . str_pad((string) $counter, 4, '0', STR_PAD_LEFT);
+            $sku = $base.'-'.$date.'-'.str_pad((string) $counter, 4, '0', STR_PAD_LEFT);
             $exists = DB::table('product_variants')
                 ->where('sku', $sku)
                 ->where('store_id', $storeId)

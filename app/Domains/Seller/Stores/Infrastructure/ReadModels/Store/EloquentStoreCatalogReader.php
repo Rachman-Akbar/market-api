@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Seller\Stores\Infrastructure\ReadModels\Store;
 
+use App\Domains\Seller\Stores\Application\ReadModels\StoreCatalogReaderInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
-use App\Domains\Seller\Stores\Application\ReadModels\StoreCatalogReaderInterface;
 
 final class EloquentStoreCatalogReader implements StoreCatalogReaderInterface
 {
@@ -40,9 +40,9 @@ final class EloquentStoreCatalogReader implements StoreCatalogReaderInterface
         if (! empty($filters['search'])) {
             $search = trim((string) $filters['search']);
             $query->where(function ($q) use ($search): void {
-                $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('city', 'like', '%' . $search . '%')
-                  ->orWhere('province', 'like', '%' . $search . '%');
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('city', 'like', '%'.$search.'%')
+                    ->orWhere('province', 'like', '%'.$search.'%');
             });
         }
 
@@ -78,6 +78,7 @@ final class EloquentStoreCatalogReader implements StoreCatalogReaderInterface
     private function normalizePerPage(mixed $perPage): int
     {
         $perPage = (int) $perPage;
+
         return ($perPage < 1) ? 8 : min($perPage, 24);
     }
 }

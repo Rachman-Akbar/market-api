@@ -4,8 +4,8 @@ namespace App\Domains\Order\Payment\Infrastructure\Persistence\Repositories;
 
 use App\Domains\Order\Payment\Domain\Entities\Payment;
 use App\Domains\Order\Payment\Domain\Repositories\PaymentRepositoryInterface;
-use App\Domains\Order\Payment\Infrastructure\Persistence\Models\PaymentModel;
 use App\Domains\Order\Payment\Infrastructure\Persistence\Mappers\PaymentMapper;
+use App\Domains\Order\Payment\Infrastructure\Persistence\Models\PaymentModel;
 
 class EloquentPaymentRepository implements PaymentRepositoryInterface
 {
@@ -24,6 +24,7 @@ class EloquentPaymentRepository implements PaymentRepositoryInterface
     public function findByOrderNumber(string $orderNumber): ?Payment
     {
         $model = PaymentModel::where('order_number', $orderNumber)->first();
+
         return $model ? $this->mapper->toDomain($model) : null;
     }
 }

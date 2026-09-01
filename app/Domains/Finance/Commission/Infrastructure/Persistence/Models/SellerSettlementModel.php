@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Finance\Commission\Infrastructure\Persistence\Models;
 
+use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
+use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
+use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -43,16 +46,16 @@ class SellerSettlementModel extends Model
 
     public function store()
     {
-        return $this->belongsTo(\App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel::class);
+        return $this->belongsTo(StoreModel::class);
     }
 
     public function order()
     {
-        return $this->belongsTo(\App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel::class);
+        return $this->belongsTo(OrderModel::class);
     }
 
     public function subOrder()
     {
-        return $this->belongsTo(\App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel::class);
+        return $this->belongsTo(SubOrderModel::class);
     }
 }

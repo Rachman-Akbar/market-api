@@ -134,6 +134,6 @@ class PlacePpoOrderUseCase
     {
         $prefix = (string) config('ppob.reference_prefix', 'PPOB');
 
-        return $prefix . date('ymdHis') . strtoupper(Str::random(6));
+        return $prefix.date('ymdHis').strtoupper(Str::random(6));
     }
 }

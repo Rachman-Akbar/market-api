@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Seller\Planner\Infrastructure\Persistence\Models;
 
+use App\Domains\Identity\User\Domain\Entities\User;
+use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -43,11 +45,11 @@ class ScheduleModel extends Model
 
     public function user()
     {
-        return $this->belongsTo(\App\Domains\Identity\User\Domain\Entities\User::class);
+        return $this->belongsTo(User::class);
     }
 
     public function store()
     {
-        return $this->belongsTo(\App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel::class);
+        return $this->belongsTo(StoreModel::class);
     }
 }

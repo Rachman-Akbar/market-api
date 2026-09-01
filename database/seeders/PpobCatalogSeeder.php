@@ -60,6 +60,7 @@ final class PpobCatalogSeeder extends Seeder
             $id = DB::table('ppob_operators')->where('slug', $slug)->value('id');
             if ($id) {
                 $operatorIdBySlug[$slug] = (int) $id;
+
                 continue;
             }
 
@@ -214,7 +215,7 @@ final class PpobCatalogSeeder extends Seeder
         // deterministic and realistic for testing "beli pulsa".
 
         $this->command?->info(
-            "PPOB catalog seeded: ".count($operatorIdBySlug)." operators, {$inserted} new products."
+            'PPOB catalog seeded: '.count($operatorIdBySlug)." operators, {$inserted} new products."
         );
     }
 

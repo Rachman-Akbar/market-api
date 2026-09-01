@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class OrderModel extends Model
 {
     protected $table = 'orders';
+
     protected $guarded = ['id'];
 
     protected $casts = [

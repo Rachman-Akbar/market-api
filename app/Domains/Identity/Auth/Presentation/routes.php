@@ -20,10 +20,19 @@ Route::prefix('auth')->name('auth.')->group(function (): void {
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])
         ->middleware('throttle:5,1')
         ->name('forgot-password');
+    Route::post('/send-password-reset-code', [AuthController::class, 'sendPasswordResetCode'])
+        ->middleware('throttle:5,1')
+        ->name('send-password-reset-code');
+    Route::post('/verify-email-code', [AuthController::class, 'verifyEmailCode'])
+        ->middleware('throttle:10,1')
+        ->name('verify-email-code');
 
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])
         ->middleware('throttle:5,1')
         ->name('reset-password');
+    Route::post('/reset-password-with-code', [AuthController::class, 'resetPasswordWithCode'])
+        ->middleware('throttle:5,1')
+        ->name('reset-password-with-code');
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/logout', [AuthController::class, 'logoutCurrentDevice'])->name('logout');
@@ -41,6 +50,9 @@ Route::prefix('auth')->name('auth.')->group(function (): void {
             Route::post('/change-password', [AuthController::class, 'changePassword'])
                 ->middleware('throttle:3,1')
                 ->name('change-password');
+            Route::post('/send-verification-code', [AuthController::class, 'sendVerificationCode'])
+                ->middleware('throttle:5,1')
+                ->name('send-verification-code');
         });
     });
 });

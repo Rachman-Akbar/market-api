@@ -17,7 +17,7 @@ return new class extends Migration
                     foreach ($rows as $row) {
                         DB::table('support_tickets')
                             ->where('id', $row->id)
-                            ->update(['ticket_number' => 'HLP-' . substr((string) $row->ticket_number, 4)]);
+                            ->update(['ticket_number' => 'HLP-'.substr((string) $row->ticket_number, 4)]);
                     }
                 });
         }
@@ -54,7 +54,7 @@ return new class extends Migration
                     foreach ($rows as $row) {
                         DB::table('support_tickets')
                             ->where('id', $row->id)
-                            ->update(['ticket_number' => 'TKT-' . substr((string) $row->ticket_number, 4)]);
+                            ->update(['ticket_number' => 'TKT-'.substr((string) $row->ticket_number, 4)]);
                     }
                 });
         }

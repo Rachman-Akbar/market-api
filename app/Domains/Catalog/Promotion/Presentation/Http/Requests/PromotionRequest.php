@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Catalog\Promotion\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 final class PromotionRequest extends FormRequest

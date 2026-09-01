@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Catalog\Product\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 final class StoreProductAttributeRequest extends FormRequest
 {

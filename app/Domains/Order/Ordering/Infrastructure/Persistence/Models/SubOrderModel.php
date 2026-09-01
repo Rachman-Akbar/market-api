@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Order\Ordering\Infrastructure\Persistence\Models;
 
+use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class SubOrderModel extends Model
 {
     protected $table = 'sub_orders';
+
     protected $guarded = ['id'];
 
     protected $casts = [
@@ -32,6 +34,6 @@ class SubOrderModel extends Model
 
     public function store(): BelongsTo
     {
-        return $this->belongsTo(\App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel::class, 'store_id');
+        return $this->belongsTo(StoreModel::class, 'store_id');
     }
 }

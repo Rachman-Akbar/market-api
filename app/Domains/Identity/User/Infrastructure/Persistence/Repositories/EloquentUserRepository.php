@@ -70,11 +70,12 @@ final class EloquentUserRepository implements UserRepositoryInterface
     public function create(CreateUserDTO $dto): User
     {
         return DB::transaction(function () use ($dto): User {
-            $user = new User();
+            $user = new User;
             $user->id = (string) Str::uuid();
             $user->forceFill([
                 'email' => $dto->email,
                 'password' => $dto->password ? Hash::make($dto->password) : null,
+                'has_set_password' => (bool) $dto->password,
                 'name' => trim($dto->name),
                 'firebase_uid' => $dto->firebaseUid ? trim($dto->firebaseUid) : null,
                 'avatar' => $dto->avatar,
@@ -109,6 +110,7 @@ final class EloquentUserRepository implements UserRepositoryInterface
 
             if ($dto->password !== null) {
                 $updateData['password'] = Hash::make($dto->password);
+                $updateData['has_set_password'] = true;
             }
 
             if ($dto->name !== null) {
@@ -243,7 +245,7 @@ final class EloquentUserRepository implements UserRepositoryInterface
                 return $user->refresh()->load('roles:id,name,is_active');
             }
 
-            $user = new User();
+            $user = new User;
             $user->id = (string) Str::uuid();
             $user->forceFill([
                 'firebase_uid' => $firebaseUid,
@@ -335,7 +337,7 @@ final class EloquentUserRepository implements UserRepositoryInterface
             $suffix = 1;
 
             while (DB::table('stores')->where('slug', $slug)->exists()) {
-                $slug = $dto->slug . '-' . $suffix++;
+                $slug = $dto->slug.'-'.$suffix++;
             }
 
             $storeId = DB::table('stores')->insertGetId([

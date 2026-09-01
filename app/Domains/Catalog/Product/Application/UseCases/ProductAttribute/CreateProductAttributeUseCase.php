@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Product\Application\UseCases\ProductAttribute;
 
-use Illuminate\Support\Str;
 use App\Domains\Catalog\Product\Domain\Entities\ProductAttribute;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductAttributeRepositoryInterface;
+use Illuminate\Support\Str;
 
 final class CreateProductAttributeUseCase
 {

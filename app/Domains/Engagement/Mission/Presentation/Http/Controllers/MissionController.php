@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 final class MissionController extends Controller
 {
     use ResolvesActiveRole;
+
     public function __construct(private MissionService $service) {}
 
     public function index(Request $request): JsonResponse
@@ -54,6 +55,14 @@ final class MissionController extends Controller
         $this->service->delete($id);
 
         return response()->json(['success' => true, 'message' => 'Misi berhasil dihapus.']);
+    }
+
+    public function eventTypes(): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'data' => $this->service->supportedEventTypes(),
+        ]);
     }
 
     public function reportEvent(Request $request): JsonResponse

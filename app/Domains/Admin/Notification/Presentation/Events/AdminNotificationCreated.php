@@ -21,7 +21,7 @@ final class AdminNotificationCreated implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel('admin.' . $this->notification->user_id . '.notifications')];
+        return [new PrivateChannel('admin.'.$this->notification->user_id.'.notifications')];
     }
 
     public function broadcastAs(): string

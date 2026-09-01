@@ -16,8 +16,7 @@ final readonly class UpdateCartItemQuantityUseCase
     public function __construct(
         private CartRepositoryInterface $carts,
         private CartStockValidator $stockValidator,
-    ) {
-    }
+    ) {}
 
     public function execute(UpdateCartItemData $data): CartSummaryData
     {

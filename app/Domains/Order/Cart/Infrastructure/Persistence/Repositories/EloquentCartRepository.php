@@ -5,29 +5,26 @@ declare(strict_types=1);
 namespace App\Domains\Order\Cart\Infrastructure\Persistence\Repositories;
 
 use App\Domains\Order\Cart\Application\DTOs\CartSummaryData;
-use App\Domains\Order\Cart\Domain\Entities\Cart;
-
-use App\Domains\Order\Cart\Domain\Repositories\CartRepositoryInterface;
 use App\Domains\Order\Cart\Application\Readers\ProductForCartReaderInterface;
-
+use App\Domains\Order\Cart\Domain\Entities\Cart;
+use App\Domains\Order\Cart\Domain\Repositories\CartRepositoryInterface;
+use App\Domains\Order\Cart\Domain\ValueObjects\Money;
 use App\Domains\Order\Cart\Infrastructure\Persistence\Mappers\CartMapper;
 use App\Domains\Order\Cart\Infrastructure\Persistence\Models\CartItemModel;
 use App\Domains\Order\Cart\Infrastructure\Persistence\Models\CartModel;
-use App\Domains\Order\Cart\Domain\ValueObjects\Money;
 use Illuminate\Support\Facades\DB;
 
 final class EloquentCartRepository implements CartRepositoryInterface
 {
     public function __construct(
         private readonly ProductForCartReaderInterface $productReader
-    ) {
-    }
+    ) {}
 
     public function findByUserId(string $userId): ?Cart
     {
         $cartModel = CartModel::with(['items'])->where('user_id', $userId)->first();
 
-        if (!$cartModel) {
+        if (! $cartModel) {
             return null;
         }
 
@@ -89,7 +86,7 @@ final class EloquentCartRepository implements CartRepositoryInterface
     {
         $cartModel = CartModel::where('user_id', $userId)->first();
 
-        if (!$cartModel) {
+        if (! $cartModel) {
             return new CartSummaryData([], 0, 0);
         }
 
@@ -102,7 +99,7 @@ final class EloquentCartRepository implements CartRepositoryInterface
         foreach ($itemModels as $itemModel) {
             $details = $this->productReader->getVariantDetails((int) $itemModel->product_variant_id);
 
-            if (!$details) {
+            if (! $details) {
                 continue;
             }
 

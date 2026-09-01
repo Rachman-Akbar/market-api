@@ -23,6 +23,7 @@ final class ProductVariantMapper
             name: (string) $model->name,
             price: (float) $model->price,
             stock: (int) $model->stock,
+            poStock: (int) $model->po_stock,
             isDefault: (bool) $model->is_default,
             values: $values,
             createdAt: $model->created_at?->toDateTimeString(),

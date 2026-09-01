@@ -6,13 +6,15 @@ namespace Tests\Feature\Order;
 
 use App\Domains\Order\Voucher\Domain\Entities\Voucher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Laravel\Sanctum\Sanctum;
 use Tests\Support\InteractsAsUser;
 use Tests\TestCase;
 
 class VoucherCrudTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsAsUser;
+    use RefreshDatabase;
 
     private function payload(array $overrides = []): array
     {
@@ -83,5 +85,55 @@ class VoucherCrudTest extends TestCase
 
         $this->postJson('/api/v1/order/vouchers/admin', $this->payload(['code' => 'DUP1']))->assertCreated();
         $this->postJson('/api/v1/order/vouchers/admin', $this->payload(['code' => 'DUP1']))->assertStatus(422);
+    }
+
+    public function test_buyer_can_list_and_claim_owned_vouchers(): void
+    {
+        $user = $this->makeUser([], ['buyer']);
+        Sanctum::actingAs($user, ['access-api', 'active-role:buyer']);
+
+        $voucher = Voucher::query()->create([
+            'voucher_scope' => 'platform',
+            'code' => 'CLAIM1',
+            'name' => 'Voucher Klaim',
+            'discount_target' => 'product',
+            'discount_type' => 'percentage',
+            'discount_value' => 10,
+            'min_spend' => 0,
+            'starts_at' => '2026-01-01 00:00:00',
+            'ends_at' => '2026-12-31 23:59:59',
+            'usage_limit' => 0,
+            'is_active' => true,
+        ]);
+
+        $userVoucherId = DB::table('user_vouchers')->insertGetId([
+            'user_id' => $user->id,
+            'voucher_id' => $voucher->id,
+            'source_type' => 'mission',
+            'source_id' => '999',
+            'status' => 'available',
+            'claimed_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->getJson('/api/v1/order/vouchers/mine')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.voucher.code', 'claim1')
+            ->assertJsonPath('data.0.status', 'available')
+            ->assertJsonPath('meta.total', 1);
+
+        $claim = $this->postJson("/api/v1/order/vouchers/{$userVoucherId}/claim");
+        $claim->assertOk();
+        $claim->assertJsonPath('success', true);
+        $claim->assertJsonPath('data.voucher.code', 'claim1');
+        $claim->assertJsonPath('data.status', 'claimed');
+
+        $this->getJson('/api/v1/order/vouchers/mine')
+            ->assertJsonPath('data.0.status', 'claimed');
+
+        $this->postJson('/api/v1/order/vouchers/999999/claim')->assertStatus(404);
     }
 }

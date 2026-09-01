@@ -17,8 +17,7 @@ final readonly class AddItemToCartUseCase
     public function __construct(
         private CartRepositoryInterface $carts,
         private CartStockValidator $stockValidator,
-    ) {
-    }
+    ) {}
 
     public function execute(AddCartItemData $data): CartSummaryData
     {

@@ -40,13 +40,14 @@ final class GetShippingOptionsUseCase
                 }
             } catch (Throwable $exception) {
                 $warnings[] = "Toko {$context['store_name']}: {$exception->getMessage()}";
+
                 continue;
             }
 
             foreach ($storeOptions as $option) {
                 $id = (string) $option['id'];
 
-                if (!isset($aggregated[$id])) {
+                if (! isset($aggregated[$id])) {
                     $aggregated[$id] = array_merge($option, [
                         'cost' => 0.0,
                         'store_breakdown' => [],
@@ -78,7 +79,7 @@ final class GetShippingOptionsUseCase
             ->values()
             ->all();
 
-        if (!$options) {
+        if (! $options) {
             throw new RuntimeException($warnings[0] ?? 'Tidak ada layanan pengiriman yang tersedia untuk semua toko.');
         }
 
@@ -91,14 +92,14 @@ final class GetShippingOptionsUseCase
     public function buildStoreContexts(string $userId, int $addressId, array $cartItemIds): array
     {
         $address = $this->addressRepository->findByIdAndOwner($addressId, $userId, null);
-        if (!$address) {
+        if (! $address) {
             throw new RuntimeException('Alamat pengiriman tidak ditemukan.');
         }
 
         $this->refreshDestinationId($address);
 
         $cart = CartModel::where('user_id', $userId)->first();
-        if (!$cart) {
+        if (! $cart) {
             throw new RuntimeException('Keranjang belanja tidak ditemukan.');
         }
 
@@ -121,7 +122,7 @@ final class GetShippingOptionsUseCase
         foreach ($selectedItems as $item) {
             $details = $detailsMap[(int) $item->product_variant_id] ?? null;
 
-            if (!$details) {
+            if (! $details) {
                 throw new RuntimeException('Data varian produk tidak ditemukan.');
             }
 
@@ -131,7 +132,7 @@ final class GetShippingOptionsUseCase
 
             $storeId = $details->getStoreId();
 
-            if (!isset($contexts[$storeId])) {
+            if (! isset($contexts[$storeId])) {
                 $contexts[$storeId] = $this->storeContext($storeId, $details->getStoreName(), $address);
             }
 
@@ -207,7 +208,7 @@ final class GetShippingOptionsUseCase
     private function shippingSetting(int $storeId): ?object
     {
         try {
-            if (!Schema::hasTable('shipping_settings')) {
+            if (! Schema::hasTable('shipping_settings')) {
                 return null;
             }
 
@@ -220,7 +221,7 @@ final class GetShippingOptionsUseCase
     private function storeLocation(int $storeId): array
     {
         try {
-            if (!Schema::hasTable('stores')) {
+            if (! Schema::hasTable('stores')) {
                 return [];
             }
 
@@ -246,7 +247,7 @@ final class GetShippingOptionsUseCase
                 'postal_code',
             ])->filter(fn (string $column): bool => in_array($column, $available, true))->values()->all();
 
-            if (!$columns) {
+            if (! $columns) {
                 return [];
             }
 

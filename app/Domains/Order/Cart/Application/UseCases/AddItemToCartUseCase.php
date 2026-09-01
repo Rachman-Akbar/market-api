@@ -6,9 +6,9 @@ namespace App\Domains\Order\Cart\Application\UseCases;
 
 use App\Domains\Order\Cart\Application\DTOs\AddCartItemData;
 use App\Domains\Order\Cart\Application\DTOs\CartSummaryData;
-use App\Domains\Order\Cart\Domain\Repositories\CartRepositoryInterface;
-// PASTIKAN BARIS INI SEPERTI DI BAWAH INI:
 use App\Domains\Order\Cart\Application\Readers\ProductForCartReaderInterface;
+// PASTIKAN BARIS INI SEPERTI DI BAWAH INI:
+use App\Domains\Order\Cart\Domain\Repositories\CartRepositoryInterface;
 use DomainException;
 
 final class AddItemToCartUseCase
@@ -16,22 +16,21 @@ final class AddItemToCartUseCase
     public function __construct(
         private CartRepositoryInterface $cartRepository,
         private ProductForCartReaderInterface $productReader
-    ) {
-    }
+    ) {}
 
     public function execute(AddCartItemData $data): CartSummaryData
     {
-        
+
         // 1. Ambil atau buat data keranjang belanja user
         $cart = $this->cartRepository->findByUserId($data->userId);
-        if (!$cart) {
+        if (! $cart) {
             $cart = $this->cartRepository->createNewCart($data->userId);
         }
 
         // 2. Cek stok varian produk dari Domain Produk (via Interface Reader)
         $variantStock = $this->productReader->getVariantStock($data->productVariantId);
         if ($variantStock === null) {
-            throw new DomainException("Varian produk tidak ditemukan.");
+            throw new DomainException('Varian produk tidak ditemukan.');
         }
 
         // 3. Masukkan ke Domain Agregat Cart untuk diproses validasi internalnya

@@ -11,8 +11,7 @@ final class ClearCartUseCase
 {
     public function __construct(
         private readonly CartRepositoryInterface $cartRepository
-    ) {
-    }
+    ) {}
 
     public function execute(string $userId): CartSummaryData
     {

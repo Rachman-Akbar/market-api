@@ -7,6 +7,7 @@ namespace App\Domains\PPOB\Infrastructure\Persistence\Repositories;
 use App\Domains\PPOB\Domain\Entities\PpoFinanceEntry;
 use App\Domains\PPOB\Domain\Repositories\PpoFinanceRepositoryInterface;
 use App\Domains\PPOB\Infrastructure\Persistence\Models\PpoFinanceEntryModel;
+use Illuminate\Database\QueryException;
 
 class EloquentPpoFinanceRepository implements PpoFinanceRepositoryInterface
 {
@@ -18,7 +19,7 @@ class EloquentPpoFinanceRepository implements PpoFinanceRepositoryInterface
     {
         try {
             $model = PpoFinanceEntryModel::create($data);
-        } catch (\Illuminate\Database\QueryException $e) {
+        } catch (QueryException $e) {
             // Duplicate unique key -> already posted once
             return null;
         }

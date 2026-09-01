@@ -9,9 +9,7 @@ use App\Domains\Template\Cart\Domain\Repositories\CartRepositoryInterface;
 
 final readonly class GetCartUseCase
 {
-    public function __construct(private CartRepositoryInterface $carts)
-    {
-    }
+    public function __construct(private CartRepositoryInterface $carts) {}
 
     public function execute(string $userId): CartSummaryData
     {

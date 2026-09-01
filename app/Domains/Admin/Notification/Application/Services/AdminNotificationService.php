@@ -97,6 +97,7 @@ final class AdminNotificationService
 
         if ($model->read_at === null) {
             $model->read_at = now();
+
             return $this->repository->save($model);
         }
 

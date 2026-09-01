@@ -11,13 +11,13 @@ use App\Domains\Catalog\Product\Costing\Infrastructure\Persistence\Models\Produc
 use App\Domains\Catalog\Product\Costing\Infrastructure\Persistence\Models\ProductCostingModel;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
 use App\Domains\Catalog\Promotion\Infrastructure\Persistence\Models\PromotionModel;
-use App\Domains\Order\Voucher\Domain\Entities\Voucher;
+use App\Domains\Identity\User\Domain\Entities\User;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
 use App\Domains\Order\Review\Infrastructure\Persistence\Models\ProductReviewModel;
+use App\Domains\Order\Voucher\Domain\Entities\Voucher;
 use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialTransactionModel;
 use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialModel;
 use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialStockMovementModel;
-use App\Domains\Identity\User\Domain\Entities\User;
 use App\Domains\Seller\Stock\Infrastructure\Persistence\Models\StockMovementModel;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
@@ -46,7 +46,8 @@ final class SpreadsheetModuleRegistry
     public static function model(array $config): Model
     {
         $class = $config['model'];
-        return new $class();
+
+        return new $class;
     }
 
     public static function modules(): array
@@ -343,7 +344,7 @@ final class SpreadsheetModuleRegistry
             ['sku', 'Optional', 'Teks unik per toko', 'KECAP-600', 'Jika kosong, backend membentuk SKU unik otomatis. SKU manual yang kembar di file atau sudah dipakai Product lain akan ditolak.', 'Pada mode Update, SKU lama memperbarui variant terkait; SKU kosong pada variant baru akan menghasilkan SKU otomatis.'],
             ['variant_name', 'Wajib saat membuat variant', 'Teks', 'Default atau Hitam - M', 'Jika variant dibuat dan nama kosong, sistem menggunakan Default.', 'Untuk barang tanpa pilihan, gunakan nama Default.'],
             ['price', 'Wajib saat membuat variant', 'Angka ≥ 0', '25000', 'Tidak memakai pemisah ribuan atau simbol Rp.', 'Harga berada pada variant, bukan Product utama.'],
-                        ['is_default', 'Wajib untuk multi-variant, optional untuk variant pertama', '1|0|ya|tidak', '1', 'Hanya satu variant per Product boleh bernilai aktif sebagai default.', 'Jika kosong pada variant pertama, sistem menjadikannya default. Variant berikutnya yang kosong tidak mengganti default lama.'],
+            ['is_default', 'Wajib untuk multi-variant, optional untuk variant pertama', '1|0|ya|tidak', '1', 'Hanya satu variant per Product boleh bernilai aktif sebagai default.', 'Jika kosong pada variant pertama, sistem menjadikannya default. Variant berikutnya yang kosong tidak mengganti default lama.'],
         ];
     }
 
@@ -507,7 +508,6 @@ final class SpreadsheetModuleRegistry
             ['is_active', 'Optional', '1|0|ya|tidak', '1', 'Default aktif.', 'Nonaktif tidak tampil pada Store Page.'],
         ];
     }
-
 
     private static function financeModule(string $label, string $type): array
     {
@@ -692,6 +692,7 @@ final class SpreadsheetModuleRegistry
     private static function rawMaterialExamples(): array
     {
         $base = ['id' => '', 'store_name' => 'Toko Nusantara', 'code' => 'RM-BOX', 'name' => 'Box Kemasan', 'unit' => 'pcs', 'minimum_stock' => '20', 'average_cost' => '2500', 'is_active' => '1'];
+
         return [
             self::example($base, 'Master Baru', 'Membuat bahan baku baru tanpa menyentuh stok.', 'Pilih Import Data Baru dan kosongkan id.', 'Master bahan baku dibuat.'),
             self::example([...$base, 'code' => 'RM-LABEL', 'name' => 'Label Produk', 'unit' => 'lembar'], 'Satuan Lain', 'Membuat bahan dengan satuan lembar.', 'Isi unit sesuai penggunaan.', 'Satuan tersimpan.'),
@@ -723,6 +724,7 @@ final class SpreadsheetModuleRegistry
     private static function rawMaterialStockExamples(): array
     {
         $base = ['id' => '', 'store_name' => 'Toko Nusantara', 'raw_material_code' => 'RM-BOX', 'raw_material_name' => 'Box Kemasan', 'movement_type' => 'restock', 'quantity_delta' => '100', 'balance_after' => '', 'unit_cost' => '3000', 'reference_type' => 'purchase', 'reference_number' => 'PO-001', 'notes' => 'Restock bahan', 'occurred_at' => '2026-08-15 10:00:00'];
+
         return [
             self::example($base, 'Restock', 'Menambah stok bahan baku dengan harga beli baru.', 'Isi delta positif dan unit_cost.', 'Stok dan average cost diperbarui.'),
             self::example([...$base, 'quantity_delta' => '-5', 'unit_cost' => '', 'movement_type' => 'usage'], 'Pemakaian', 'Mengurangi stok bahan baku manual.', 'Isi delta negatif.', 'Stok berkurang tanpa mengubah average cost.'),
@@ -758,6 +760,7 @@ final class SpreadsheetModuleRegistry
     private static function productCostingExamples(): array
     {
         $base = ['id' => '', 'store_name' => 'Toko Nusantara', 'product_id' => '1', 'product_name' => 'Produk Contoh', 'materials' => 'RM-BOX:1|RM-LABEL:2', 'labor_cost' => '5000', 'overhead_cost' => '2500', 'other_cost' => '1000', 'hpp' => '', 'margin_percent' => '30', 'suggested_price' => '', 'selling_price' => '25000', 'apply_to_variants' => '0'];
+
         return [
             self::example($base, 'HPP Baru', 'Membentuk HPP dari resep bahan.', 'Pilih create dan isi product serta materials.', 'HPP dihitung dari average cost bahan saat import.'),
             self::example([...$base, 'materials' => 'RM-BOX:2'], 'Satu Bahan', 'Produk hanya memakai satu bahan.', 'Isi satu KODE:QTY.', 'Material cost mengikuti quantity.'),

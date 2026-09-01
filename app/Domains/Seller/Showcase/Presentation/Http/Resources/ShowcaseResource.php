@@ -31,6 +31,8 @@ final class ShowcaseResource extends JsonResource
                 'sort_order' => $product->pivot?->sort_order,
                 'price' => (float) ($product->variants?->first()?->price ?? 0),
                 'stock' => (int) ($product->variants?->first()?->stock ?? 0),
+                'po_stock' => (int) ($product->variants?->first()?->po_stock ?? 0),
+                'total_stock' => (int) ($product->variants?->first()?->stock ?? 0) + (int) ($product->variants?->first()?->po_stock ?? 0),
             ])->values()),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

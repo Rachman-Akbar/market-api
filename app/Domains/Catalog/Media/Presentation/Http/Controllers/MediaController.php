@@ -7,7 +7,6 @@ namespace App\Domains\Catalog\Media\Presentation\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 final class MediaController extends Controller
@@ -24,8 +23,8 @@ final class MediaController extends Controller
         $scope = $scope !== '' ? $scope : 'general';
         $file = $request->file('image');
         $path = $file->store("marketplace/{$scope}", 'public');
-        $publicPath = '/storage/' . ltrim($path, '/');
-        $publicUrl = rtrim($request->getSchemeAndHttpHost(), '/') . $publicPath;
+        $publicPath = '/storage/'.ltrim($path, '/');
+        $publicUrl = rtrim($request->getSchemeAndHttpHost(), '/').$publicPath;
 
         return response()->json([
             'data' => [

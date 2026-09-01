@@ -343,6 +343,7 @@ final class ConversationService
             ->whereDoesntHave('participants', fn (Builder $query) => $query->whereNotIn('users.id', $ids)->whereNull('conversation_participants.left_at'))
             ->first();
     }
+
     private function notifyAdminParticipants(Collection $adminParticipantIds, ConversationModel $conversation, string $userId, string $cleanMessage): void
     {
         try {
@@ -357,7 +358,7 @@ final class ConversationService
                 'message' => mb_strimwidth($cleanMessage, 0, 120, '...'),
                 'reference_type' => 'conversation',
                 'reference_id' => $conversation->id,
-                'url' => '/admin/chat?conversation=' . $conversation->id,
+                'url' => '/admin/chat?conversation='.$conversation->id,
                 'meta' => ['conversation_type' => $conversation->type],
             ], $userId, $conversation->store_id ? (int) $conversation->store_id : null);
         } catch (Throwable $exception) {
@@ -368,5 +369,4 @@ final class ConversationService
             ]);
         }
     }
-
 }

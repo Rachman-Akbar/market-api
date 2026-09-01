@@ -16,13 +16,13 @@ class HutangPiutangService
             ->where('is_active', true);
 
         $totals = (clone $base)
-            ->selectRaw("type, COUNT(*) as count, SUM(amount) as total, SUM(paid_amount) as paid")
+            ->selectRaw('type, COUNT(*) as count, SUM(amount) as total, SUM(paid_amount) as paid')
             ->groupBy('type')
             ->get()
             ->keyBy('type');
 
         $statusCounts = (clone $base)
-            ->selectRaw("type, status, COUNT(*) as count")
+            ->selectRaw('type, status, COUNT(*) as count')
             ->groupBy('type', 'status')
             ->get()
             ->groupBy('type');
@@ -127,15 +127,15 @@ class HutangPiutangService
         foreach ($transactions as $i => $t) {
             $csv .= implode(',', [
                 $i + 1,
-                '"' . $t->reference_number . '"',
-                '"' . $t->occurred_at . '"',
-                '"' . addslashes($t->title) . '"',
+                '"'.$t->reference_number.'"',
+                '"'.$t->occurred_at.'"',
+                '"'.addslashes($t->title).'"',
                 $t->amount,
                 $t->paid_amount,
                 max(0, $t->amount - $t->paid_amount),
-                '"' . ($t->due_date ?? '-') . '"',
-                '"' . $t->status . '"',
-            ]) . "\n";
+                '"'.($t->due_date ?? '-').'"',
+                '"'.$t->status.'"',
+            ])."\n";
         }
 
         return $csv;
@@ -157,6 +157,7 @@ class HutangPiutangService
             if (! $t->due_date) {
                 $buckets['current']['count']++;
                 $buckets['current']['total'] += $remaining;
+
                 continue;
             }
 

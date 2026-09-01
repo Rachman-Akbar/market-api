@@ -21,7 +21,7 @@ interface ProductForCartReaderInterface
     /**
      * Mengambil detail banyak varian sekaligus, keyed by variant id.
      *
-     * @param array<int> $productVariantIds
+     * @param  array<int>  $productVariantIds
      * @return array<int, VariantDetails>
      */
     public function getVariantsDetails(array $productVariantIds): array;

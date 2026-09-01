@@ -36,10 +36,10 @@ final class EloquentProductVariantRepository implements ProductVariantRepository
     {
         $model = $variant->id()
             ? ProductVariantModel::query()->find($variant->id())
-            : new ProductVariantModel();
+            : new ProductVariantModel;
 
         if (! $model) {
-            $model = new ProductVariantModel();
+            $model = new ProductVariantModel;
         }
 
         $model->product_id = $variant->productId();
@@ -48,6 +48,7 @@ final class EloquentProductVariantRepository implements ProductVariantRepository
         $model->name = $variant->name();
         $model->price = $variant->price();
         $model->stock = $variant->stock();
+        $model->po_stock = $variant->poStock();
         $model->is_default = $variant->isDefault();
         $model->save();
 

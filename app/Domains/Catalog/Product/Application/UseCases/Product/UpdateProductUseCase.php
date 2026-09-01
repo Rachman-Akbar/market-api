@@ -94,6 +94,9 @@ final class UpdateProductUseCase
                         name: trim((string) preg_replace('/\s+/u', ' ', (string) ($variantData['name'] ?? ($oldVariant?->name() ?? $product->name())))),
                         price: (float) ($variantData['price'] ?? ($oldVariant?->price() ?? 0.0)),
                         stock: (int) ($oldVariant?->stock() ?? 0),
+                        poStock: array_key_exists('po_stock', $variantData)
+                            ? max(0, (int) $variantData['po_stock'])
+                            : ($oldVariant?->poStock() ?? 0),
                         isDefault: $index === 0
                     ));
 
@@ -107,7 +110,7 @@ final class UpdateProductUseCase
 
                 foreach ($currentVariants as $currentVariant) {
                     if (! in_array((int) $currentVariant->id(), $retainedIds, true)) {
-                        if ($currentVariant->stock() > 0) {
+                        if ($currentVariant->stock() > 0 || $currentVariant->poStock() > 0) {
                             throw new InvalidArgumentException('Stok variant harus 0 sebelum variant dihapus. Kurangi stok melalui Persediaan terlebih dahulu.');
                         }
                         $this->variants->delete((int) $currentVariant->id());
@@ -143,7 +146,7 @@ final class UpdateProductUseCase
         }
 
         if (! empty($payload['primary_category_id'])) {
-            $parts[] = 'CAT' . (string) $payload['primary_category_id'];
+            $parts[] = 'CAT'.(string) $payload['primary_category_id'];
         }
 
         $base = Str::upper(Str::slug(implode('-', array_filter($parts))));
@@ -152,7 +155,7 @@ final class UpdateProductUseCase
         $counter = 1;
 
         do {
-            $sku = $base . '-' . $date . '-' . str_pad((string) $counter, 4, '0', STR_PAD_LEFT);
+            $sku = $base.'-'.$date.'-'.str_pad((string) $counter, 4, '0', STR_PAD_LEFT);
             $exists = DB::table('product_variants')
                 ->where('sku', $sku)
                 ->where('store_id', $storeId)

@@ -29,27 +29,110 @@ final class Store
         private ?string $ownerEmail = null
     ) {}
 
-    public function id(): int { return $this->id; }
-    public function userId(): string { return $this->userId; }
-    public function name(): string { return $this->name; }
-    public function slug(): string { return $this->slug; }
-    public function description(): ?string { return $this->description; }
-    public function shortDescription(): ?string { return $this->shortDescription; }
-    public function phone(): ?string { return $this->phone; }
-    public function email(): ?string { return $this->email; }
-    public function city(): ?string { return $this->city; }
-    public function province(): ?string { return $this->province; }
-    public function address(): ?string { return $this->address; }
-    public function status(): string { return $this->status; }
-    public function isActive(): bool { return $this->isActive; }
-    public function isPubliclyAvailable(): bool { return in_array($this->status, ['approved', 'active'], true) && $this->isActive; }
-    public function logo(): ?string { return $this->logo; }
-    public function bannerUrl(): ?string { return $this->bannerUrl; }
-    public function createdAt(): ?string { return $this->createdAt; }
-    public function updatedAt(): ?string { return $this->updatedAt; }
-    public function detail(): ?StoreDetail { return $this->detail; }
-    public function ownerName(): ?string { return $this->ownerName; }
-    public function ownerEmail(): ?string { return $this->ownerEmail; }
+    public function id(): int
+    {
+        return $this->id;
+    }
+
+    public function userId(): string
+    {
+        return $this->userId;
+    }
+
+    public function name(): string
+    {
+        return $this->name;
+    }
+
+    public function slug(): string
+    {
+        return $this->slug;
+    }
+
+    public function description(): ?string
+    {
+        return $this->description;
+    }
+
+    public function shortDescription(): ?string
+    {
+        return $this->shortDescription;
+    }
+
+    public function phone(): ?string
+    {
+        return $this->phone;
+    }
+
+    public function email(): ?string
+    {
+        return $this->email;
+    }
+
+    public function city(): ?string
+    {
+        return $this->city;
+    }
+
+    public function province(): ?string
+    {
+        return $this->province;
+    }
+
+    public function address(): ?string
+    {
+        return $this->address;
+    }
+
+    public function status(): string
+    {
+        return $this->status;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function isPubliclyAvailable(): bool
+    {
+        return in_array($this->status, ['approved', 'active'], true) && $this->isActive;
+    }
+
+    public function logo(): ?string
+    {
+        return $this->logo;
+    }
+
+    public function bannerUrl(): ?string
+    {
+        return $this->bannerUrl;
+    }
+
+    public function createdAt(): ?string
+    {
+        return $this->createdAt;
+    }
+
+    public function updatedAt(): ?string
+    {
+        return $this->updatedAt;
+    }
+
+    public function detail(): ?StoreDetail
+    {
+        return $this->detail;
+    }
+
+    public function ownerName(): ?string
+    {
+        return $this->ownerName;
+    }
+
+    public function ownerEmail(): ?string
+    {
+        return $this->ownerEmail;
+    }
 
     public function updateDetails(
         string $name,

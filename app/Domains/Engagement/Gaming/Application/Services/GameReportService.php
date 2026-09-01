@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Engagement\Gaming\Application\Services;
 
 use App\Domains\Engagement\Gaming\Domain\Repositories\GameSessionRepositoryInterface;
+use App\Domains\Engagement\Mission\Application\Services\MissionService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -126,8 +127,8 @@ final class GameReportService
     private function reportToMissions(string $userId, string $gameType, int $validatedScore): void
     {
         try {
-            $missionService = app(\App\Domains\Engagement\Mission\Application\Services\MissionService::class);
-            $eventType = 'game.' . $gameType;
+            $missionService = app(MissionService::class);
+            $eventType = 'game.'.$gameType;
             // Only count plays that scored (a completed play), value = 1 play.
             $missionService->recordEvent($userId, $eventType, 1, ['game_type' => $gameType, 'score' => $validatedScore]);
         } catch (\Throwable $e) {

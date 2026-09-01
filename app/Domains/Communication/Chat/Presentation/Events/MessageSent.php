@@ -21,12 +21,12 @@ final class MessageSent implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        $channels = [new PrivateChannel('conversation.' . $this->message->conversation_id)];
+        $channels = [new PrivateChannel('conversation.'.$this->message->conversation_id)];
         $conversation = $this->message->relationLoaded('conversation') ? $this->message->conversation : null;
 
         if ($conversation?->relationLoaded('participants')) {
             foreach ($conversation->participants as $participant) {
-                $channels[] = new PrivateChannel('chat.user.' . $participant->id);
+                $channels[] = new PrivateChannel('chat.user.'.$participant->id);
             }
         }
 

@@ -37,11 +37,11 @@ final class IdentityServiceProvider extends ServiceProvider
                 || preg_match('/^[A-Za-z]:[\\\\\/]/', $configuredPath) === 1;
             $credentialsPath = $isAbsolute ? $configuredPath : base_path($configuredPath);
 
-            if (!is_file($credentialsPath) || !is_readable($credentialsPath)) {
+            if (! is_file($credentialsPath) || ! is_readable($credentialsPath)) {
                 throw new RuntimeException('File Firebase credentials tidak ditemukan atau tidak dapat dibaca.');
             }
 
-            $firebaseAuth = (new Factory())
+            $firebaseAuth = (new Factory)
                 ->withServiceAccount($credentialsPath)
                 ->createAuth();
 

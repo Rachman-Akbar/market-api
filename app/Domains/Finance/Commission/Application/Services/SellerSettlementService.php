@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Finance\Commission\Application\Services;
 
+use App\Domains\Finance\Commission\Domain\Entities\SellerSettlement;
 use App\Domains\Finance\Commission\Domain\Repositories\SellerSettlementRepositoryInterface;
 
 class SellerSettlementService
@@ -12,7 +13,7 @@ class SellerSettlementService
         private SellerSettlementRepositoryInterface $repository
     ) {}
 
-    public function createSettlement(array $data): \App\Domains\Finance\Commission\Domain\Entities\SellerSettlement
+    public function createSettlement(array $data): SellerSettlement
     {
         return $this->repository->create($data);
     }
@@ -32,7 +33,7 @@ class SellerSettlementService
         return $this->repository->settlePending($storeId);
     }
 
-    public function getById(int $id): ?\App\Domains\Finance\Commission\Domain\Entities\SellerSettlement
+    public function getById(int $id): ?SellerSettlement
     {
         return $this->repository->findById($id);
     }

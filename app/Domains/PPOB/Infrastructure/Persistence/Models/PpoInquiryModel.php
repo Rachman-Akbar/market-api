@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\PPOB\Infrastructure\Persistence\Models;
 
+use App\Domains\Identity\User\Domain\Entities\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -42,7 +43,7 @@ class PpoInquiryModel extends Model
 
     public function user()
     {
-        return $this->belongsTo(\App\Domains\Identity\User\Domain\Entities\User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function operator()

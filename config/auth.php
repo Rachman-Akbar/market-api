@@ -1,5 +1,7 @@
 <?php
 
+use App\Domains\Identity\User\Domain\Entities\User;
+
 return [
 
     /*
@@ -62,7 +64,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Domains\Identity\User\Domain\Entities\User::class,
+            'model' => User::class,
         ],
 
         // 'users' => [
@@ -113,5 +115,3 @@ return [
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
 ];
-
-

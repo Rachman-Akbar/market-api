@@ -6,13 +6,14 @@ namespace Tests\Feature\Order;
 
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\Support\InteractsAsUser;
 use Tests\TestCase;
 
 class OrderFlowTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsAsUser;
+    use RefreshDatabase;
 
     public function test_only_admin_can_list_all_orders(): void
     {
@@ -47,7 +48,7 @@ class OrderFlowTest extends TestCase
 
         $order = OrderModel::query()->create([
             'user_id' => $buyer->id,
-            'order_number' => 'ORD-TEST-' . \Illuminate\Support\Str::upper(\Illuminate\Support\Str::random(6)),
+            'order_number' => 'ORD-TEST-'.Str::upper(Str::random(6)),
             'payment_method' => 'cod',
             'payment_status' => 'unpaid',
             'status' => 'pending',

@@ -10,6 +10,5 @@ final class UpdateCartItemData
         public string $userId,
         public int $productVariantId,
         public int $quantity
-    ) {
-    }
+    ) {}
 }

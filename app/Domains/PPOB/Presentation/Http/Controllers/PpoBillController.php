@@ -138,7 +138,7 @@ class PpoBillController extends Controller
 
         $tx = DB::transaction(function () use ($inquiry, $product, $result) {
             $tx = PpoTransactionModel::create([
-                'reference_id' => $inquiry->reference_id . '-PAY',
+                'reference_id' => $inquiry->reference_id.'-PAY',
                 'user_id' => $inquiry->user_id,
                 'operator_id' => $inquiry->operator_id,
                 'product_id' => $product?->id,
@@ -193,6 +193,6 @@ class PpoBillController extends Controller
     {
         $prefix = (string) config('ppob.reference_prefix', 'PPOB');
 
-        return $prefix . 'B' . date('ymdHis') . strtoupper(Str::random(6));
+        return $prefix.'B'.date('ymdHis').strtoupper(Str::random(6));
     }
 }

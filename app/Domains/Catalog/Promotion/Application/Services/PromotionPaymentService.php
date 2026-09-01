@@ -27,7 +27,7 @@ final class PromotionPaymentService
     public function submit(array $data, int $storeId, string $userId): PromotionPaymentModel
     {
         return DB::transaction(function () use ($data, $storeId, $userId): PromotionPaymentModel {
-            $model = new PromotionPaymentModel();
+            $model = new PromotionPaymentModel;
             $model->fill([
                 'store_id' => $storeId,
                 'user_id' => $userId,
@@ -48,10 +48,10 @@ final class PromotionPaymentService
                 'module' => 'promotion_payments',
                 'type' => 'promotion.payment.submitted',
                 'title' => 'Pembayaran promosi baru',
-                'message' => $saved->payment_number . ' · ' . $saved->package_name,
+                'message' => $saved->payment_number.' · '.$saved->package_name,
                 'reference_type' => 'promotion_payment',
                 'reference_id' => $saved->id,
-                'url' => '/admin/promotion-payments?payment=' . $saved->id,
+                'url' => '/admin/promotion-payments?payment='.$saved->id,
                 'meta' => ['amount' => (float) $saved->amount, 'status' => $saved->status],
             ], $userId, $storeId);
 
@@ -106,7 +106,7 @@ final class PromotionPaymentService
     private function paymentNumber(): string
     {
         do {
-            $number = 'PRPAY-' . now()->format('YmdHis') . '-' . Str::upper(Str::random(5));
+            $number = 'PRPAY-'.now()->format('YmdHis').'-'.Str::upper(Str::random(5));
         } while (PromotionPaymentModel::query()->where('payment_number', $number)->exists());
 
         return $number;

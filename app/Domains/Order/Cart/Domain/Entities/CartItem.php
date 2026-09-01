@@ -14,7 +14,7 @@ final class CartItem
         private int $quantity
     ) {
         if ($quantity <= 0) {
-            throw new DomainException("Kuantitas item harus lebih dari 0.");
+            throw new DomainException('Kuantitas item harus lebih dari 0.');
         }
     }
 
@@ -36,7 +36,7 @@ final class CartItem
     public function changeQuantity(int $newQuantity): void
     {
         if ($newQuantity <= 0) {
-            throw new DomainException("Kuantitas tidak valid.");
+            throw new DomainException('Kuantitas tidak valid.');
         }
         $this->quantity = $newQuantity;
     }

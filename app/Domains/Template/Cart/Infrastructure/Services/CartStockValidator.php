@@ -9,9 +9,7 @@ use DomainException;
 
 final readonly class CartStockValidator
 {
-    public function __construct(private ProductForCartReaderInterface $products)
-    {
-    }
+    public function __construct(private ProductForCartReaderInterface $products) {}
 
     /**
      * @return array{id:int,name:string,price:int,image:?string,stock:?int,is_active:bool}

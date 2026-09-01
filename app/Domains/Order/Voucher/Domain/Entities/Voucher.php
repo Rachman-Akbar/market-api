@@ -32,6 +32,9 @@ final class Voucher extends Model
         'discount_type',
         'discount_value',
         'min_spend',
+        'min_items',
+        'min_distinct_products',
+        'terms',
         'max_discount',
         'starts_at',
         'ends_at',
@@ -46,6 +49,9 @@ final class Voucher extends Model
         'store_id' => 'integer',
         'discount_value' => 'float',
         'min_spend' => 'float',
+        'min_items' => 'integer',
+        'min_distinct_products' => 'integer',
+        'terms' => 'string',
         'max_discount' => 'float',
         'is_active' => 'boolean',
         'usage_limit' => 'integer',
@@ -62,7 +68,7 @@ final class Voucher extends Model
 
     protected static function booted(): void
     {
-        static::saving(function (Voucher $voucher): void {
+        self::saving(function (Voucher $voucher): void {
             if ($voucher->voucher_scope === 'platform' && $voucher->store_id !== null) {
                 throw new InvalidArgumentException('Voucher platform tidak boleh memiliki store_id.');
             }

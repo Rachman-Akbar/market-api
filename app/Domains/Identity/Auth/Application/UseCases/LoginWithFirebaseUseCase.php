@@ -36,11 +36,11 @@ final class LoginWithFirebaseUseCase
             ]);
         }
 
-        if (!is_string($firebaseUid) || trim($firebaseUid) === '') {
+        if (! is_string($firebaseUid) || trim($firebaseUid) === '') {
             throw new InvalidArgumentException('Firebase UID tidak valid atau kosong.');
         }
 
-        if (!is_string($email) || trim($email) === '') {
+        if (! is_string($email) || trim($email) === '') {
             throw new InvalidArgumentException('Firebase email tidak valid atau kosong.');
         }
 
@@ -68,13 +68,13 @@ final class LoginWithFirebaseUseCase
         $role = strtolower(trim($requestedRole)) ?: 'buyer';
         $user->loadMissing('roles:id,name');
 
-        if (!$user->hasRole($role)) {
+        if (! $user->hasRole($role)) {
             throw ValidationException::withMessages([
                 'role' => ["Akun Google ini tidak memiliki akses {$role}."],
             ]);
         }
 
-        if ($role === 'seller' && !$this->userRepository->hasSellerAccess($user)) {
+        if ($role === 'seller' && ! $this->userRepository->hasSellerAccess($user)) {
             throw ValidationException::withMessages([
                 'role' => ['Akses seller belum aktif atau toko belum tersedia.'],
             ]);

@@ -6,6 +6,7 @@ namespace App\Domains\Order\Ordering\Presentation\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Collection;
 
 final class OrderResource extends JsonResource
 {
@@ -75,31 +76,55 @@ final class OrderResource extends JsonResource
 
     private function read(object|array|null $source, string $key): mixed
     {
-        if ($source === null) return null;
-        if (is_array($source)) return $source[$key] ?? null;
-        if (method_exists($source, $key)) return $source->{$key}();
+        if ($source === null) {
+            return null;
+        }
+        if (is_array($source)) {
+            return $source[$key] ?? null;
+        }
+        if (method_exists($source, $key)) {
+            return $source->{$key}();
+        }
+
         return $source->{$key} ?? null;
     }
 
     private function money(mixed $value): float
     {
-        if (is_object($value) && method_exists($value, 'amount')) return (float) $value->amount();
+        if (is_object($value) && method_exists($value, 'amount')) {
+            return (float) $value->amount();
+        }
+
         return (float) ($value ?? 0);
     }
 
     private function date(mixed $value): ?string
     {
-        if ($value === null) return null;
-        if (is_object($value) && method_exists($value, 'toIso8601String')) return $value->toIso8601String();
-        if (is_object($value) && method_exists($value, 'format')) return $value->format(DATE_ATOM);
+        if ($value === null) {
+            return null;
+        }
+        if (is_object($value) && method_exists($value, 'toIso8601String')) {
+            return $value->toIso8601String();
+        }
+        if (is_object($value) && method_exists($value, 'format')) {
+            return $value->format(DATE_ATOM);
+        }
+
         return (string) $value;
     }
 
     private function toArrayValue(mixed $value): array
     {
-        if ($value instanceof \Illuminate\Support\Collection) return $value->all();
-        if (is_array($value)) return $value;
-        if ($value instanceof \Traversable) return iterator_to_array($value);
+        if ($value instanceof Collection) {
+            return $value->all();
+        }
+        if (is_array($value)) {
+            return $value;
+        }
+        if ($value instanceof \Traversable) {
+            return iterator_to_array($value);
+        }
+
         return [];
     }
 }

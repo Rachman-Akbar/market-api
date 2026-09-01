@@ -6,8 +6,8 @@ namespace App\Domains\PPOB\Application\Services;
 
 use App\Domains\PPOB\Domain\Repositories\PpoTransactionLogRepositoryInterface;
 use App\Domains\PPOB\Domain\Repositories\PpoTransactionRepositoryInterface;
-use App\Domains\PPOB\Infrastructure\Providers\IakProviderClient;
 use App\Domains\PPOB\Infrastructure\Persistence\Models\PpoTransactionModel;
+use App\Domains\PPOB\Infrastructure\Providers\IakProviderClient;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -36,6 +36,7 @@ class PpoCallbackHandler
         $providedSign = $data['sign'] ?? null;
         if ($providedSign !== null && ! $this->client->verifyCallbackSignature($referenceId, (string) $providedSign)) {
             $this->log($referenceId, $data, $ip, 'callback', 'invalid signature', null);
+
             return false;
         }
 
@@ -43,6 +44,7 @@ class PpoCallbackHandler
 
         if (! $tx) {
             $this->log($referenceId, $data, $ip, 'callback', 'transaction not found', null);
+
             return false;
         }
 

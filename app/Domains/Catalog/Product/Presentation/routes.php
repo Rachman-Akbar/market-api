@@ -2,20 +2,23 @@
 
 declare(strict_types=1);
 
+use App\Domains\Catalog\Product\Costing\Presentation\Http\Controllers\ProductCostingController;
 use App\Domains\Catalog\Product\Presentation\Http\Controllers\ProductAttributeController;
 use App\Domains\Catalog\Product\Presentation\Http\Controllers\ProductController;
 use App\Domains\Catalog\Product\Presentation\Http\Controllers\ProductVariantController;
-use App\Domains\Catalog\Product\Costing\Presentation\Http\Controllers\ProductCostingController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('products')->name('products.')->group(function (): void {
-    Route::get('/', [ProductController::class, 'index'])->name('index');
-    Route::get('/slug/{slug}', [ProductController::class, 'showBySlug'])->name('show-by-slug');
-    Route::get('/{id}', [ProductController::class, 'show'])->whereNumber('id')->name('show');
-    Route::get('/{productId}/variants', [ProductVariantController::class, 'publicIndex'])
-        ->whereNumber('productId')
-        ->name('variants.public-index');
-});
+Route::middleware('cache.headers:public;max_age=60;etag')
+    ->prefix('products')
+    ->name('products.')
+    ->group(function (): void {
+        Route::get('/', [ProductController::class, 'index'])->name('index');
+        Route::get('/slug/{slug}', [ProductController::class, 'showBySlug'])->name('show-by-slug');
+        Route::get('/{id}', [ProductController::class, 'show'])->whereNumber('id')->name('show');
+        Route::get('/{productId}/variants', [ProductVariantController::class, 'publicIndex'])
+            ->whereNumber('productId')
+            ->name('variants.public-index');
+    });
 
 Route::middleware(['auth:sanctum', 'active.user', 'verified.email', 'role:seller,admin'])
     ->prefix('products/attributes')

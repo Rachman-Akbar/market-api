@@ -16,6 +16,7 @@ final class CustomerController extends Controller
 {
     use ResolvesActiveRole;
     use ResolvesSellerStoreContext;
+
     public function __construct(private CustomerService $service) {}
 
     public function index(Request $request): JsonResponse

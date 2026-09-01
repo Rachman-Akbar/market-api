@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 final class EloquentStoreRepository implements StoreRepositoryInterface
 {
     private const DEFAULT_PER_PAGE = 8;
+
     private const MAX_PER_PAGE = 100;
 
     public function paginate(array $filters = [], int $perPage = self::DEFAULT_PER_PAGE): LengthAwarePaginator

@@ -11,8 +11,7 @@ final class GetHeaderMenuQuery
 {
     public function __construct(
         private readonly CatalogGroupRepositoryInterface $repository
-    ) {
-    }
+    ) {}
 
     public function execute(): Collection
     {

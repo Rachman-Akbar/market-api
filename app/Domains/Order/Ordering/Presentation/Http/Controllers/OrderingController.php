@@ -2,6 +2,7 @@
 
 namespace App\Domains\Order\Ordering\Presentation\Http\Controllers;
 
+use App\Domains\Engagement\Mission\Application\Services\MissionService;
 use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Order\Ordering\Application\UseCases\CancelOrderUseCase;
 use App\Domains\Order\Ordering\Application\UseCases\CreateOrderUseCase;
@@ -14,7 +15,6 @@ use App\Domains\Order\Ordering\Presentation\Http\Requests\CreateOrderRequest;
 use App\Domains\Order\Ordering\Presentation\Http\Resources\OrderResource;
 use App\Domains\Seller\Stock\Application\Services\StockMovementService;
 use App\Domains\Shared\Presentation\Http\Concerns\ResolvesSellerStoreContext;
-use App\Domains\Engagement\Mission\Application\Services\MissionService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -121,7 +121,7 @@ class OrderingController extends Controller
     public function show(Request $request, int $id): JsonResponse
     {
         $order = $this->orderRepository->findById($id);
-        if (!$order) {
+        if (! $order) {
             return response()->json(['success' => false, 'message' => 'Order tidak ditemukan.'], 404);
         }
 
@@ -131,7 +131,7 @@ class OrderingController extends Controller
         }
         if ($role === 'seller') {
             $storeId = $this->sellerStoreId($request);
-            if (!collect($order->subOrders)->contains(fn($subOrder) => $subOrder->storeId === $storeId)) {
+            if (! collect($order->subOrders)->contains(fn ($subOrder) => $subOrder->storeId === $storeId)) {
                 throw new AccessDeniedHttpException('Pesanan ini bukan milik toko Anda.');
             }
         }
@@ -155,11 +155,11 @@ class OrderingController extends Controller
         }
         if ($request->filled('order_number')) {
             $search = trim((string) $request->query('order_number'));
-            $query->whereHas('parentOrder', fn($builder) => $builder->where('order_number', 'like', "%{$search}%"));
+            $query->whereHas('parentOrder', fn ($builder) => $builder->where('order_number', 'like', "%{$search}%"));
         }
 
         $rows = $query->latest()->paginate(min(100, max(1, (int) $request->query('per_page', 15))));
-        $rows->through(fn($row) => [
+        $rows->through(fn ($row) => [
             'id' => $row->id,
             'order_id' => $row->order_id,
             'order_number' => $row->parentOrder?->order_number,
@@ -183,11 +183,12 @@ class OrderingController extends Controller
     public function cancel(Request $request, int $id): JsonResponse
     {
         $order = $this->orderRepository->findById($id);
-        if (!$order || ($this->activeRole($request) !== 'admin' && $order->userId !== (string) $request->user()->id)) {
+        if (! $order || ($this->activeRole($request) !== 'admin' && $order->userId !== (string) $request->user()->id)) {
             throw new AccessDeniedHttpException('Anda tidak dapat membatalkan pesanan ini.');
         }
 
         $this->cancelOrderUseCase->execute($id);
+
         return response()->json(['success' => true, 'message' => 'Order berhasil dibatalkan.']);
     }
 

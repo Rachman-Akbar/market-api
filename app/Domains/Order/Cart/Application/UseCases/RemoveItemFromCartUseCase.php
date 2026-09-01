@@ -11,8 +11,7 @@ final class RemoveItemFromCartUseCase
 {
     public function __construct(
         private CartRepositoryInterface $cartRepository
-    ) {
-    }
+    ) {}
 
     public function execute(string $userId, int $productVariantId): CartSummaryData
     {

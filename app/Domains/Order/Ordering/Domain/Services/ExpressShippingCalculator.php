@@ -9,7 +9,7 @@ class ExpressShippingCalculator implements ShippingCalculatorInterface
     public function calculate(array $data): float
     {
         foreach (['origin_latitude', 'origin_longitude', 'latitude', 'longitude'] as $key) {
-            if (!isset($data[$key]) || !is_numeric($data[$key])) {
+            if (! isset($data[$key]) || ! is_numeric($data[$key])) {
                 throw new InvalidArgumentException('Koordinat asal dan tujuan diperlukan untuk pengiriman express.');
             }
         }

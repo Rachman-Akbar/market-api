@@ -60,7 +60,7 @@ final class RawMaterialService
                 throw new InvalidArgumentException('Toko bahan baku tidak valid.');
             }
 
-            $model = $id ? RawMaterialModel::query()->where('store_id', $storeId)->lockForUpdate()->find($id) : new RawMaterialModel();
+            $model = $id ? RawMaterialModel::query()->where('store_id', $storeId)->lockForUpdate()->find($id) : new RawMaterialModel;
             if ($id && ! $model) {
                 throw new InvalidArgumentException('Bahan baku tidak ditemukan.');
             }

@@ -23,6 +23,7 @@ use Throwable;
 final class PromotionController extends Controller
 {
     use ResolvesSellerStoreContext;
+
     public function index(Request $request, GetPromotionQuery $query): JsonResponse
     {
         try {
@@ -141,7 +142,7 @@ final class PromotionController extends Controller
                 $id,
                 $sellerStoreId,
                 $sellerSubmission,
-                (string) ($request->user()?->getAuthIdentifier() ?? "")
+                (string) ($request->user()?->getAuthIdentifier() ?? '')
             );
 
             return response()->json([
@@ -187,7 +188,7 @@ final class PromotionController extends Controller
                 ->whereNull('deleted_at')
                 ->value('slug');
 
-            return $slug ? '/products/' . $slug : '/promotions';
+            return $slug ? '/products/'.$slug : '/promotions';
         }
 
         if ($promotion->clickAction === 'category' && $promotion->targetId && Schema::hasTable('categories')) {
@@ -205,7 +206,7 @@ final class PromotionController extends Controller
 
             $slug = $categoryQuery->value($slugColumn);
 
-            return $slug ? '/category/' . ltrim((string) $slug, '/') : '/promotions';
+            return $slug ? '/category/'.ltrim((string) $slug, '/') : '/promotions';
         }
 
         if ($promotion->clickAction === 'url' && $promotion->targetUrl) {
@@ -267,7 +268,7 @@ final class PromotionController extends Controller
             $promotion = PromotionData::fromArray([
                 'id' => $row->id ?? null,
                 'store_id' => $columns->contains('store_id') ? ($row->store_id ?? null) : null,
-                'name' => $columns->contains('name') ? ($row->name ?? 'promotion') : 'promotion ' . ($row->id ?? ''),
+                'name' => $columns->contains('name') ? ($row->name ?? 'promotion') : 'promotion '.($row->id ?? ''),
                 'image_url' => $row->image_url ?? '',
                 'mobile_image_url' => $columns->contains('mobile_image_url') ? ($row->mobile_image_url ?? null) : null,
                 'click_action' => $row->click_action ?? 'none',
@@ -281,6 +282,4 @@ final class PromotionController extends Controller
             return $this->present($promotion);
         })->all();
     }
-
-
 }

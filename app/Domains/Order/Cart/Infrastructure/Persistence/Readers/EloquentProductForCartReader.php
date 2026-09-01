@@ -25,6 +25,7 @@ final class EloquentProductForCartReader implements ProductForCartReaderInterfac
             ->where('stores.is_active', true)
             ->whereNull('stores.deleted_at')
             ->value('product_variants.stock');
+
         return $stock === null ? null : (int) $stock;
     }
 

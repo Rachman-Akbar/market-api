@@ -82,7 +82,6 @@ final class FinancialTransactionController extends Controller
         }
     }
 
-
     public function paymentHistory(Request $request, int $id): JsonResponse
     {
         try {

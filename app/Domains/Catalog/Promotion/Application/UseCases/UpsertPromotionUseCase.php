@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Catalog\Promotion\Application\UseCases;
 
 use App\Domains\Catalog\Promotion\Application\Dtos\PromotionData;
-use App\Domains\Catalog\Promotion\Domain\Entities\Promotion;
 use App\Domains\Catalog\Promotion\Application\Services\PromotionPaymentService;
+use App\Domains\Catalog\Promotion\Domain\Entities\Promotion;
 use App\Domains\Catalog\Promotion\Domain\Repositories\PromotionRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;

@@ -22,9 +22,7 @@ return new class extends Migration
         $this->repairForeignKeys();
     }
 
-    public function down(): void
-    {
-    }
+    public function down(): void {}
 
     private function upgradeUsers(): void
     {
@@ -277,7 +275,7 @@ return new class extends Migration
 
         if ((int) ($result->aggregate ?? 0) > 0) {
             throw new RuntimeException(
-                "Duplikat ditemukan pada {$table} untuk kolom " . implode(', ', $columns) . '.'
+                "Duplikat ditemukan pada {$table} untuk kolom ".implode(', ', $columns).'.'
             );
         }
     }

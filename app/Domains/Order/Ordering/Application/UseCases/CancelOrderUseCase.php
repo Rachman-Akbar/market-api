@@ -13,7 +13,7 @@ class CancelOrderUseCase
     {
         $order = $this->orderRepository->findById($orderId);
 
-        if (!$order) {
+        if (! $order) {
             throw new DomainException('Order tidak ditemukan.');
         }
 

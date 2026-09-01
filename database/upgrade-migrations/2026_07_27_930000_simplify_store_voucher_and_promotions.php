@@ -17,9 +17,7 @@ return new class extends Migration
         $this->upgradeCategories();
     }
 
-    public function down(): void
-    {
-    }
+    public function down(): void {}
 
     private function upgradeStores(): void
     {
@@ -179,8 +177,8 @@ return new class extends Migration
 
         if (! $exists) {
             try {
-                DB::statement("ALTER TABLE categories ADD CONSTRAINT categories_level_media_check CHECK ((level = 3) OR (image_url IS NULL AND icon_url IS NULL))");
-            } catch (\Throwable) {
+                DB::statement('ALTER TABLE categories ADD CONSTRAINT categories_level_media_check CHECK ((level = 3) OR (image_url IS NULL AND icon_url IS NULL))');
+            } catch (Throwable) {
             }
         }
     }
@@ -193,7 +191,7 @@ return new class extends Migration
 
         $this->dropForeignKeysForColumns($table, [$column]);
         $constraint = "{$table}_{$column}_foreign";
-        DB::statement("ALTER TABLE `{$table}` ADD CONSTRAINT `{$constraint}` FOREIGN KEY (`{$column}`) REFERENCES `stores` (`id`) ON DELETE " . strtoupper($onDelete));
+        DB::statement("ALTER TABLE `{$table}` ADD CONSTRAINT `{$constraint}` FOREIGN KEY (`{$column}`) REFERENCES `stores` (`id`) ON DELETE ".strtoupper($onDelete));
     }
 
     private function dropForeignKeysForColumns(string $table, array $columns): void
@@ -227,7 +225,7 @@ return new class extends Migration
 
         try {
             DB::statement("ALTER TABLE vouchers ADD CONSTRAINT vouchers_scope_store_check CHECK ((voucher_scope = 'platform' AND store_id IS NULL) OR (voucher_scope = 'store' AND store_id IS NOT NULL))");
-        } catch (\Throwable) {
+        } catch (Throwable) {
         }
     }
 };

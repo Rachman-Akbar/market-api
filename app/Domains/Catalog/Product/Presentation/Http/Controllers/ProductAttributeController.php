@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Product\Presentation\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
 use App\Domains\Catalog\Product\Application\Query\ProductAttribute\GetProductAttributeQuery;
 use App\Domains\Catalog\Product\Application\Query\ProductAttribute\ListProductAttributesQuery;
 use App\Domains\Catalog\Product\Application\UseCases\ProductAttribute\CreateProductAttributeUseCase;
-use App\Domains\Catalog\Product\Application\UseCases\ProductAttribute\UpdateProductAttributeUseCase;
 use App\Domains\Catalog\Product\Application\UseCases\ProductAttribute\DeleteProductAttributeUseCase;
+use App\Domains\Catalog\Product\Application\UseCases\ProductAttribute\UpdateProductAttributeUseCase;
 use App\Domains\Catalog\Product\Presentation\Http\Requests\StoreProductAttributeRequest;
 use App\Domains\Catalog\Product\Presentation\Http\Requests\UpdateProductAttributeRequest;
 use App\Domains\Catalog\Product\Presentation\Http\Resources\ProductAttributeResource;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 
 final class ProductAttributeController extends Controller
 {

@@ -624,14 +624,14 @@ final class ComprehensiveRealtimeSeeder extends Seeder
                     'updated_at' => $createdAt,
                 ]);
             }
-            if (Schema::hasTable('user_vouchers')) {
+            if (Schema::hasTable('user_vouchers') && $completed) {
                 DB::table('user_vouchers')->insert([
                     'user_id' => $buyer->id,
                     'voucher_id' => $voucher->id,
                     'source_type' => 'realtime_seed',
                     'source_id' => (string) $missionId,
-                    'status' => $completed ? 'available' : 'locked',
-                    'claimed_at' => $createdAt,
+                    'status' => 'available',
+                    'claimed_at' => null,
                     'used_at' => null,
                     'created_at' => $createdAt,
                     'updated_at' => $createdAt,

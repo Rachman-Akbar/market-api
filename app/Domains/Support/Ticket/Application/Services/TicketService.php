@@ -208,7 +208,7 @@ final class TicketService
             }
 
             $model = new SupportTicketModel([
-                'ticket_number' => 'HLP-' . now()->format('YmdHis') . '-' . Str::upper(Str::random(5)),
+                'ticket_number' => 'HLP-'.now()->format('YmdHis').'-'.Str::upper(Str::random(5)),
                 'user_id' => $ticketUserId,
                 'store_id' => $storeId,
                 'order_id' => $orderId,
@@ -237,10 +237,10 @@ final class TicketService
                     'module' => 'support',
                     'type' => 'support.ticket.created',
                     'title' => 'Help baru',
-                    'message' => $result->ticket_number . ' · ' . $result->subject,
+                    'message' => $result->ticket_number.' · '.$result->subject,
                     'reference_type' => 'support_ticket',
                     'reference_id' => $result->id,
-                    'url' => '/admin/help?ticket=' . $result->id,
+                    'url' => '/admin/help?ticket='.$result->id,
                     'meta' => ['priority' => $result->priority, 'category' => $result->category],
                 ], $userId, $storeId);
             }
@@ -285,10 +285,10 @@ final class TicketService
                     'module' => 'support',
                     'type' => 'support.ticket.replied',
                     'title' => 'Balasan Help baru',
-                    'message' => $saved->ticket_number . ' · ' . $saved->subject,
+                    'message' => $saved->ticket_number.' · '.$saved->subject,
                     'reference_type' => 'support_ticket',
                     'reference_id' => $saved->id,
-                    'url' => '/admin/help?ticket=' . $saved->id,
+                    'url' => '/admin/help?ticket='.$saved->id,
                     'meta' => ['status' => $saved->status, 'priority' => $saved->priority],
                 ], $userId, $saved->store_id ? (int) $saved->store_id : null);
             }

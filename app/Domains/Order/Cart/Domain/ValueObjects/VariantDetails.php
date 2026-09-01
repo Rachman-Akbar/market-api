@@ -21,16 +21,63 @@ final class VariantDetails
         private readonly array $attributes = []
     ) {}
 
-    public function getId(): int { return $this->id; }
-    public function getProductId(): int { return $this->productId; }
-    public function getName(): string { return $this->name; }
-    public function getProductName(): string { return $this->productName; }
-    public function getStoreId(): int { return $this->storeId; }
-    public function getStoreName(): string { return $this->storeName; }
-    public function getSku(): string { return $this->sku; }
-    public function getPrice(): Money { return $this->price; }
-    public function getStock(): int { return $this->stock; }
-    public function getWeight(): int { return $this->weight; }
-    public function getThumbnail(): ?string { return $this->thumbnail; }
-    public function getAttributes(): array { return $this->attributes; }
+    public function getId(): int
+    {
+        return $this->id;
+    }
+
+    public function getProductId(): int
+    {
+        return $this->productId;
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getProductName(): string
+    {
+        return $this->productName;
+    }
+
+    public function getStoreId(): int
+    {
+        return $this->storeId;
+    }
+
+    public function getStoreName(): string
+    {
+        return $this->storeName;
+    }
+
+    public function getSku(): string
+    {
+        return $this->sku;
+    }
+
+    public function getPrice(): Money
+    {
+        return $this->price;
+    }
+
+    public function getStock(): int
+    {
+        return $this->stock;
+    }
+
+    public function getWeight(): int
+    {
+        return $this->weight;
+    }
+
+    public function getThumbnail(): ?string
+    {
+        return $this->thumbnail;
+    }
+
+    public function getAttributes(): array
+    {
+        return $this->attributes;
+    }
 }

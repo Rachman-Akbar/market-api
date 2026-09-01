@@ -1,39 +1,55 @@
-# Cart Domain - Laravel DDD
+# market-api
 
-Copy `app/`, `config/`, and optional `database/` into your Laravel project.
+Backend Laravel 11 untuk marketplace online. PHP 8.2, MySQL 8 di development, SQLite di test suite.
 
-## Register service provider
+## Struktur
 
-Laravel 11: add this to `bootstrap/providers.php`:
+Domain-driven design dengan 9 modul di bawah `app/Domains/`:
 
-```php
-App\Domains\Cart\Infrastructure\Providers\CartServiceProvider::class,
+| Domain | Fungsi |
+|---|---|
+| Identity | Auth, user, role, Sanctum token |
+| Catalog | Produk, kategori, atribut, gambar |
+| Seller | Toko seller, showcase, stok, inventory bahan baku |
+| Order | Checkout, order, sub-order, cart, pembayaran |
+| Voucher | Voucher diskon platform & toko |
+| Engagement | Misi, notifikasi push |
+| Gaming | Tiket online, showroom, voucher game |
+| PPOB | Produk digital (PLN, pulsa, paket data) |
+| Shared | Spreadsheet import/export, file upload, alamat |
+
+## Setup
+
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate:fresh
 ```
 
-Laravel 10 or older: add it to `config/app.php` providers.
+Butuh MySQL 8 (development). Buat database lalu set `DB_*` di `.env`.
 
-## API routes
+## Menjalankan
 
-Protected by `auth:sanctum` by default:
-
-```http
-GET    /api/cart
-POST   /api/cart/items
-PATCH  /api/cart/items/{productId}
-DELETE /api/cart/items/{productId}
-DELETE /api/cart
+```bash
+php artisan serve
 ```
 
-## Product model mapping
+API prefix: `/api/v1/`. Auth pakai Sanctum (`/api/v1/auth/login`).
 
-Adjust `config/cart.php` if your Product model or field names differ.
+## Test
 
-## Recommended MySQL index
-
-Your schema has `active_user_id`. Add this to guarantee one active cart per user:
-
-```sql
-ALTER TABLE carts ADD UNIQUE KEY carts_active_user_id_unique (active_user_id);
+```bash
+php artisan test
 ```
 
-MySQL allows many `NULL` values in unique indexes, so checked-out/abandoned carts can use `active_user_id = NULL`.
+Semua test jalan di SQLite in-memory. Tidak perlu MySQL untuk menjalankan test.
+
+## Code style
+
+```bash
+vendor/bin/pint --test    # cek
+vendor/bin/pint            # auto-fix
+```
+
+Format otomatis mengikuti konfigurasi bawaan Laravel Pint.

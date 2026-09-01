@@ -51,5 +51,3 @@ final class ProductAttributeValue
         return $this->attributeType;
     }
 }
-
-

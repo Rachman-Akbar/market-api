@@ -33,6 +33,7 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as SpreadsheetDate;
 final class AdvancedSpreadsheetTransferService
 {
     private array $createdOrders = [];
+
     private array $orderSignatures = [];
 
     public function __construct(
@@ -178,6 +179,7 @@ final class AdvancedSpreadsheetTransferService
                     'average_cost' => $model->average_cost,
                     'is_active' => $model->is_active ? 1 : 0,
                 ];
+
                 continue;
             }
 
@@ -197,6 +199,7 @@ final class AdvancedSpreadsheetTransferService
                     'notes' => $model->notes,
                     'occurred_at' => $this->formatDate($model->occurred_at),
                 ];
+
                 continue;
             }
 
@@ -219,6 +222,7 @@ final class AdvancedSpreadsheetTransferService
                     'selling_price' => $model->selling_price,
                     'apply_to_variants' => 0,
                 ];
+
                 continue;
             }
 
@@ -233,6 +237,7 @@ final class AdvancedSpreadsheetTransferService
                     'is_active' => $model->is_active ? 1 : 0,
                     'registered_at' => $this->formatDate($model->created_at),
                 ];
+
                 continue;
             }
 
@@ -248,6 +253,7 @@ final class AdvancedSpreadsheetTransferService
                     'is_active' => $model->is_active ? 1 : 0,
                     'created_at' => $this->formatDate($model->created_at),
                 ];
+
                 continue;
             }
 
@@ -270,6 +276,7 @@ final class AdvancedSpreadsheetTransferService
                     'reference_number' => $history?->reference_number ?? '',
                     'occurred_at' => $this->formatDate($model->occurred_at),
                 ];
+
                 continue;
             }
 
@@ -305,6 +312,7 @@ final class AdvancedSpreadsheetTransferService
                         ];
                     }
                 }
+
                 continue;
             }
 
@@ -324,6 +332,7 @@ final class AdvancedSpreadsheetTransferService
                     'notes' => $model->notes,
                     'occurred_at' => $this->formatDate($model->occurred_at),
                 ];
+
                 continue;
             }
 
@@ -434,7 +443,7 @@ final class AdvancedSpreadsheetTransferService
 
         $model = $mode === 'update'
             ? FinancialTransactionModel::query()->where('type', $module)->when($role === 'seller', fn (Builder $query) => $query->where('store_id', $storeId))->findOrFail((int) $row['id'])
-            : new FinancialTransactionModel();
+            : new FinancialTransactionModel;
         $amount = $this->positiveFloat($row['amount'] ?? null, 'Nominal transaksi');
         $settlement = in_array($module, ['payable', 'receivable'], true);
         $hasPaidAmount = $this->clean($row['paid_amount'] ?? '') !== '';
@@ -758,7 +767,7 @@ final class AdvancedSpreadsheetTransferService
                 if (OrderModel::query()->where('order_number', $orderNumber)->exists()) {
                     throw new InvalidArgumentException('Nomor pesanan sudah tersedia. Gunakan mode Import Update Data.');
                 }
-                $order = new OrderModel();
+                $order = new OrderModel;
             }
         }
 
@@ -877,6 +886,7 @@ final class AdvancedSpreadsheetTransferService
             return strtolower(trim($role));
         }
         $ability = collect($request->user()?->currentAccessToken()?->abilities ?? [])->first(fn (mixed $value): bool => is_string($value) && str_starts_with($value, 'active-role:'));
+
         return is_string($ability) ? strtolower(trim(substr($ability, 12))) : 'buyer';
     }
 
@@ -906,27 +916,37 @@ final class AdvancedSpreadsheetTransferService
     private function importMode(Request $request): string
     {
         $mode = strtolower($this->clean($request->attributes->get('import_mode', $request->input('import_mode', 'create'))));
+
         return in_array($mode, ['create', 'update'], true) ? $mode : 'create';
     }
 
     private function findStore(mixed $name): ?StoreModel
     {
         $value = $this->clean($name);
-        if ($value === '') return null;
+        if ($value === '') {
+            return null;
+        }
+
         return StoreModel::query()->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower($value)])->first();
     }
 
     private function findActiveUser(mixed $email): ?User
     {
         $value = Str::lower($this->clean($email));
-        if ($value === '') return null;
+        if ($value === '') {
+            return null;
+        }
+
         return User::query()->whereRaw('LOWER(TRIM(email)) = ?', [$value])->where('is_active', true)->first();
     }
 
     private function findVariant(int $storeId, mixed $sku, bool $withProduct = false): ?ProductVariantModel
     {
         $value = $this->clean($sku);
-        if ($value === '') return null;
+        if ($value === '') {
+            return null;
+        }
+
         return ProductVariantModel::query()->when($withProduct, fn (Builder $query) => $query->with('product:id,name'))->where('store_id', $storeId)->whereRaw('LOWER(TRIM(sku)) = ?', [Str::lower($value)])->first();
     }
 
@@ -936,6 +956,7 @@ final class AdvancedSpreadsheetTransferService
         if ($value === '') {
             return null;
         }
+
         return RawMaterialModel::query()->where('store_id', $storeId)->whereRaw('LOWER(TRIM(code)) = ?', [$value])->first();
     }
 
@@ -949,6 +970,7 @@ final class AdvancedSpreadsheetTransferService
         if ($name === '') {
             return null;
         }
+
         return ProductModel::query()->where('store_id', $storeId)->whereRaw('LOWER(TRIM(name)) = ?', [$name])->first();
     }
 
@@ -978,12 +1000,14 @@ final class AdvancedSpreadsheetTransferService
             $seen[$key] = true;
             $rows[] = ['code' => $code, 'quantity' => (float) $quantity];
         }
+
         return $rows;
     }
 
     private function findOrder(mixed $number): ?OrderModel
     {
         $value = $this->clean($number);
+
         return $value === '' ? null : OrderModel::query()->where('order_number', $value)->first();
     }
 
@@ -992,8 +1016,13 @@ final class AdvancedSpreadsheetTransferService
         if (in_array($type, ['income', 'expense'], true)) {
             return in_array($requested, ['draft', 'posted', 'cancelled'], true) ? $requested : 'posted';
         }
-        if ($requested === 'cancelled') return 'cancelled';
-        if ($paid <= 0) return 'open';
+        if ($requested === 'cancelled') {
+            return 'cancelled';
+        }
+        if ($paid <= 0) {
+            return 'open';
+        }
+
         return $paid >= $amount ? 'paid' : 'partial';
     }
 
@@ -1002,6 +1031,7 @@ final class AdvancedSpreadsheetTransferService
         do {
             $value = strtoupper(substr($type, 0, 3)).'-'.now()->format('YmdHis').'-'.Str::upper(Str::random(5));
         } while (FinancialTransactionModel::query()->where('reference_number', $value)->exists());
+
         return $value;
     }
 
@@ -1013,6 +1043,7 @@ final class AdvancedSpreadsheetTransferService
         while (SubOrderModel::query()->where('sub_order_number', $value)->exists()) {
             $value = $base.'-'.$counter++;
         }
+
         return $value;
     }
 
@@ -1020,12 +1051,15 @@ final class AdvancedSpreadsheetTransferService
     {
         $value = strtolower($this->clean($requested));
         $map = ['in' => 'inbound', 'out' => 'outbound', 'adjustment' => 'adjustment', 'reservation' => 'reservation', 'release' => 'release', 'production' => 'production', 'inbound' => 'inbound', 'outbound' => 'outbound'];
+
         return $map[$value] ?? ($delta > 0 ? 'inbound' : 'outbound');
     }
 
     private function addMissing(array &$missing, string $type, string $name, int $rowNumber): void
     {
-        if ($name === '') return;
+        if ($name === '') {
+            return;
+        }
         $key = $type.'|'.Str::lower($name);
         if (! isset($missing[$key])) {
             $missing[$key] = ['type' => $type, 'name' => $name, 'row_numbers' => [], 'can_auto_create' => false, 'context' => ''];
@@ -1042,54 +1076,82 @@ final class AdvancedSpreadsheetTransferService
     private function nullable(mixed $value): ?string
     {
         $value = $this->clean($value);
+
         return $value === '' ? null : $value;
     }
 
     private function boolValue(mixed $value): bool
     {
-        if (is_bool($value)) return $value;
+        if (is_bool($value)) {
+            return $value;
+        }
+
         return in_array(strtolower($this->clean($value)), ['1', 'true', 'yes', 'ya', 'aktif', 'active'], true);
     }
 
     private function floatValue(mixed $value): float
     {
-        if (! is_numeric($value)) throw new InvalidArgumentException('Nilai nominal harus berupa angka tanpa simbol mata uang.');
+        if (! is_numeric($value)) {
+            throw new InvalidArgumentException('Nilai nominal harus berupa angka tanpa simbol mata uang.');
+        }
+
         return round((float) $value, 2);
     }
 
     private function positiveFloat(mixed $value, string $label): float
     {
         $number = $this->floatValue($value);
-        if ($number <= 0) throw new InvalidArgumentException($label.' harus lebih besar dari nol.');
+        if ($number <= 0) {
+            throw new InvalidArgumentException($label.' harus lebih besar dari nol.');
+        }
+
         return $number;
     }
 
     private function positiveInt(mixed $value, string $label): int
     {
-        if (! is_numeric($value) || (int) $value <= 0) throw new InvalidArgumentException($label.' harus berupa angka bulat positif.');
+        if (! is_numeric($value) || (int) $value <= 0) {
+            throw new InvalidArgumentException($label.' harus berupa angka bulat positif.');
+        }
+
         return (int) $value;
     }
 
     private function nonNegativeInt(mixed $value, string $label): int
     {
-        if (! is_numeric($value) || (int) $value < 0) throw new InvalidArgumentException($label.' harus berupa angka bulat nol atau lebih.');
+        if (! is_numeric($value) || (int) $value < 0) {
+            throw new InvalidArgumentException($label.' harus berupa angka bulat nol atau lebih.');
+        }
+
         return (int) $value;
     }
 
     private function nonZeroInt(mixed $value, string $label): int
     {
-        if (! is_numeric($value) || (int) $value === 0) throw new InvalidArgumentException($label.' harus berupa angka bulat selain nol.');
+        if (! is_numeric($value) || (int) $value === 0) {
+            throw new InvalidArgumentException($label.' harus berupa angka bulat selain nol.');
+        }
+
         return (int) $value;
     }
 
     private function nullableDate(mixed $value, string $format = 'Y-m-d H:i:s'): ?string
     {
-        if ($value instanceof DateTimeInterface) return $value->format($format);
+        if ($value instanceof DateTimeInterface) {
+            return $value->format($format);
+        }
         $text = $this->clean($value);
-        if ($text === '') return null;
-        if (is_numeric($value)) return SpreadsheetDate::excelToDateTimeObject((float) $value)->format($format);
+        if ($text === '') {
+            return null;
+        }
+        if (is_numeric($value)) {
+            return SpreadsheetDate::excelToDateTimeObject((float) $value)->format($format);
+        }
         $time = strtotime($text);
-        if ($time === false) throw new InvalidArgumentException('Format tanggal tidak valid: '.$text);
+        if ($time === false) {
+            throw new InvalidArgumentException('Format tanggal tidak valid: '.$text);
+        }
+
         return date($format, $time);
     }
 
@@ -1100,8 +1162,13 @@ final class AdvancedSpreadsheetTransferService
 
     private function formatDate(mixed $value, string $format = 'Y-m-d H:i:s'): string
     {
-        if ($value instanceof DateTimeInterface) return $value->format($format);
-        if (is_object($value) && method_exists($value, 'format')) return $value->format($format);
+        if ($value instanceof DateTimeInterface) {
+            return $value->format($format);
+        }
+        if (is_object($value) && method_exists($value, 'format')) {
+            return $value->format($format);
+        }
+
         return $value ? (string) $value : '';
     }
 }

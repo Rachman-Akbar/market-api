@@ -15,6 +15,7 @@ interface ProductImageRepositoryInterface
 
     /**
      * Mengambil semua galeri foto berdasarkan ID Produk.
+     *
      * * @return ProductImage[]
      */
     public function findByProductId(int $productId): array;
@@ -32,10 +33,6 @@ interface ProductImageRepositoryInterface
     /**
      * Fitur khusus mass-update (mengganti total isi galeri foto produk).
      * Digunakan langsung di dalam Create/Update Use Case.
-     *
-     * @param int $productId
-     * @param array $images
-     * @return void
      */
     public function replaceForProduct(int $productId, array $images): void;
 }

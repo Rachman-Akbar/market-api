@@ -9,6 +9,7 @@ use DomainException;
 final class Quantity
 {
     private const MIN = 1;
+
     private const MAX = 999;
 
     public function __construct(private readonly int $value)

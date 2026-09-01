@@ -10,8 +10,8 @@ use Tests\TestCase;
 
 class SpreadsheetTransferTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsAsUser;
+    use RefreshDatabase;
 
     public function test_admin_can_download_template_for_import_enabled_module(): void
     {

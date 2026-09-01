@@ -2,24 +2,20 @@
 
 namespace App\Domains\Catalog\CatalogGroup\Presentation\Http\Controllers;
 
-use Illuminate\Routing\Controller;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-
 use App\Domains\Catalog\CatalogGroup\Application\Dtos\CatalogGroupData;
-
-use App\Domains\Catalog\CatalogGroup\Application\Queries\GetCatalogGroupsQuery;
-use App\Domains\Catalog\CatalogGroup\Application\Queries\GetCatalogGroupIdQuery;
 use App\Domains\Catalog\CatalogGroup\Application\Queries\GetCatalogGroupBySlugQuery;
+use App\Domains\Catalog\CatalogGroup\Application\Queries\GetCatalogGroupIdQuery;
+use App\Domains\Catalog\CatalogGroup\Application\Queries\GetCatalogGroupsQuery;
 use App\Domains\Catalog\CatalogGroup\Application\Queries\GetCategoriesByCatalogGroupQuery;
-
 use App\Domains\Catalog\CatalogGroup\Application\UseCases\CreateCatalogGroupUseCase;
 use App\Domains\Catalog\CatalogGroup\Application\UseCases\DeleteCatalogGroupUseCase;
 use App\Domains\Catalog\CatalogGroup\Application\UseCases\UpdateCatalogGroupUseCase;
-
 use App\Domains\Catalog\CatalogGroup\Presentation\Http\Requests\CatalogGroupRequest;
 use App\Domains\Catalog\CatalogGroup\Presentation\Http\Resources\CatalogGroupResource;
 use App\Domains\Catalog\Category\Presentation\Http\Resources\CategoryResource;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 
 final class CatalogGroupController extends Controller
 {
@@ -47,7 +43,7 @@ final class CatalogGroupController extends Controller
     {
         $group = $query->execute($id);
 
-        if (!$group) {
+        if (! $group) {
             return response()->json([
                 'success' => false,
                 'message' => 'Catalog group not found',
@@ -73,26 +69,26 @@ final class CatalogGroupController extends Controller
         ], 201);
     }
 
-public function update(UpdateCatalogGroupUseCase $useCase, CatalogGroupRequest $request, int $id): JsonResponse
-{
-    $group = $useCase->execute(
-        $id,
-        CatalogGroupData::fromArray($request->validated())
-    );
+    public function update(UpdateCatalogGroupUseCase $useCase, CatalogGroupRequest $request, int $id): JsonResponse
+    {
+        $group = $useCase->execute(
+            $id,
+            CatalogGroupData::fromArray($request->validated())
+        );
 
-    if (! $group) {
+        if (! $group) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak ditemukan',
+            ], 404);
+        }
+
         return response()->json([
-            'success' => false,
-            'message' => 'Data tidak ditemukan',
-        ], 404);
+            'success' => true,
+            'data' => new CatalogGroupResource($group),
+            'message' => 'Catalog group updated successfully',
+        ]);
     }
-
-    return response()->json([
-        'success' => true,
-        'data' => new CatalogGroupResource($group),
-        'message' => 'Catalog group updated successfully',
-    ]);
-}
 
     public function categories(GetCategoriesByCatalogGroupQuery $query, int $id): JsonResponse
     {
@@ -108,7 +104,7 @@ public function update(UpdateCatalogGroupUseCase $useCase, CatalogGroupRequest $
     {
         $group = $query->execute($slug);
 
-        if (!$group) {
+        if (! $group) {
             return response()->json([
                 'success' => false,
                 'message' => 'Catalog group not found',
@@ -125,7 +121,7 @@ public function update(UpdateCatalogGroupUseCase $useCase, CatalogGroupRequest $
     {
         $deleted = $useCase->execute($id);
 
-        if (!$deleted) {
+        if (! $deleted) {
             return response()->json([
                 'success' => false,
                 'message' => 'Catalog group not found or failed to delete',

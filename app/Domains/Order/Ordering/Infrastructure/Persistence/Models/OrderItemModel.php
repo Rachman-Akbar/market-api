@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class OrderItemModel extends Model
 {
     protected $table = 'order_items';
+
     protected $guarded = ['id'];
 
     public function subOrder(): BelongsTo

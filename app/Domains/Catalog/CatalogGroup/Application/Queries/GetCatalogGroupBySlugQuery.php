@@ -2,8 +2,8 @@
 
 namespace App\Domains\Catalog\CatalogGroup\Application\Queries;
 
-use App\Domains\Catalog\CatalogGroup\Domain\Repositories\CatalogGroupRepositoryInterface;
 use App\Domains\Catalog\CatalogGroup\Domain\Entities\CatalogGroup;
+use App\Domains\Catalog\CatalogGroup\Domain\Repositories\CatalogGroupRepositoryInterface;
 
 final class GetCatalogGroupBySlugQuery
 {

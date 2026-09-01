@@ -19,6 +19,7 @@ final class MidtransWebhookController extends Controller
     {
         try {
             $this->webhookUseCase->execute($request->all());
+
             return response()->json(['success' => true, 'message' => 'Notifikasi Midtrans berhasil diproses.']);
         } catch (Throwable $exception) {
             Log::warning('Midtrans webhook rejected', [

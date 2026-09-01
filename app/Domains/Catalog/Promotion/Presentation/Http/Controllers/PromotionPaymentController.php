@@ -18,6 +18,7 @@ final class PromotionPaymentController extends Controller
 {
     use ResolvesActiveRole;
     use ResolvesSellerStoreContext;
+
     public function __construct(private PromotionPaymentService $service) {}
 
     public function index(Request $request): JsonResponse
@@ -76,6 +77,4 @@ final class PromotionPaymentController extends Controller
             return response()->json(['success' => false, 'message' => $exception->getMessage()], 422);
         }
     }
-
-
 }

@@ -30,8 +30,35 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
             $query->where('priority', $filters['priority']);
         }
 
-        if (! empty($filters['is_completed'])) {
-            $query->where('is_completed', $filters['is_completed']);
+        if (array_key_exists('is_completed', $filters) && $filters['is_completed'] !== '' && $filters['is_completed'] !== null) {
+            $query->where('is_completed', (bool) $filters['is_completed']);
+        }
+
+        if (! empty($filters['from_date'])) {
+            $query->where('date', '>=', $filters['from_date']);
+        }
+
+        if (! empty($filters['to_date'])) {
+            $query->where('date', '<=', $filters['to_date']);
+        }
+
+        return $query->orderBy('date')->orderBy('start_time')->paginate($perPage);
+    }
+
+    public function getByStore(int $storeId, array $filters = [], int $perPage = 20): mixed
+    {
+        $query = ScheduleModel::where('store_id', $storeId)->where('is_active', true);
+
+        if (! empty($filters['type'])) {
+            $query->where('type', $filters['type']);
+        }
+
+        if (! empty($filters['priority'])) {
+            $query->where('priority', $filters['priority']);
+        }
+
+        if (array_key_exists('is_completed', $filters) && $filters['is_completed'] !== '' && $filters['is_completed'] !== null) {
+            $query->where('is_completed', (bool) $filters['is_completed']);
         }
 
         if (! empty($filters['from_date'])) {
@@ -64,6 +91,30 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
         $endDate = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
 
         $schedules = $this->getByDateRange($userId, $startDate, $endDate);
+
+        return $this->buildGrid($schedules, $year, $month);
+    }
+
+    public function getGridDataByStore(int $storeId, int $year, int $month): array
+    {
+        $startDate = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
+        $endDate = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+
+        $models = ScheduleModel::where('store_id', $storeId)
+            ->where('is_active', true)
+            ->where('date', '>=', $startDate)
+            ->where('date', '<=', $endDate)
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->get();
+
+        return $this->buildGrid($models->map(fn ($m) => $this->toEntity($m))->all(), $year, $month);
+    }
+
+    private function buildGrid(array $schedules, int $year, int $month): array
+    {
+        $startDate = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
+        $endDate = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
 
         $grid = [];
         $current = Carbon::parse($startDate);

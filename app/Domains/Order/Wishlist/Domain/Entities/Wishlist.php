@@ -7,8 +7,11 @@ use DomainException;
 class Wishlist
 {
     private string $id;
+
     private string $userId;
+
     private string $name;
+
     /** @var WishlistItem[] */
     private array $items = [];
 
@@ -23,7 +26,7 @@ class Wishlist
     {
         foreach ($this->items as $item) {
             if ($item->getProductId() === $productId) {
-                throw new DomainException("Produk sudah ada di dalam wishlist.");
+                throw new DomainException('Produk sudah ada di dalam wishlist.');
             }
         }
         $this->items[] = new WishlistItem($productId);
@@ -38,13 +41,28 @@ class Wishlist
         });
 
         if (count($this->items) === $initialCount) {
-            throw new DomainException("Produk tidak ditemukan di dalam wishlist Anda.");
+            throw new DomainException('Produk tidak ditemukan di dalam wishlist Anda.');
         }
     }
 
-    public function getId(): string { return $this->id; }
-    public function getUserId(): string { return $this->userId; }
-    public function getName(): string { return $this->name; }
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+    public function getUserId(): string
+    {
+        return $this->userId;
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
     /** @return WishlistItem[] */
-    public function getItems(): array { return array_values($this->items); }
+    public function getItems(): array
+    {
+        return array_values($this->items);
+    }
 }

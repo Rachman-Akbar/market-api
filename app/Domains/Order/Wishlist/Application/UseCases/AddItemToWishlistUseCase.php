@@ -20,7 +20,7 @@ class AddItemToWishlistUseCase
     {
         $wishlist = $this->repository->findByUserId($dto->userId);
 
-        if (!$wishlist) {
+        if (! $wishlist) {
             // Generate UUID baru jika user belum memiliki wishlist
             $wishlist = new Wishlist(Str::uuid()->toString(), $dto->userId, 'Utama');
         }

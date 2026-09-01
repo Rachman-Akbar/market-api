@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Product\Application\UseCases\ProductVariant;
 
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
 use App\Domains\Catalog\Product\Domain\Entities\Product;
 use App\Domains\Catalog\Product\Domain\Entities\ProductVariant;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductVariantRepositoryInterface;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class CreateProductVariantUseCase
 {
@@ -25,10 +25,10 @@ final class CreateProductVariantUseCase
             abort_if(! $product, 404, 'Product not found.');
 
             $storeId = (int) $product->storeId();
-            
+
             // 1. Ambil nama otomatis (Gabungan Nama Produk + Atribut)
             $name = $this->resolveName($product, $data);
-            
+
             // 2. Ambil SKU otomatis menggunakan nama yang sudah diracik
             $sku = $this->resolveSku($name, $data, $storeId);
 
@@ -40,6 +40,7 @@ final class CreateProductVariantUseCase
                 name: $name, // AMAN: Menggunakan variabel hasil kalkulasi, bukan $data['name'] langsung
                 price: (float) ($data['price'] ?? 0),
                 stock: 0,
+                poStock: max(0, (int) ($data['po_stock'] ?? 0)),
                 isDefault: (bool) ($data['is_default'] ?? false)
             ));
 
@@ -61,7 +62,7 @@ final class CreateProductVariantUseCase
         }
 
         $nameParts = [$product->name()];
-        
+
         if (! empty($data['values']) && is_array($data['values'])) {
             foreach ($data['values'] as $val) {
                 if (! empty($val['value'])) {
@@ -86,7 +87,7 @@ final class CreateProductVariantUseCase
         $counter = 1;
 
         do {
-            $sku = $base . '-' . $date . '-' . str_pad((string) $counter, 4, '0', STR_PAD_LEFT);
+            $sku = $base.'-'.$date.'-'.str_pad((string) $counter, 4, '0', STR_PAD_LEFT);
             $exists = DB::table('product_variants')
                 ->where('sku', $sku)
                 ->where('store_id', $storeId)

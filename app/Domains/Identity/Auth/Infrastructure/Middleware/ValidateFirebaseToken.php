@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Identity\Auth\Infrastructure\Middleware;
 
-use App\Domains\Identity\Auth\Infrastructure\Middleware\FirebaseTokenVerifier;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -45,4 +44,3 @@ final class ValidateFirebaseToken
         return $next($request);
     }
 }
-

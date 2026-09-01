@@ -28,7 +28,7 @@ final class IssueApiTokenUseCase
         $tokenName = $deviceName;
 
         if (! is_string($tokenName) || trim($tokenName) === '') {
-            $tokenName = 'marketplace-api-' . Str::lower(Str::random(8));
+            $tokenName = 'marketplace-api-'.Str::lower(Str::random(8));
         }
 
         return $user->createToken($tokenName, [
@@ -37,4 +37,3 @@ final class IssueApiTokenUseCase
         ])->plainTextToken;
     }
 }
-

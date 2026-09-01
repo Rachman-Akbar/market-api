@@ -65,7 +65,7 @@ final class ProductMapper
 
     public static function toModel(Product $product): ProductModel
     {
-        $model = new ProductModel();
+        $model = new ProductModel;
 
         $model->store_id = $product->storeId();
         $model->primary_category_id = $product->primaryCategoryId();

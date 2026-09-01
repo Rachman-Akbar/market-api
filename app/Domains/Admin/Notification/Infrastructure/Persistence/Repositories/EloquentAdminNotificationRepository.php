@@ -38,6 +38,7 @@ final class EloquentAdminNotificationRepository implements AdminNotificationRepo
     public function save(AdminNotificationModel $model): AdminNotificationModel
     {
         $model->save();
+
         return $model->refresh()->load(['actor:id,name,avatar', 'store:id,name,logo']);
     }
 

@@ -20,7 +20,6 @@ Route::middleware(['auth:sanctum', 'active.user', 'verified.email'])->group(func
         Route::put('/{id}', [UserController::class, 'update'])->name('update');
     });
 
-
     Route::get('permissions', [PermissionController::class, 'index'])
         ->middleware('active.role:admin')
         ->name('permissions.index');

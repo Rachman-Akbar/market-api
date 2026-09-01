@@ -45,7 +45,7 @@ final class ShowcaseService
             throw new InvalidArgumentException('Semua produk etalase harus berasal dari toko yang sama.');
         }
 
-        $model = $id ? $this->find($id, $sellerStoreId) : new ShowcaseModel();
+        $model = $id ? $this->find($id, $sellerStoreId) : new ShowcaseModel;
         $slug = Str::slug((string) $data['name']);
         $exists = ShowcaseModel::withTrashed()
             ->where('store_id', $storeId)

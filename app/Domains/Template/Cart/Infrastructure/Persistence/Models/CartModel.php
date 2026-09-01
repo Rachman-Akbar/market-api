@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Template\Cart\Infrastructure\Persistence\Models;
 
 use App\Domains\Identity\User\Domain\Entities\User;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

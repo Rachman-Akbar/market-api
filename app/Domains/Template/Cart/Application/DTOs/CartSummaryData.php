@@ -10,9 +10,7 @@ use App\Domains\Template\Cart\Domain\Entities\CartItem;
 final readonly class CartSummaryData
 {
     /** @param array<string, mixed> $payload */
-    public function __construct(private array $payload)
-    {
-    }
+    public function __construct(private array $payload) {}
 
     public static function fromCart(Cart $cart): self
     {

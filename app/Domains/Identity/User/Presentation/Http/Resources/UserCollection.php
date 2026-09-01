@@ -21,6 +21,3 @@ class UserCollection extends ResourceCollection
         ];
     }
 }
-
-
-

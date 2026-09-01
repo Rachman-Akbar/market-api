@@ -11,8 +11,7 @@ final class GetCategoryByIdQuery
 {
     public function __construct(
         private readonly CategoryRepositoryInterface $repository
-    ) {
-    }
+    ) {}
 
     public function execute(int $id, bool $includeInactive = false): ?Category
     {

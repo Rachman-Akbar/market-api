@@ -12,10 +12,10 @@ class CatalogGroupResource extends JsonResource
     {
         // $this->resource adalah objek Domain Entity CatalogGroup
         return [
-            'id'         => $this->resource->id(),
-            'name'       => $this->resource->name(),
-            'slug'       => $this->resource->slug(),
-            'is_active'  => $this->resource->isActive(),
+            'id' => $this->resource->id(),
+            'name' => $this->resource->name(),
+            'slug' => $this->resource->slug(),
+            'is_active' => $this->resource->isActive(),
             'categories' => CategoryResource::collection($this->resource->categories()),
         ];
     }

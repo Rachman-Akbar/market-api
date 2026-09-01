@@ -12,9 +12,13 @@ interface ScheduleRepositoryInterface
 
     public function getByUser(string $userId, array $filters = [], int $perPage = 20): mixed;
 
+    public function getByStore(int $storeId, array $filters = [], int $perPage = 20): mixed;
+
     public function getByDateRange(string $userId, string $fromDate, string $toDate): array;
 
     public function getGridData(string $userId, int $year, int $month): array;
+
+    public function getGridDataByStore(int $storeId, int $year, int $month): array;
 
     public function create(array $data): Schedule;
 

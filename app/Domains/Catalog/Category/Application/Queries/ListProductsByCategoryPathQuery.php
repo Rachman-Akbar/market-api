@@ -14,8 +14,7 @@ final class ListProductsByCategoryPathQuery
     public function __construct(
         private readonly CategoryRepositoryInterface $categoryRepository,
         private readonly ProductRepositoryInterface $productRepository,
-    ) {
-    }
+    ) {}
 
     public function execute(string $path, array $filters = []): CursorPaginator
     {

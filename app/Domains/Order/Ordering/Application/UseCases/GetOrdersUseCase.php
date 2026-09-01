@@ -9,9 +9,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 final readonly class GetOrdersUseCase
 {
-    public function __construct(private OrderRepositoryInterface $orders)
-    {
-    }
+    public function __construct(private OrderRepositoryInterface $orders) {}
 
     public function execute(
         string $authenticatedUserId,
@@ -19,7 +17,7 @@ final readonly class GetOrdersUseCase
         array $filters = [],
         int $perPage = 15,
     ): LengthAwarePaginator {
-        
+
         $userId = $canViewAllOrders
             ? (($filters['user_id'] ?? null) ?: null)
             : $authenticatedUserId;

@@ -21,8 +21,7 @@ final class CartSummaryData
         public array $items,
         public int $totalItems,
         public int $totalPrice
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<string, mixed>

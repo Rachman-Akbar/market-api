@@ -14,7 +14,8 @@ final class ProductVariant
         private readonly string $name,
         private readonly float $price,
         private readonly int $stock,
-        private readonly bool $isDefault,
+        private readonly ?int $poStock = 0,
+        private readonly bool $isDefault = false,
         private readonly array $values = [],
         private readonly ?string $createdAt = null,
         private readonly ?string $updatedAt = null
@@ -53,6 +54,16 @@ final class ProductVariant
     public function stock(): int
     {
         return $this->stock;
+    }
+
+    public function poStock(): int
+    {
+        return (int) $this->poStock;
+    }
+
+    public function totalStock(): int
+    {
+        return $this->stock() + $this->poStock();
     }
 
     public function isDefault(): bool

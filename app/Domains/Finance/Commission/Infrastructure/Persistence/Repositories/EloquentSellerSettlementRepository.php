@@ -36,7 +36,7 @@ class EloquentSellerSettlementRepository implements SellerSettlementRepositoryIn
     public function create(array $data): SellerSettlement
     {
         if (empty($data['settlement_number'])) {
-            $data['settlement_number'] = 'STL-' . strtoupper(Str::random(10));
+            $data['settlement_number'] = 'STL-'.strtoupper(Str::random(10));
         }
 
         $model = SellerSettlementModel::create($data);

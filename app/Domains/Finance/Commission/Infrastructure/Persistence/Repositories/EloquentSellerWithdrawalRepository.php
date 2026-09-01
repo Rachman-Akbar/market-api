@@ -21,7 +21,7 @@ class EloquentSellerWithdrawalRepository implements SellerWithdrawalRepositoryIn
     public function create(array $data): SellerWithdrawal
     {
         if (empty($data['withdrawal_number'])) {
-            $data['withdrawal_number'] = 'WD-' . strtoupper(Str::random(10));
+            $data['withdrawal_number'] = 'WD-'.strtoupper(Str::random(10));
         }
 
         $model = SellerWithdrawalModel::create($data);

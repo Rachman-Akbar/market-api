@@ -39,10 +39,10 @@ final class EloquentProductAttributeRepository implements ProductAttributeReposi
     {
         $model = $attribute->id()
             ? ProductAttributeModel::query()->find($attribute->id())
-            : new ProductAttributeModel();
+            : new ProductAttributeModel;
 
         if (! $model) {
-            $model = new ProductAttributeModel();
+            $model = new ProductAttributeModel;
         }
 
         $model->name = $attribute->name();

@@ -10,6 +10,5 @@ final class AddCartItemData
         public string $userId,
         public int $productVariantId,
         public int $quantity
-    ) {
-    }
+    ) {}
 }

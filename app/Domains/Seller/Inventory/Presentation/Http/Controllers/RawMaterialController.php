@@ -57,7 +57,6 @@ final class RawMaterialController extends Controller
         return response()->json($this->service->movements($request->only(['raw_material_id']), min(100, max(1, (int) $request->query('per_page', 20))), $this->scope($request)));
     }
 
-
     public function costImpacts(Request $request): JsonResponse
     {
         return response()->json($this->service->costImpacts($request->only(['direction', 'product_id']), min(100, max(1, (int) $request->query('per_page', 20))), $this->scope($request)));

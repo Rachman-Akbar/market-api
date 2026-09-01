@@ -96,6 +96,7 @@ final class StockMovementService
         DB::transaction(function () use ($orderId): void {
             $items = DB::table('order_items')
                 ->join('sub_orders', 'sub_orders.id', '=', 'order_items.sub_order_id')
+                ->join('orders', 'orders.id', '=', 'sub_orders.order_id')
                 ->join('product_variants', 'product_variants.id', '=', 'order_items.variant_id')
                 ->where('sub_orders.order_id', $orderId)
                 ->select([
@@ -104,7 +105,8 @@ final class StockMovementService
                     'order_items.variant_id',
                     'order_items.quantity',
                     'sub_orders.store_id',
-                    'product_variants.stock as balance_after',
+                    'orders.order_type',
+                    DB::raw("CASE WHEN orders.order_type = 'preorder' THEN product_variants.po_stock ELSE product_variants.stock END as balance_after"),
                 ])
                 ->get();
 
@@ -140,6 +142,7 @@ final class StockMovementService
 
         if ($nextStatus === 'cancelled') {
             $this->releaseCancelledOrder($orderId);
+
             return;
         }
 
@@ -150,6 +153,7 @@ final class StockMovementService
         DB::transaction(function () use ($orderId, $nextStatus): void {
             $items = DB::table('order_items')
                 ->join('sub_orders', 'sub_orders.id', '=', 'order_items.sub_order_id')
+                ->join('orders', 'orders.id', '=', 'sub_orders.order_id')
                 ->join('product_variants', 'product_variants.id', '=', 'order_items.variant_id')
                 ->where('sub_orders.order_id', $orderId)
                 ->select([
@@ -157,12 +161,13 @@ final class StockMovementService
                     'order_items.product_id',
                     'order_items.variant_id',
                     'sub_orders.store_id',
-                    'product_variants.stock as balance_after',
+                    'orders.order_type',
+                    DB::raw("CASE WHEN orders.order_type = 'preorder' THEN product_variants.po_stock ELSE product_variants.stock END as balance_after"),
                 ])
                 ->get();
 
             foreach ($items as $item) {
-                $key = 'order-status-' . $nextStatus;
+                $key = 'order-status-'.$nextStatus;
 
                 if ($this->repository->existsForOrderItem((int) $item->order_item_id, $key)) {
                     continue;
@@ -180,13 +185,12 @@ final class StockMovementService
                     'balance_after' => (int) $item->balance_after,
                     'reference_type' => 'order_status',
                     'reference_id' => $nextStatus,
-                    'notes' => 'Status pesanan berubah menjadi ' . $nextStatus,
+                    'notes' => 'Status pesanan berubah menjadi '.$nextStatus,
                     'occurred_at' => now(),
                 ]));
             }
         });
     }
-
 
     public function syncSubOrderStatus(int $subOrderId, string $previousStatus, string $nextStatus): void
     {
@@ -196,6 +200,7 @@ final class StockMovementService
 
         if ($nextStatus === 'cancelled') {
             $this->releaseCancelledSubOrder($subOrderId);
+
             return;
         }
 
@@ -206,6 +211,7 @@ final class StockMovementService
         DB::transaction(function () use ($subOrderId, $nextStatus): void {
             $items = DB::table('order_items')
                 ->join('sub_orders', 'sub_orders.id', '=', 'order_items.sub_order_id')
+                ->join('orders', 'orders.id', '=', 'sub_orders.order_id')
                 ->join('product_variants', 'product_variants.id', '=', 'order_items.variant_id')
                 ->where('sub_orders.id', $subOrderId)
                 ->select([
@@ -214,12 +220,13 @@ final class StockMovementService
                     'order_items.variant_id',
                     'sub_orders.order_id',
                     'sub_orders.store_id',
-                    'product_variants.stock as balance_after',
+                    'orders.order_type',
+                    DB::raw("CASE WHEN orders.order_type = 'preorder' THEN product_variants.po_stock ELSE product_variants.stock END as balance_after"),
                 ])
                 ->get();
 
             foreach ($items as $item) {
-                $key = 'sub-order-status-' . $nextStatus;
+                $key = 'sub-order-status-'.$nextStatus;
 
                 if ($this->repository->existsForOrderItem((int) $item->order_item_id, $key)) {
                     continue;
@@ -237,7 +244,7 @@ final class StockMovementService
                     'balance_after' => (int) $item->balance_after,
                     'reference_type' => 'sub_order_status',
                     'reference_id' => (string) $subOrderId,
-                    'notes' => 'Status sub-order berubah menjadi ' . $nextStatus,
+                    'notes' => 'Status sub-order berubah menjadi '.$nextStatus,
                     'occurred_at' => now(),
                 ]));
             }
@@ -249,6 +256,7 @@ final class StockMovementService
         DB::transaction(function () use ($orderId): void {
             $items = DB::table('order_items')
                 ->join('sub_orders', 'sub_orders.id', '=', 'order_items.sub_order_id')
+                ->join('orders', 'orders.id', '=', 'sub_orders.order_id')
                 ->where('sub_orders.order_id', $orderId)
                 ->whereNotNull('order_items.variant_id')
                 ->select([
@@ -257,6 +265,7 @@ final class StockMovementService
                     'order_items.variant_id',
                     'order_items.quantity',
                     'sub_orders.store_id',
+                    'orders.order_type',
                 ])
                 ->get();
 
@@ -271,7 +280,8 @@ final class StockMovementService
                     continue;
                 }
 
-                $variant->increment('stock', (int) $item->quantity);
+                $stockColumn = $item->order_type === 'preorder' ? 'po_stock' : 'stock';
+                $variant->increment($stockColumn, (int) $item->quantity);
                 $variant->refresh();
 
                 $this->repository->save(new StockMovementModel([
@@ -283,7 +293,7 @@ final class StockMovementService
                     'movement_key' => 'cancel-release',
                     'type' => 'release',
                     'quantity_delta' => (int) $item->quantity,
-                    'balance_after' => (int) $variant->stock,
+                    'balance_after' => (int) $variant->{$stockColumn},
                     'reference_type' => 'order_cancelled',
                     'reference_id' => (string) $orderId,
                     'notes' => 'Stok dikembalikan karena pesanan dibatalkan',
@@ -292,11 +302,13 @@ final class StockMovementService
             }
         });
     }
+
     private function releaseCancelledSubOrder(int $subOrderId): void
     {
         DB::transaction(function () use ($subOrderId): void {
             $items = DB::table('order_items')
                 ->join('sub_orders', 'sub_orders.id', '=', 'order_items.sub_order_id')
+                ->join('orders', 'orders.id', '=', 'sub_orders.order_id')
                 ->where('sub_orders.id', $subOrderId)
                 ->whereNotNull('order_items.variant_id')
                 ->select([
@@ -306,6 +318,7 @@ final class StockMovementService
                     'order_items.quantity',
                     'sub_orders.order_id',
                     'sub_orders.store_id',
+                    'orders.order_type',
                 ])
                 ->get();
 
@@ -320,7 +333,8 @@ final class StockMovementService
                     continue;
                 }
 
-                $variant->increment('stock', (int) $item->quantity);
+                $stockColumn = $item->order_type === 'preorder' ? 'po_stock' : 'stock';
+                $variant->increment($stockColumn, (int) $item->quantity);
                 $variant->refresh();
 
                 $this->repository->save(new StockMovementModel([
@@ -332,7 +346,7 @@ final class StockMovementService
                     'movement_key' => 'cancel-release',
                     'type' => 'release',
                     'quantity_delta' => (int) $item->quantity,
-                    'balance_after' => (int) $variant->stock,
+                    'balance_after' => (int) $variant->{$stockColumn},
                     'reference_type' => 'sub_order_cancelled',
                     'reference_id' => (string) $subOrderId,
                     'notes' => 'Stok dikembalikan karena sub-order dibatalkan',
@@ -398,5 +412,4 @@ final class StockMovementService
             ]);
         }
     }
-
 }

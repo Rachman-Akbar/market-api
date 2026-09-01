@@ -11,8 +11,8 @@ use Tests\TestCase;
 
 class StoreCrudTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsAsUser;
+    use RefreshDatabase;
 
     private function storePayload(array $overrides = []): array
     {

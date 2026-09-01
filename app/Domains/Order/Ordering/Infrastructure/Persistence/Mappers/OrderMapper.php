@@ -16,7 +16,7 @@ final class OrderMapper
         $subOrders = $model->relationLoaded('subOrders')
             ? $model->subOrders->map(function ($subOrder): DomainSubOrder {
                 $items = $subOrder->relationLoaded('items')
-                    ? $subOrder->items->map(fn($item) => new DomainOrderItem(
+                    ? $subOrder->items->map(fn ($item) => new DomainOrderItem(
                         id: (int) $item->id,
                         productId: (int) $item->product_id,
                         variantId: (int) ($item->variant_id ?? 0),

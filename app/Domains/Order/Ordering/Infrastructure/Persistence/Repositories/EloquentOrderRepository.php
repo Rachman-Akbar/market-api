@@ -136,7 +136,7 @@ class EloquentOrderRepository implements OrderRepositoryInterface
     {
         $page = max(1, (int) request()->query('page', 1));
         $version = (int) Cache::get('orders_cache_version', 1);
-        $cacheKey = 'orders:' . $version . ':' . md5(json_encode([
+        $cacheKey = 'orders:'.$version.':'.md5(json_encode([
             'user_id' => $userId,
             'filters' => $filters,
             'page' => $page,

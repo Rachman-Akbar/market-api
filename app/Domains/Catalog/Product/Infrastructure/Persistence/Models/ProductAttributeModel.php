@@ -6,7 +6,6 @@ namespace App\Domains\Catalog\Product\Infrastructure\Persistence\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 
 final class ProductAttributeModel extends Model
 {

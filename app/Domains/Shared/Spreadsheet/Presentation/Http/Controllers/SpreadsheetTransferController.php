@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domains\Shared\Spreadsheet\Presentation\Http\Controllers;
 
+use App\Domains\Catalog\Banner\Infrastructure\Persistence\Models\BannerModel;
 use App\Domains\Catalog\CatalogGroup\Infrastructure\Persistence\Models\CatalogGroupModel;
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductImageModel;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductVariantModel;
+use App\Domains\Catalog\Promotion\Infrastructure\Persistence\Models\PromotionModel;
 use App\Domains\Order\Voucher\Domain\Entities\Voucher;
 use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
-use App\Domains\Shared\Spreadsheet\Application\SpreadsheetModuleRegistry;
 use App\Domains\Shared\Spreadsheet\Application\Services\AdvancedSpreadsheetTransferService;
+use App\Domains\Shared\Spreadsheet\Application\SpreadsheetModuleRegistry;
 use App\Http\Controllers\Controller;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,7 +22,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -31,6 +32,7 @@ use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -47,6 +49,7 @@ final class SpreadsheetTransferController extends Controller
     private array $createdProductIds = [];
 
     public function __construct(private AdvancedSpreadsheetTransferService $advancedTransfer) {}
+
     public function template(Request $request, string $module): BinaryFileResponse|JsonResponse
     {
         try {
@@ -55,6 +58,7 @@ final class SpreadsheetTransferController extends Controller
                 throw new InvalidArgumentException('Modul ini hanya mendukung export dan tidak menyediakan template import.');
             }
             $spreadsheet = $this->createTemplateWorkbook($config);
+
             return $this->downloadSpreadsheet($spreadsheet, Str::slug($config['label']).'-template.xlsx');
         } catch (Throwable $exception) {
             return $this->error($exception);
@@ -74,6 +78,7 @@ final class SpreadsheetTransferController extends Controller
 
             $rows = $query->orderBy('id')->get();
             $spreadsheet = $this->createExportWorkbook($config, $module, $rows);
+
             return $this->downloadSpreadsheet($spreadsheet, Str::slug($config['label']).'-export-'.now()->format('Ymd-His').'.xlsx');
         } catch (Throwable $exception) {
             return $this->error($exception);
@@ -184,6 +189,7 @@ final class SpreadsheetTransferController extends Controller
             if ($module === 'order') {
                 $groups = collect($rows)->groupBy(function (array $item): string {
                     $orderNumber = trim((string) ($item['data']['order_number'] ?? ''));
+
                     return $orderNumber !== '' ? $orderNumber : '__row_'.$item['row_number'];
                 });
 
@@ -219,6 +225,7 @@ final class SpreadsheetTransferController extends Controller
                 $response = $this->downloadSpreadsheet($errorWorkbook, Str::slug($config['label']).'-import-error-'.now()->format('Ymd-His').'.xlsx');
                 $response->headers->set('X-Import-Success-Count', (string) $successful);
                 $response->headers->set('X-Import-Error-Count', (string) count($errors));
+
                 return $response;
             }
 
@@ -328,6 +335,7 @@ final class SpreadsheetTransferController extends Controller
 
         $config = SpreadsheetModuleRegistry::get($module);
         SpreadsheetModuleRegistry::assertRoleAllowed($config, $this->activeRole($request));
+
         return $config;
     }
 
@@ -349,7 +357,7 @@ final class SpreadsheetTransferController extends Controller
 
     private function createTemplateWorkbook(array $config): Spreadsheet
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $columnCount = count($config['headers']);
         $lastColumn = Coordinate::stringFromColumnIndex(max(1, $columnCount));
         $guideLastColumn = $lastColumn;
@@ -493,12 +501,13 @@ final class SpreadsheetTransferController extends Controller
         $explanation->getColumnDimension('F')->setWidth(28);
 
         $spreadsheet->setActiveSheetIndex(0);
+
         return $spreadsheet;
     }
 
     private function createExportWorkbook(array $config, string $module, iterable $models): Spreadsheet
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Data Export');
         $hasPreviewImage = ! empty($config['image_fields']);
@@ -524,12 +533,13 @@ final class SpreadsheetTransferController extends Controller
         if ($hasPreviewImage) {
             $sheet->getColumnDimension(Coordinate::stringFromColumnIndex(count($headers)))->setWidth(14);
         }
+
         return $spreadsheet;
     }
 
     private function createErrorWorkbook(array $config, array $rows): Spreadsheet
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Data Gagal Import');
         $headers = [...$config['headers'], 'error_message'];
@@ -546,6 +556,7 @@ final class SpreadsheetTransferController extends Controller
         $sheet->getStyle($lastColumn.'2:'.$lastColumn.$sheet->getHighestRow())->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFFE4E6');
         $sheet->getStyle($lastColumn.'2:'.$lastColumn.$sheet->getHighestRow())->getFont()->getColor()->setARGB('FFBE123C');
         $sheet->getColumnDimension($lastColumn)->setWidth(28);
+
         return $spreadsheet;
     }
 
@@ -553,6 +564,7 @@ final class SpreadsheetTransferController extends Controller
     {
         if ($this->advancedTransfer->supports($module)) {
             $this->advancedTransfer->persist($request, $module, $row);
+
             return;
         }
 
@@ -666,7 +678,7 @@ final class SpreadsheetTransferController extends Controller
                 $sku = $variant?->sku;
             }
 
-            $variant ??= new ProductVariantModel();
+            $variant ??= new ProductVariantModel;
             $sku ??= $this->generateUniqueSku($storeId, $name, (string) ($data['brand'] ?? ''), $variantName);
 
             $hasExistingDefault = (clone $variantQuery)
@@ -802,7 +814,7 @@ final class SpreadsheetTransferController extends Controller
             'target_url' => ['required_if:click_action,url', 'nullable', 'url'],
         ])->validate();
 
-        $query = \App\Domains\Catalog\Promotion\Infrastructure\Persistence\Models\PromotionModel::query();
+        $query = PromotionModel::query();
         if ($storeId === null) {
             $query->whereNull('store_id');
         } else {
@@ -892,7 +904,7 @@ final class SpreadsheetTransferController extends Controller
         ])->validate();
         $model = $this->resolveImportModel(
             $request,
-            \App\Domains\Catalog\Banner\Infrastructure\Persistence\Models\BannerModel::query()->where('store_id', $storeId),
+            BannerModel::query()->where('store_id', $storeId),
             $row,
             'name',
             $name,
@@ -1069,6 +1081,7 @@ final class SpreadsheetTransferController extends Controller
 
         $rowsMissing = array_values(array_map(function (array $item): array {
             $item['row_numbers'] = array_values(array_unique($item['row_numbers']));
+
             return $item;
         }, $missing));
         $automatic = array_values(array_filter($rowsMissing, fn (array $item): bool => $item['can_auto_create']));
@@ -1094,6 +1107,7 @@ final class SpreadsheetTransferController extends Controller
             if ($required) {
                 throw new InvalidArgumentException('Nama toko wajib diisi.');
             }
+
             return null;
         }
         $matches = $this->allByNormalizedName(StoreModel::query(), 'name', $name);
@@ -1103,6 +1117,7 @@ final class SpreadsheetTransferController extends Controller
         if ($matches->count() > 1) {
             throw new InvalidArgumentException('Nama toko tidak unik: '.$name);
         }
+
         return (int) $matches->first()->id;
     }
 
@@ -1119,12 +1134,13 @@ final class SpreadsheetTransferController extends Controller
         if (! $create) {
             throw new InvalidArgumentException('Catalog Group belum tersedia: '.$displayName.'. Lakukan preview dan pilih Lanjutkan untuk membuatnya.');
         }
-        $group = new CatalogGroupModel();
+        $group = new CatalogGroupModel;
         $group->fill([
             'name' => $displayName,
             'slug' => $this->uniqueSlug(CatalogGroupModel::query(), Str::slug($displayName)),
             'is_active' => true,
         ])->save();
+
         return $group;
     }
 
@@ -1169,7 +1185,7 @@ final class SpreadsheetTransferController extends Controller
             throw new InvalidArgumentException('Kategori hanya boleh sampai level 3.');
         }
         $slug = Str::slug($displayName);
-        $category = new CategoryModel();
+        $category = new CategoryModel;
         $category->fill([
             'catalog_group_id' => $group->id,
             'parent_id' => $parent?->id,
@@ -1182,6 +1198,7 @@ final class SpreadsheetTransferController extends Controller
             'slug' => $slug,
             'full_slug' => $parent ? trim($parent->full_slug.'/'.$slug, '/') : $slug,
         ])->save();
+
         return $category;
     }
 
@@ -1195,6 +1212,7 @@ final class SpreadsheetTransferController extends Controller
             }
             $query->where('catalog_group_id', $group->id);
         }
+
         return $this->firstByNormalizedName($query, 'name', $name) !== null;
     }
 
@@ -1209,6 +1227,7 @@ final class SpreadsheetTransferController extends Controller
                 if (! $model) {
                     throw new InvalidArgumentException($label.' dengan ID '.$rawId.' tidak ditemukan atau tidak berada dalam akses pengguna.');
                 }
+
                 return $model;
             }
 
@@ -1223,6 +1242,7 @@ final class SpreadsheetTransferController extends Controller
             if ($matches->count() > 1) {
                 throw new InvalidArgumentException($column.' "'.$displayName.'" tidak unik untuk '.$label.'. Gunakan kolom id untuk mode Import Update Data.');
             }
+
             return $matches->first();
         }
 
@@ -1243,7 +1263,8 @@ final class SpreadsheetTransferController extends Controller
         $mode = $this->importMode($request);
         if ($mode === 'update') {
             $model = $this->resolveImportModel($request, ProductModel::query()->where('store_id', $storeId), $row, 'name', $name, 'Product');
-            return $model instanceof ProductModel ? $model : new ProductModel();
+
+            return $model instanceof ProductModel ? $model : new ProductModel;
         }
 
         $rawId = trim((string) ($row['id'] ?? ''));
@@ -1260,7 +1281,7 @@ final class SpreadsheetTransferController extends Controller
             throw new InvalidArgumentException('Product sudah tersedia. Gunakan mode Import Update Data agar Product lama tidak ter-update tanpa sengaja: '.$name);
         }
 
-        return new ProductModel();
+        return new ProductModel;
     }
 
     private function productImportKey(int $storeId, string $name): string
@@ -1274,6 +1295,7 @@ final class SpreadsheetTransferController extends Controller
         if (! in_array($mode, ['create', 'update'], true)) {
             throw new InvalidArgumentException('Jenis import tidak valid. Pilih Import Data Baru atau Import Update Data.');
         }
+
         return $mode;
     }
 
@@ -1408,6 +1430,7 @@ final class SpreadsheetTransferController extends Controller
             $slug = $root.'-'.$counter;
             $counter++;
         }
+
         return $slug;
     }
 
@@ -1484,7 +1507,7 @@ final class SpreadsheetTransferController extends Controller
             return;
         }
 
-        $drawing = new Drawing();
+        $drawing = new Drawing;
         $drawing->setPath($path);
         $drawing->setCoordinates(Coordinate::stringFromColumnIndex($previewColumn).$rowNumber);
         $drawing->setHeight(36);
@@ -1687,7 +1710,6 @@ final class SpreadsheetTransferController extends Controller
         ], true);
     }
 
-
     private function findHeaderRow($sheet, array $allowedHeaders): int
     {
         $highestRow = min(30, max(1, $sheet->getHighestDataRow()));
@@ -1720,6 +1742,7 @@ final class SpreadsheetTransferController extends Controller
                 $headers[$column] = $header;
             }
         }
+
         return $headers;
     }
 
@@ -1738,6 +1761,7 @@ final class SpreadsheetTransferController extends Controller
             $value = $sheet->getCell([$column, $rowNumber])->getCalculatedValue();
             $row[$header] = $value instanceof DateTimeInterface ? $value->format('Y-m-d H:i:s') : $value;
         }
+
         return $row;
     }
 
@@ -1869,12 +1893,14 @@ final class SpreadsheetTransferController extends Controller
         if (is_bool($value)) {
             return $value;
         }
+
         return in_array(strtolower(trim((string) $value)), ['1', 'true', 'yes', 'ya', 'aktif', 'active'], true);
     }
 
     private function nullableString(mixed $value): ?string
     {
         $text = trim((string) ($value ?? ''));
+
         return $text === '' ? null : $text;
     }
 
@@ -1898,8 +1924,9 @@ final class SpreadsheetTransferController extends Controller
             return '';
         }
         if (is_numeric($value)) {
-            return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value)->format('Y-m-d H:i:s');
+            return Date::excelToDateTimeObject((float) $value)->format('Y-m-d H:i:s');
         }
+
         return date('Y-m-d H:i:s', strtotime($text));
     }
 
@@ -1910,6 +1937,7 @@ final class SpreadsheetTransferController extends Controller
                 return true;
             }
         }
+
         return false;
     }
 

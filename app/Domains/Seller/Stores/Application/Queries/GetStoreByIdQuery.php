@@ -7,8 +7,8 @@ namespace App\Domains\Seller\Stores\Application\Queries;
 use App\Domains\Seller\Stores\Domain\Entities\Store as StoreEntity;
 use App\Domains\Seller\Stores\Domain\Repositories\StoreRepositoryInterface;
 
-final class GetStoreByIdQuery{
-    
+final class GetStoreByIdQuery
+{
     private StoreRepositoryInterface $storeRepository;
 
     public function __construct(StoreRepositoryInterface $storeRepository)

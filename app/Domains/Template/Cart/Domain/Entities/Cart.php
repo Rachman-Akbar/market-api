@@ -36,10 +36,25 @@ final class Cart
         return new self(null, $userId, $userId, CartStatus::ACTIVE, []);
     }
 
-    public function id(): ?int { return $this->id; }
-    public function userId(): string { return $this->userId; }
-    public function activeUserId(): ?string { return $this->activeUserId; }
-    public function status(): CartStatus { return $this->status; }
+    public function id(): ?int
+    {
+        return $this->id;
+    }
+
+    public function userId(): string
+    {
+        return $this->userId;
+    }
+
+    public function activeUserId(): ?string
+    {
+        return $this->activeUserId;
+    }
+
+    public function status(): CartStatus
+    {
+        return $this->status;
+    }
 
     /** @return CartItem[] */
     public function items(): array
@@ -71,6 +86,7 @@ final class Cart
         if ($existing !== null) {
             $existing->increase($quantity);
             $existing->refreshSnapshot($priceSnapshot, $productNameSnapshot, $productImageSnapshot);
+
             return;
         }
 

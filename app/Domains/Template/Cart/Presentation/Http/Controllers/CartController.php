@@ -29,8 +29,7 @@ final class CartController extends Controller
         private readonly UpdateCartItemQuantityUseCase $updateItem,
         private readonly RemoveItemFromCartUseCase $removeItem,
         private readonly ClearCartUseCase $clearCart,
-    ) {
-    }
+    ) {}
 
     public function show(Request $request): JsonResponse
     {

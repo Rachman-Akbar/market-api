@@ -50,7 +50,7 @@ final class EloquentProductCatalogReader implements ProductCatalogReaderInterfac
             ]);
 
         if (! empty($filters['search'])) {
-            $query->where('products.name', 'like', '%' . trim((string) $filters['search']) . '%');
+            $query->where('products.name', 'like', '%'.trim((string) $filters['search']).'%');
         }
 
         if (! empty($filters['category_id'])) {

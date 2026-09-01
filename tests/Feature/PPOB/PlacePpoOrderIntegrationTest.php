@@ -11,23 +11,19 @@ use App\Domains\PPOB\Domain\Repositories\PpoOperatorRepositoryInterface;
 use App\Domains\PPOB\Domain\Repositories\PpoPricingRuleRepositoryInterface;
 use App\Domains\PPOB\Domain\Repositories\PpoProductRepositoryInterface;
 use App\Domains\PPOB\Domain\Repositories\PpoTransactionRepositoryInterface;
-use App\Domains\PPOB\Infrastructure\Persistence\Models\PpoFinanceEntryModel;
-use App\Domains\PPOB\Infrastructure\Persistence\Models\PpoOperatorModel;
-use App\Domains\PPOB\Infrastructure\Persistence\Models\PpoProductModel;
-use App\Domains\PPOB\Infrastructure\Persistence\Models\PpoTransactionModel;
-use App\Domains\Identity\User\Domain\Entities\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Tests\IntegrationTestCase;
+use Tests\Support\InteractsAsUser;
+use Tests\TestCase;
 
-class PlacePpoOrderIntegrationTest extends IntegrationTestCase
+class PlacePpoOrderIntegrationTest extends TestCase
 {
-    private string $refPrefix = 'PPOBTEST-INT-';
+    use InteractsAsUser;
+    use RefreshDatabase;
 
     public function test_full_ppob_order_flow_with_pricing_and_finance(): void
     {
-        $this->cleanup();
-
         Http::fake([
             '*/top-up' => Http::response([
                 'data' => [
@@ -45,8 +41,7 @@ class PlacePpoOrderIntegrationTest extends IntegrationTestCase
             ], 200),
         ]);
 
-        $testUser = User::first();
-        $this->assertNotNull($testUser, 'At least one user must exist.');
+        $testUser = $this->makeUser();
 
         $operatorRepo = app(PpoOperatorRepositoryInterface::class);
         $productRepo = app(PpoProductRepositoryInterface::class);
@@ -122,20 +117,5 @@ class PlacePpoOrderIntegrationTest extends IntegrationTestCase
         $byRef = app(PpoTransactionRepositoryInterface::class)->findByReferenceId($tx->reference_id);
         $this->assertNotNull($byRef);
         $this->assertSame($tx->id, $byRef->id);
-
-        $this->cleanup($tx->id);
-    }
-
-    private function cleanup(?int $txId = null): void
-    {
-        if ($txId) {
-            DB::table('ppob_transaction_logs')->where('ppob_transaction_id', $txId)->delete();
-            PpoFinanceEntryModel::where('ppob_transaction_id', $txId)->forceDelete();
-            PpoTransactionModel::where('id', $txId)->forceDelete();
-        }
-
-        PpoTransactionModel::where('reference_id', 'like', $this->refPrefix.'%')->forceDelete();
-        PpoOperatorModel::where('slug', 'test-operator-int')->forceDelete();
-        PpoProductModel::where('provider_product_code', 'X-TEST-1')->forceDelete();
     }
 }

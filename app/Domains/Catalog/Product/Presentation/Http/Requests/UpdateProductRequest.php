@@ -6,7 +6,6 @@ namespace App\Domains\Catalog\Product\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 final class UpdateProductRequest extends FormRequest
@@ -101,6 +100,7 @@ final class UpdateProductRequest extends FormRequest
             'variants.*.name' => ['nullable', 'string', 'max:255', 'distinct'],
             'variants.*.price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.stock' => ['nullable', 'integer', 'min:0'],
+            'variants.*.po_stock' => ['nullable', 'integer', 'min:0'],
             'variants.*.is_default' => ['nullable', 'boolean'],
             'variants.*.values' => ['nullable', 'array'],
             'variants.*.values.*.attribute_id' => ['required_with:variants.*.values', 'integer', 'exists:product_attributes,id'],

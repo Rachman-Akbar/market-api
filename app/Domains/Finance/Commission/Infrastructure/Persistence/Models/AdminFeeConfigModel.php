@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Finance\Commission\Infrastructure\Persistence\Models;
 
+use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -37,6 +38,6 @@ class AdminFeeConfigModel extends Model
 
     public function category()
     {
-        return $this->belongsTo(\App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel::class);
+        return $this->belongsTo(CategoryModel::class);
     }
 }

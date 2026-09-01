@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Order\Cart\Infrastructure\Persistence\Models;
 
-use App\Domains\Order\Cart\Infrastructure\Persistence\Models\CartItemModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 

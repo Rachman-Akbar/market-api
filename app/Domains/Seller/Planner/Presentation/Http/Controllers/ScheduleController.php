@@ -6,6 +6,7 @@ namespace App\Domains\Seller\Planner\Presentation\Http\Controllers;
 
 use App\Domains\Seller\Planner\Application\Services\ScheduleService;
 use App\Http\Controllers\Controller;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -18,12 +19,17 @@ class ScheduleController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $userId = (string) $request->user()->id;
+        $user = $request->user();
+        $userId = (string) $user->id;
+        $isAdmin = $user->hasRole('admin') || $user->hasRole('super_admin');
+        $storeId = $isAdmin && $request->filled('store_id') ? (int) $request->query('store_id') : null;
 
         $schedules = $this->service->getAll(
             $userId,
             $request->only(['type', 'priority', 'is_completed', 'from_date', 'to_date']),
-            min(100, max(1, (int) $request->query('per_page', 20)))
+            min(100, max(1, (int) $request->query('per_page', 20))),
+            $storeId,
+            $isAdmin
         );
 
         return response()->json([
@@ -66,11 +72,12 @@ class ScheduleController extends Controller
         ], 201);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
-        $schedule = $this->service->getById($id);
-
-        if (! $schedule) {
+        $user = $request->user();
+        try {
+            $schedule = $this->service->requireEditable($id, (string) $user->id, $user->hasRole('admin') || $user->hasRole('super_admin'));
+        } catch (ModelNotFoundException) {
             return response()->json(['success' => false, 'message' => 'Jadwal tidak ditemukan.'], 404);
         }
 
@@ -111,6 +118,13 @@ class ScheduleController extends Controller
 
         $validated['updated_by'] = $request->user()->id;
 
+        $user = $request->user();
+        try {
+            $this->service->requireEditable($id, (string) $user->id, $user->hasRole('admin') || $user->hasRole('super_admin'));
+        } catch (ModelNotFoundException) {
+            return response()->json(['success' => false, 'message' => 'Jadwal tidak ditemukan.'], 404);
+        }
+
         $schedule = $this->service->update($id, $validated);
 
         return response()->json([
@@ -123,8 +137,15 @@ class ScheduleController extends Controller
         ]);
     }
 
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
+        $user = $request->user();
+        try {
+            $this->service->requireEditable($id, (string) $user->id, $user->hasRole('admin') || $user->hasRole('super_admin'));
+        } catch (ModelNotFoundException) {
+            return response()->json(['success' => false, 'message' => 'Jadwal tidak ditemukan.'], 404);
+        }
+
         $this->service->delete($id);
 
         return response()->json([
@@ -133,8 +154,15 @@ class ScheduleController extends Controller
         ]);
     }
 
-    public function complete(int $id): JsonResponse
+    public function complete(Request $request, int $id): JsonResponse
     {
+        $user = $request->user();
+        try {
+            $this->service->requireEditable($id, (string) $user->id, $user->hasRole('admin') || $user->hasRole('super_admin'));
+        } catch (ModelNotFoundException) {
+            return response()->json(['success' => false, 'message' => 'Jadwal tidak ditemukan.'], 404);
+        }
+
         $schedule = $this->service->markComplete($id);
 
         return response()->json([
@@ -150,11 +178,14 @@ class ScheduleController extends Controller
 
     public function grid(Request $request): JsonResponse
     {
-        $userId = (string) $request->user()->id;
+        $user = $request->user();
+        $userId = (string) $user->id;
+        $isAdmin = $user->hasRole('admin') || $user->hasRole('super_admin');
         $year = (int) $request->query('year', now()->year);
         $month = (int) $request->query('month', now()->month);
+        $storeId = $isAdmin && $request->filled('store_id') ? (int) $request->query('store_id') : null;
 
-        $grid = $this->service->getGrid($userId, $year, $month);
+        $grid = $this->service->getGrid($userId, $year, $month, $storeId, $isAdmin);
 
         return response()->json([
             'success' => true,

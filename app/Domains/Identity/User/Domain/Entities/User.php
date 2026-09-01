@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Identity\User\Domain\Entities;
 
+use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use App\Domains\Shared\Infrastructure\Persistence\Concerns\HasActiveStatus;
 use App\Domains\Shared\Infrastructure\Persistence\Concerns\TracksUserChanges;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -37,6 +38,7 @@ final class User extends Authenticatable
         'firebase_uid',
         'email',
         'password',
+        'has_set_password',
         'name',
         'avatar',
         'is_email_verified',
@@ -82,7 +84,7 @@ final class User extends Authenticatable
     public function store(): HasOne
     {
         return $this->hasOne(
-            \App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel::class,
+            StoreModel::class,
             'user_id',
             'id'
         );

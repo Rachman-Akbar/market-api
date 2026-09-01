@@ -14,9 +14,7 @@ use App\Domains\Template\Cart\Infrastructure\Persistence\Models\CartModel;
 
 final readonly class EloquentCartRepository implements CartRepositoryInterface
 {
-    public function __construct(private CartMapper $mapper)
-    {
-    }
+    public function __construct(private CartMapper $mapper) {}
 
     public function findActiveByUserId(string $userId, bool $lock = false): ?Cart
     {
@@ -58,7 +56,7 @@ final readonly class EloquentCartRepository implements CartRepositoryInterface
     {
         $model = $cart->id() !== null
             ? CartModel::query()->lockForUpdate()->findOrFail($cart->id())
-            : new CartModel();
+            : new CartModel;
 
         $model->fill([
             'user_id' => $cart->userId(),
@@ -86,6 +84,7 @@ final readonly class EloquentCartRepository implements CartRepositoryInterface
             CartItemModel::query()
                 ->where('cart_id', $cartModel->id)
                 ->delete();
+
             return;
         }
 

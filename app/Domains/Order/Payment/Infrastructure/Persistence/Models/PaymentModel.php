@@ -14,11 +14,11 @@ class PaymentModel extends Model
         'payment_method',
         'amount',
         'status',
-        'payload'
+        'payload',
     ];
 
     protected $casts = [
         'payload' => 'array',
-        'amount' => 'float'
+        'amount' => 'float',
     ];
 }

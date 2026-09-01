@@ -7,7 +7,6 @@ namespace App\Domains\Catalog\Product\Infrastructure\Persistence\Models;
 use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 
 final class ProductVariantModel extends Model
 {
@@ -20,6 +19,7 @@ final class ProductVariantModel extends Model
         'name',
         'price',
         'stock',
+        'po_stock',
         'is_default',
     ];
 
@@ -28,6 +28,7 @@ final class ProductVariantModel extends Model
         'store_id' => 'integer',
         'price' => 'decimal:2',
         'stock' => 'integer',
+        'po_stock' => 'integer',
         'is_default' => 'boolean',
     ];
 
@@ -51,5 +52,10 @@ final class ProductVariantModel extends Model
     public function values()
     {
         return $this->hasMany(ProductVariantValueModel::class, 'variant_id');
+    }
+
+    public function totalStock(): int
+    {
+        return (int) $this->stock + (int) $this->po_stock;
     }
 }

@@ -28,6 +28,8 @@ final class BuildAuthPayloadUseCase
                 'avatar' => $user->avatar,
                 'firebase_uid' => $user->firebase_uid ?? null,
                 'is_active' => (bool) $user->is_active,
+                'is_email_verified' => (bool) $user->is_email_verified,
+                'has_password' => (bool) $user->has_set_password,
                 'banned_at' => $user->banned_at?->toDateTimeString(),
             ],
             'roles' => $roles,
@@ -54,7 +56,7 @@ final class BuildAuthPayloadUseCase
 
         if ($token instanceof PersonalAccessToken) {
             foreach ($token->abilities ?? [] as $ability) {
-                if (!is_string($ability) || !str_starts_with($ability, 'active-role:')) {
+                if (! is_string($ability) || ! str_starts_with($ability, 'active-role:')) {
                     continue;
                 }
 

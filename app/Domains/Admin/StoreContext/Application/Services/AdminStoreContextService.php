@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Admin\StoreContext\Application\Services;
 
-use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
-use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
 use App\Domains\Finance\Commission\Infrastructure\Persistence\Models\SellerSettlementModel;
+use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
+use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Cache;
 class AdminStoreContextService
 {
     private const CACHE_TTL = 300;
+
     public function listStores(string $search = '', int $perPage = 20): LengthAwarePaginator
     {
         return StoreModel::query()
@@ -50,9 +51,9 @@ class AdminStoreContextService
         $orderRow = SubOrderModel::where('store_id', $storeId)
             ->where('created_at', '>=', $start)
             ->selectRaw(
-                "COUNT(*) as total, COALESCE(SUM(total_items_price), 0) as revenue, " .
-                "COALESCE(SUM(shipping_cost), 0) as shipping, COALESCE(SUM(admin_fee), 0) as admin_fees, " .
-                "COALESCE(SUM(seller_net), 0) as seller_net"
+                'COUNT(*) as total, COALESCE(SUM(total_items_price), 0) as revenue, '.
+                'COALESCE(SUM(shipping_cost), 0) as shipping, COALESCE(SUM(admin_fee), 0) as admin_fees, '.
+                'COALESCE(SUM(seller_net), 0) as seller_net'
             )
             ->first();
 
@@ -61,15 +62,15 @@ class AdminStoreContextService
         $settlements = SellerSettlementModel::where('store_id', $storeId)
             ->where('created_at', '>=', $start)
             ->selectRaw(
-                "COUNT(*) as total, COALESCE(SUM(gross_amount), 0) as gross, " .
-                "COALESCE(SUM(admin_fee), 0) as admin_fee, COALESCE(SUM(net_amount), 0) as net"
+                'COUNT(*) as total, COALESCE(SUM(gross_amount), 0) as gross, '.
+                'COALESCE(SUM(admin_fee), 0) as admin_fee, COALESCE(SUM(net_amount), 0) as net'
             )
             ->selectRaw("SUM(CASE WHEN status = 'settled' THEN 1 ELSE 0 END) as settled")
             ->selectRaw("SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending")
             ->first();
 
         $productRow = ProductModel::where('store_id', $storeId)
-            ->selectRaw("COUNT(*) as total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active")
+            ->selectRaw('COUNT(*) as total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active')
             ->first();
 
         return [
@@ -114,7 +115,7 @@ class AdminStoreContextService
 
         $rows = SubOrderModel::where('store_id', $storeId)
             ->whereBetween('created_at', [$start, $end])
-            ->selectRaw("DATE(created_at) as day, COUNT(*) as orders, COALESCE(SUM(total_items_price), 0) as revenue")
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as orders, COALESCE(SUM(total_items_price), 0) as revenue')
             ->groupBy('day')
             ->get()
             ->keyBy('day');

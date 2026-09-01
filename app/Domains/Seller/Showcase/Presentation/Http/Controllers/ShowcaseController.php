@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Seller\Showcase\Presentation\Http\Controllers;
 
 use App\Domains\Seller\Showcase\Application\Services\ShowcaseService;
+use App\Domains\Seller\Showcase\Infrastructure\Persistence\Models\ShowcaseModel;
 use App\Domains\Seller\Showcase\Presentation\Http\Requests\ShowcaseRequest;
 use App\Domains\Seller\Showcase\Presentation\Http\Resources\ShowcaseResource;
 use App\Domains\Shared\Presentation\Http\Concerns\ResolvesActiveRole;
@@ -18,11 +19,12 @@ final class ShowcaseController extends Controller
 {
     use ResolvesActiveRole;
     use ResolvesSellerStoreContext;
+
     public function __construct(private ShowcaseService $service) {}
 
     public function publicIndex(int $storeId): JsonResponse
     {
-        $rows = \App\Domains\Seller\Showcase\Infrastructure\Persistence\Models\ShowcaseModel::query()
+        $rows = ShowcaseModel::query()
             ->active()
             ->where('store_id', $storeId)
             ->whereHas('store', fn ($query) => $query->publiclyAvailable())

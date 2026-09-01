@@ -7,6 +7,7 @@ namespace Tests\Support;
 use App\Domains\Identity\User\Domain\Entities\Role;
 use App\Domains\Identity\User\Domain\Entities\User;
 use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
+use Illuminate\Support\Str;
 
 /**
  * Helpers to build realistic users/stores for HTTP feature tests.
@@ -70,7 +71,7 @@ trait InteractsAsUser
         return StoreModel::query()->create(array_merge([
             'user_id' => $user->id,
             'name' => 'Test Store',
-            'slug' => 'test-store-' . strtolower((string) \Illuminate\Support\Str::random(6)),
+            'slug' => 'test-store-'.strtolower((string) Str::random(6)),
             'phone' => '08123456789',
             'city' => 'Jakarta',
             'province' => 'DKI Jakarta',

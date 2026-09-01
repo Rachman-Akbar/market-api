@@ -77,7 +77,7 @@ final class EloquentBannerRepository implements BannerRepositoryInterface
 
         $model = $banner->id
             ? BannerModel::query()->findOrFail($banner->id)
-            : new BannerModel();
+            : new BannerModel;
 
         $model->fill($data)->save();
 

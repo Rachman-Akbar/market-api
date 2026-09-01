@@ -10,6 +10,5 @@ final readonly class AddCartItemData
         public string $userId,
         public int $productId,
         public int $quantity,
-    ) {
-    }
+    ) {}
 }

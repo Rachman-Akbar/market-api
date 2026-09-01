@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Promotion\Application\Dtos;
 
-use Illuminate\Support\Str;
-
 final class PromotionData
 {
     public function __construct(

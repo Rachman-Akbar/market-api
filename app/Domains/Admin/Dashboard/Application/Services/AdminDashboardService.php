@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Admin\Dashboard\Application\Services;
 
-use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
-use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
-use App\Domains\Identity\User\Domain\Entities\User;
-use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
 use App\Domains\Finance\Commission\Infrastructure\Persistence\Models\SellerSettlementModel;
+use App\Domains\Identity\User\Domain\Entities\User;
+use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
+use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
+use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -94,7 +94,7 @@ class AdminDashboardService
 
         $rows = OrderModel::where('created_at', '>=', $startDate)
             ->where('created_at', '<=', $endDate)
-            ->selectRaw("DATE(created_at) as day, COUNT(*) as orders")
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as orders')
             ->selectRaw("SUM(CASE WHEN status != 'cancelled' THEN total_amount ELSE 0 END) as revenue")
             ->selectRaw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
             ->groupBy('day')

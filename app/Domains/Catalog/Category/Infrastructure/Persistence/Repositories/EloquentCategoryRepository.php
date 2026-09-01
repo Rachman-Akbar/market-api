@@ -153,7 +153,7 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
     {
         $model = $category->id()
             ? CategoryModel::query()->findOrFail($category->id())
-            : new CategoryModel();
+            : new CategoryModel;
 
         $model->catalog_group_id = $category->catalogGroupId();
         $model->parent_id = $category->parentId();
@@ -274,6 +274,7 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
 
             if ($parentId !== null && isset($entities[$parentId])) {
                 $entities[$parentId]->addChild($entity);
+
                 continue;
             }
 

@@ -11,7 +11,7 @@ final class Money
     public function __construct(private readonly int $amount)
     {
         if ($amount < 0) {
-            throw new InvalidArgumentException("Nilai uang tidak boleh negatif.");
+            throw new InvalidArgumentException('Nilai uang tidak boleh negatif.');
         }
     }
 

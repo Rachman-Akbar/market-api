@@ -42,6 +42,7 @@ final class CategoryRequest extends FormRequest
     {
         $categoryId = $this->categoryId();
         $isCreate = $this->isMethod('post');
+
         return [
             'catalog_group_id' => $isCreate
                 ? ['required_without:parent_id', 'nullable', 'integer', 'exists:catalog_groups,id']

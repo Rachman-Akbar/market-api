@@ -7,19 +7,20 @@ namespace Tests\Feature\Catalog;
 use App\Domains\Catalog\CatalogGroup\Infrastructure\Persistence\Models\CatalogGroupModel;
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\Support\InteractsAsUser;
 use Tests\TestCase;
 
 class CategoryCrudTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsAsUser;
+    use RefreshDatabase;
 
     private function makeGroup(string $name = 'Group A'): CatalogGroupModel
     {
         return CatalogGroupModel::query()->create([
             'name' => $name,
-            'slug' => \Illuminate\Support\Str::slug($name) . '-' . strtolower(\Illuminate\Support\Str::random(4)),
+            'slug' => Str::slug($name).'-'.strtolower(Str::random(4)),
             'is_active' => true,
         ]);
     }

@@ -14,6 +14,21 @@ use InvalidArgumentException;
 
 final class MissionService
 {
+    /**
+     * Event types emitted when a user finishes an Android mini-game.
+     * Binds them to missions whose event_type is "game_completed" or "any_game"
+     * (mis harian: "Main game 3x" dll).
+     */
+    public const GAME_COMPLETION_EVENTS = [
+        'quiz_completed',
+        'trash_sort_completed',
+        'myth_fact_completed',
+        'match_card_completed',
+        'clean_river_completed',
+        'game.arithmetic_kilat',
+        'game.sudoku',
+    ];
+
     public function __construct(private MissionRepositoryInterface $repository) {}
 
     public function paginate(array $filters, int $perPage, bool $admin): LengthAwarePaginator
@@ -28,11 +43,11 @@ final class MissionService
 
     public function save(array $data, ?int $id): MissionModel
     {
-        $model = $id ? $this->find($id) : new MissionModel();
+        $model = $id ? $this->find($id) : new MissionModel;
         $code = Str::upper(trim((string) ($data['code'] ?? '')));
 
         if ($code === '') {
-            $code = 'MSN-' . Str::upper(Str::random(8));
+            $code = 'MSN-'.Str::upper(Str::random(8));
         }
 
         $exists = MissionModel::withTrashed()->where('code', $code)->when($id, fn ($query) => $query->where('id', '!=', $id))->exists();
@@ -83,10 +98,10 @@ final class MissionService
     {
         $missions = MissionModel::query()
             ->active()
-            ->where('event_type', $eventType)
             ->where('starts_at', '<=', now())
             ->where('ends_at', '>=', now())
-            ->get();
+            ->get()
+            ->filter(fn (MissionModel $mission): bool => $this->matchesEvent((string) $mission->event_type, $eventType));
 
         foreach ($missions as $mission) {
             DB::transaction(function () use ($mission, $userId, $value, $metadata): void {
@@ -123,7 +138,7 @@ final class MissionService
                             'source_type' => 'mission',
                             'source_id' => (string) $mission->id,
                             'status' => 'available',
-                            'claimed_at' => now(),
+                            'claimed_at' => null,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
@@ -140,6 +155,55 @@ final class MissionService
     public function delete(int $id): void
     {
         $this->repository->delete($this->find($id));
+    }
+
+    private function matchesEvent(string $missionEvent, string $event): bool
+    {
+        $missionEvent = strtolower(trim($missionEvent));
+        $event = strtolower(trim($event));
+
+        if ($missionEvent === $event) {
+            return true;
+        }
+
+        // Prefix wildcard: "game.*" matches "game.arithmetic_kilat", "game.sudoku", dsb.
+        if (str_ends_with($missionEvent, '.*')) {
+            return str_starts_with($event, substr($missionEvent, 0, -1));
+        }
+
+        // Suffix wildcard: "*_completed" matches "quiz_completed", "trash_sort_completed", dsb.
+        if ($missionEvent === '*_completed') {
+            return str_ends_with($event, '_completed');
+        }
+
+        // Mis harian "main game" — memadukan seluruh game Android (mini-game + game terverifikasi).
+        if (in_array($missionEvent, ['game_completed', 'any_game'], true)) {
+            return in_array($event, self::GAME_COMPLETION_EVENTS, true);
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array<string, string> event_type => label untuk pilihan admin.
+     */
+    public function supportedEventTypes(): array
+    {
+        return [
+            'game_completed' => 'Main game (semua game Android)',
+            'game.*' => 'Game terverifikasi server (arithmetic_kilat & sudoku)',
+            'quiz_completed' => 'Quiz selesai',
+            'trash_sort_completed' => 'Trash Sort selesai',
+            'myth_fact_completed' => 'Myth & Fact selesai',
+            'match_card_completed' => 'Match Card selesai',
+            'clean_river_completed' => 'Clean River selesai',
+            'order_completed' => 'Pesanan selesai',
+            'review_submitted' => 'Review dikirim',
+            'wishlist_added' => 'Wishlist ditambahkan',
+            'login' => 'Login',
+            'product_purchased' => 'Produk dibeli',
+            'purchase_amount' => 'Total belanja',
+        ];
     }
 
     private function presentUserMission(MissionModel $mission, MissionUserProgressModel $progress): array

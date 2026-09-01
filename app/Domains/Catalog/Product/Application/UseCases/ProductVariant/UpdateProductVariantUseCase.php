@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Product\Application\UseCases\ProductVariant;
 
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
 use App\Domains\Catalog\Product\Domain\Entities\ProductVariant;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductVariantRepositoryInterface;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class UpdateProductVariantUseCase
 {
@@ -43,6 +43,9 @@ final class UpdateProductVariantUseCase
                 name: $computedName,
                 price: (float) ($data['price'] ?? $current->price()),
                 stock: (int) $current->stock(),
+                poStock: array_key_exists('po_stock', $data)
+                    ? max(0, (int) $data['po_stock'])
+                    : $current->poStock(),
                 isDefault: array_key_exists('is_default', $data) ? (bool) $data['is_default'] : $current->isDefault()
             ));
 
@@ -67,6 +70,7 @@ final class UpdateProductVariantUseCase
                 }
             }
         }
+
         return implode(' - ', $nameParts);
     }
 
@@ -79,7 +83,7 @@ final class UpdateProductVariantUseCase
         $counter = 1;
 
         do {
-            $sku = $base . '-' . $date . '-' . str_pad((string) $counter, 4, '0', STR_PAD_LEFT);
+            $sku = $base.'-'.$date.'-'.str_pad((string) $counter, 4, '0', STR_PAD_LEFT);
             $exists = DB::table('product_variants')
                 ->where('sku', $sku)
                 ->where('store_id', $storeId)

@@ -85,7 +85,7 @@ class HutangPiutangController extends Controller
 
         return response($csv, 200, [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="laporan-' . strtolower($typeName) . '.csv"',
+            'Content-Disposition' => 'attachment; filename="laporan-'.strtolower($typeName).'.csv"',
         ]);
     }
 }

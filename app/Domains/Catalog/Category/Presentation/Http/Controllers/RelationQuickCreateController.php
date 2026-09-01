@@ -22,7 +22,7 @@ final class RelationQuickCreateController extends Controller
         $created = false;
 
         if (! $model) {
-            $model = new CatalogGroupModel();
+            $model = new CatalogGroupModel;
             $model->fill([
                 'name' => $name,
                 'slug' => $this->uniqueSlug(CatalogGroupModel::query(), Str::slug($name)),
@@ -56,7 +56,7 @@ final class RelationQuickCreateController extends Controller
         $group = $this->findByName(CatalogGroupModel::query(), $groupName);
 
         if (! $group) {
-            $group = new CatalogGroupModel();
+            $group = new CatalogGroupModel;
             $group->fill([
                 'name' => $groupName,
                 'slug' => $this->uniqueSlug(CatalogGroupModel::query(), Str::slug($groupName)),
@@ -107,7 +107,7 @@ final class RelationQuickCreateController extends Controller
         $level = $parent ? ((int) $parent->level + 1) : 1;
         abort_if($level > 3, 422, 'Category hanya boleh sampai Level 3.');
         $slug = Str::slug($name);
-        $model = new CategoryModel();
+        $model = new CategoryModel;
         $model->fill([
             'catalog_group_id' => $group->id,
             'parent_id' => $parent?->id,
@@ -120,6 +120,7 @@ final class RelationQuickCreateController extends Controller
             'slug' => $slug,
             'full_slug' => $parent ? trim($parent->full_slug.'/'.$slug, '/') : $slug,
         ])->save();
+
         return $model;
     }
 
@@ -134,6 +135,7 @@ final class RelationQuickCreateController extends Controller
         if ($clean === '') {
             return '';
         }
+
         return $clean;
     }
 
@@ -146,6 +148,7 @@ final class RelationQuickCreateController extends Controller
             $slug = $root.'-'.$counter;
             $counter++;
         }
+
         return $slug;
     }
 }

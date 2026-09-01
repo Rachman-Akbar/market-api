@@ -18,8 +18,8 @@ class RemoveItemFromWishlistUseCase
     {
         $wishlist = $this->repository->findByUserId($userId);
 
-        if (!$wishlist) {
-            throw new DomainException("Wishlist tidak ditemukan.");
+        if (! $wishlist) {
+            throw new DomainException('Wishlist tidak ditemukan.');
         }
 
         $wishlist->removeProduct($productId);

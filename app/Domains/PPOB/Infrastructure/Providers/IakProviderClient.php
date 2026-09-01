@@ -29,7 +29,7 @@ class IakProviderClient
      */
     public function topUp(string $referenceId, string $customerId, string $productCode): array
     {
-        $sign = md5($this->username . $this->apiKey . $referenceId);
+        $sign = md5($this->username.$this->apiKey.$referenceId);
 
         return $this->post('/top-up', [
             'username' => $this->username,
@@ -45,7 +45,7 @@ class IakProviderClient
      */
     public function checkStatus(string $referenceId): array
     {
-        $sign = md5($this->username . $this->apiKey . $referenceId);
+        $sign = md5($this->username.$this->apiKey.$referenceId);
 
         return $this->post('/check-status', [
             'username' => $this->username,
@@ -59,7 +59,7 @@ class IakProviderClient
      */
     public function checkBalance(): array
     {
-        $sign = md5($this->username . $this->apiKey);
+        $sign = md5($this->username.$this->apiKey);
 
         return $this->post('/balance/check', [
             'username' => $this->username,
@@ -76,7 +76,7 @@ class IakProviderClient
         string $productCode,
         string $customerNumber
     ): array {
-        $sign = md5($this->username . $this->apiKey . $referenceId);
+        $sign = md5($this->username.$this->apiKey.$referenceId);
 
         return $this->post('/v1/bill/check', [
             'commands' => 'inquiry-pasca',
@@ -94,7 +94,7 @@ class IakProviderClient
      */
     public function billPayment(string $trId): array
     {
-        $sign = md5($this->username . $this->apiKey . $trId);
+        $sign = md5($this->username.$this->apiKey.$trId);
 
         return $this->post('/v1/bill/check', [
             'commands' => 'pay-pasca',
@@ -110,14 +110,14 @@ class IakProviderClient
      */
     public function verifyCallbackSignature(string $referenceId, string $providedSign): bool
     {
-        $expected = md5($this->username . $this->apiKey . $referenceId);
+        $expected = md5($this->username.$this->apiKey.$referenceId);
 
         return hash_equals($expected, $providedSign ?? '');
     }
 
     private function post(string $path, array $payload): array
     {
-        $url = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
+        $url = rtrim($this->baseUrl, '/').'/'.ltrim($path, '/');
 
         $response = Http::timeout(config('ppob.provider.timeout', 60))
             ->asForm()

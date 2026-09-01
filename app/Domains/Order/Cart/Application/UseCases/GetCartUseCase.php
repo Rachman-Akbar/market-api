@@ -11,8 +11,7 @@ final class GetCartUseCase
 {
     public function __construct(
         private CartRepositoryInterface $cartRepository
-    ) {
-    }
+    ) {}
 
     public function execute(string $userId): CartSummaryData
     {

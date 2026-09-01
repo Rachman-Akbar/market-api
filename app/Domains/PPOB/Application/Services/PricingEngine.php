@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\PPOB\Application\Services;
 
-use App\Domains\PPOB\Domain\Entities\PpoProduct;
 use App\Domains\PPOB\Domain\Entities\PpoPricingRule;
+use App\Domains\PPOB\Domain\Entities\PpoProduct;
 use App\Domains\PPOB\Domain\Repositories\PpoPricingRuleRepositoryInterface;
 use Illuminate\Support\Facades\Cache;
 

@@ -6,11 +6,14 @@ namespace App\Domains\Order\Voucher\Presentation\Http\Controllers;
 
 use App\Domains\Order\Voucher\Application\DTOs\VoucherDTO;
 use App\Domains\Order\Voucher\Application\UseCases\ManageVoucherUseCase;
+use App\Domains\Order\Voucher\Application\UseCases\UserVoucherUseCase;
 use App\Domains\Order\Voucher\Domain\Entities\Voucher;
 use App\Domains\Order\Voucher\Presentation\Http\Requests\StoreVoucherRequest;
+use App\Domains\Order\Voucher\Presentation\Http\Resources\MyVoucherResource;
 use App\Domains\Order\Voucher\Presentation\Http\Resources\VoucherResource;
 use App\Domains\Shared\Presentation\Http\Concerns\ResolvesSellerStoreContext;
 use App\Http\Controllers\Controller;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -20,7 +23,11 @@ use Throwable;
 final class VoucherController extends Controller
 {
     use ResolvesSellerStoreContext;
-    public function __construct(private ManageVoucherUseCase $useCase) {}
+
+    public function __construct(
+        private ManageVoucherUseCase $useCase,
+        private UserVoucherUseCase $userVoucherUseCase,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -42,6 +49,34 @@ final class VoucherController extends Controller
             'success' => true,
             'data' => VoucherResource::collection($this->useCase->listVouchers($filters)),
         ]);
+    }
+
+    public function myVouchers(Request $request): JsonResponse
+    {
+        $userId = (string) $request->user()->getAuthIdentifier();
+        $perPage = max(1, min(100, (int) $request->query('per_page', 15)));
+
+        $rows = $this->userVoucherUseCase->paginateForUser($userId, $perPage);
+
+        return $this->paginated($rows);
+    }
+
+    public function claim(Request $request, int $id): JsonResponse
+    {
+        try {
+            $userId = (string) $request->user()->getAuthIdentifier();
+            $voucher = $this->userVoucherUseCase->claim($userId, $id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Voucher berhasil diklaim.',
+                'data' => new MyVoucherResource($voucher),
+            ]);
+        } catch (ModelNotFoundException) {
+            return response()->json(['success' => false, 'message' => 'Voucher tidak ditemukan.'], 404);
+        } catch (Throwable $exception) {
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 422);
+        }
     }
 
     public function manage(Request $request): JsonResponse
@@ -171,6 +206,9 @@ final class VoucherController extends Controller
             'discount_type' => (string) $data['discount_type'],
             'discount_value' => (float) $data['discount_value'],
             'min_spend' => (float) $data['min_spend'],
+            'min_items' => isset($data['min_items']) && $data['min_items'] !== '' ? (int) $data['min_items'] : null,
+            'min_distinct_products' => isset($data['min_distinct_products']) && $data['min_distinct_products'] !== '' ? (int) $data['min_distinct_products'] : null,
+            'terms' => isset($data['terms']) && trim((string) $data['terms']) !== '' ? trim((string) $data['terms']) : null,
             'max_discount' => isset($data['max_discount']) && $data['max_discount'] !== '' ? (float) $data['max_discount'] : null,
             'starts_at' => (string) $data['starts_at'],
             'ends_at' => (string) $data['ends_at'],
@@ -190,11 +228,16 @@ final class VoucherController extends Controller
         }
     }
 
-
-
     private function activeRole(Request $request): string
     {
         return strtolower((string) $request->attributes->get('active_role', 'admin'));
+    }
+
+    private function paginated($paginator): JsonResponse
+    {
+        $resource = MyVoucherResource::collection($paginator)->response()->getData(true);
+
+        return response()->json(array_merge(['success' => true], $resource));
     }
 
     private function deleteUploadedImage(?string $path): void

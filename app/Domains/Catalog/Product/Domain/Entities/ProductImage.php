@@ -57,5 +57,3 @@ final class ProductImage
         return $this->updatedAt;
     }
 }
-
-

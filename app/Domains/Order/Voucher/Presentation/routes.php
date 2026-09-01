@@ -42,6 +42,8 @@ Route::prefix('vouchers')->name('vouchers.')->group(function (): void {
 
     Route::middleware(['auth:sanctum', 'active.user', 'verified.email'])
         ->group(function (): void {
+            Route::get('/mine', [VoucherController::class, 'myVouchers'])->name('mine');
+            Route::post('/{id}/claim', [VoucherController::class, 'claim'])->whereNumber('id')->name('claim');
             Route::get('/{id}', [VoucherController::class, 'show'])->whereNumber('id')->name('show');
         });
 });

@@ -81,6 +81,7 @@ final class CartController extends Controller
     {
         try {
             $summary = $callback();
+
             return CartResource::make($summary->toArray())->response();
         } catch (DomainException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);

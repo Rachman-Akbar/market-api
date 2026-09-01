@@ -25,11 +25,11 @@ final class SwitchRoleUseCase
         $targetRole = strtolower(trim($targetRole));
         $user->loadMissing('roles:id,name');
 
-        if (!$user->hasRole($targetRole)) {
+        if (! $user->hasRole($targetRole)) {
             throw new AccessDeniedHttpException("Anda tidak memiliki hak akses sebagai {$targetRole}.");
         }
 
-        if ($targetRole === 'seller' && !$this->userRepository->hasSellerAccess($user)) {
+        if ($targetRole === 'seller' && ! $this->userRepository->hasSellerAccess($user)) {
             throw new AccessDeniedHttpException('Akses seller belum aktif atau toko belum tersedia.');
         }
 

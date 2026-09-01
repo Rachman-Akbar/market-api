@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 $domainRouteFiles = [
-    app_path('Domains/routes.php')
+    app_path('Domains/routes.php'),
 ];
 
 Route::get('/', function () {
@@ -26,5 +26,3 @@ Route::prefix('v1')->group(function () use ($domainRouteFiles): void {
         }
     }
 });
-
-

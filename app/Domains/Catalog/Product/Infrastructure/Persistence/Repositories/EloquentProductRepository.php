@@ -380,7 +380,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         $name = trim((string) ($filters['name'] ?? ''));
 
         if ($name !== '') {
-            $query->where('products.name', 'like', '%' . $name . '%');
+            $query->where('products.name', 'like', '%'.$name.'%');
         }
 
         $mode = Str::lower(trim((string) ($filters['mode'] ?? '')));
@@ -410,11 +410,11 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         if ($search !== '') {
             $query->where(function (Builder $query) use ($search): void {
                 $query
-                    ->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('slug', 'like', '%' . $search . '%')
-                    ->orWhere('description', 'like', '%' . $search . '%')
-                    ->orWhere('brand', 'like', '%' . $search . '%')
-                    ->orWhereHas('variants', fn (Builder $query) => $query->where('sku', 'like', '%' . $search . '%'));
+                    ->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('slug', 'like', '%'.$search.'%')
+                    ->orWhere('description', 'like', '%'.$search.'%')
+                    ->orWhere('brand', 'like', '%'.$search.'%')
+                    ->orWhereHas('variants', fn (Builder $query) => $query->where('sku', 'like', '%'.$search.'%'));
             });
         }
     }
@@ -475,7 +475,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         } else {
             $allowed = ['id', 'name', 'status', 'is_active', 'created_at', 'updated_at'];
             $column = in_array($sortBy, $allowed, true) ? $sortBy : 'created_at';
-            $query->orderBy('products.' . $column, $direction);
+            $query->orderBy('products.'.$column, $direction);
         }
 
         if ($sortBy !== 'id') {
@@ -570,5 +570,4 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     {
         $query->whereHas('store', fn (Builder $storeQuery) => $storeQuery->publiclyAvailable());
     }
-
 }

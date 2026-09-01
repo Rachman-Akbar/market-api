@@ -10,7 +10,9 @@ use RuntimeException;
 final class MidtransService
 {
     private string $serverKey;
+
     private string $baseUrl;
+
     private ?array $enabledPayments;
 
     public function __construct()
@@ -52,7 +54,7 @@ final class MidtransService
             ->withBasicAuth($this->serverKey, '')
             ->timeout(20)
             ->retry(2, 250)
-            ->post($this->baseUrl . 'transactions', $payload);
+            ->post($this->baseUrl.'transactions', $payload);
 
         if ($response->failed()) {
             $errors = $response->json('error_messages');
@@ -61,7 +63,7 @@ final class MidtransService
         }
 
         $token = $response->json('token');
-        if (!is_string($token) || $token === '') {
+        if (! is_string($token) || $token === '') {
             throw new RuntimeException('Midtrans tidak mengembalikan Snap token.');
         }
 

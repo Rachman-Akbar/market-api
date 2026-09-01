@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-use App\Domains\Engagement\Mission\Presentation\Http\Controllers\MissionController;
 use App\Domains\Engagement\Gaming\Presentation\Http\Controllers\GameController;
+use App\Domains\Engagement\Mission\Presentation\Http\Controllers\MissionController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum', 'active.user', 'verified.email', 'permission:missions.participate,missions.manage'])
     ->prefix('engagement/missions')
     ->group(function (): void {
         Route::get('/', [MissionController::class, 'index']);
+        Route::get('event-types', [MissionController::class, 'eventTypes']);
         Route::get('me', [MissionController::class, 'userMissions']);
         Route::post('/', [MissionController::class, 'store']);
         Route::post('report', [MissionController::class, 'reportEvent']);

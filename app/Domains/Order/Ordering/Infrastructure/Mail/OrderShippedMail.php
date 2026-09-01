@@ -41,7 +41,7 @@ final class OrderShippedMail extends Mailable implements ShouldQueue
                 'orderNumber' => $this->order->orderNumber,
                 'trackingNumber' => $this->trackingNumber,
                 'courierName' => $this->courierName,
-                'orderUrl' => config('app.frontend_url') . "/orders/{$this->order->id}",
+                'orderUrl' => config('app.frontend_url')."/orders/{$this->order->id}",
             ],
         );
     }

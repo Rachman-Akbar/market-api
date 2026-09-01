@@ -4,32 +4,34 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Product\Presentation\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\DB;
+use App\Domains\Catalog\Product\Application\Query\Product\GetProductBySlugQuery;
 use App\Domains\Catalog\Product\Application\Query\Product\GetProductQuery;
 use App\Domains\Catalog\Product\Application\Query\Product\ListProductsQuery;
-use App\Domains\Catalog\Product\Application\Query\Product\GetProductBySlugQuery;
 use App\Domains\Catalog\Product\Application\Query\Product\ListSellerProductsQuery;
 use App\Domains\Catalog\Product\Application\UseCases\Product\CreateProductUseCase;
-use App\Domains\Catalog\Product\Application\UseCases\Product\UpdateProductUseCase;
 use App\Domains\Catalog\Product\Application\UseCases\Product\DeleteProductUseCase;
+use App\Domains\Catalog\Product\Application\UseCases\Product\UpdateProductUseCase;
+use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Catalog\Product\Presentation\Http\Requests\StoreProductRequest;
 use App\Domains\Catalog\Product\Presentation\Http\Requests\UpdateProductRequest;
 use App\Domains\Catalog\Product\Presentation\Http\Resources\ProductResource;
-use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 
 final class ProductController extends Controller
 {
     private function resolveCurrentSellerId(Request $request): ?string
     {
         $userId = $request->user()?->id;
+
         return $userId ? (string) $userId : null;
     }
 
     private function resolveStoreIdBySellerId(string $sellerId): ?int
     {
         $storeId = DB::table('stores')->where('user_id', $sellerId)->value('id');
+
         return $storeId ? (int) $storeId : null;
     }
 
@@ -44,6 +46,7 @@ final class ProductController extends Controller
         if (! $product) {
             return response()->json(['message' => "Produk dengan slug '{$slug}' tidak ditemukan."], 404);
         }
+
         return new ProductResource($product);
     }
 
@@ -53,6 +56,7 @@ final class ProductController extends Controller
         if (! $product) {
             return response()->json(['message' => "Produk dengan ID {$id} tidak ditemukan."], 404);
         }
+
         return new ProductResource($product);
     }
 
@@ -131,6 +135,7 @@ final class ProductController extends Controller
 
         try {
             $product = $useCase->execute($payload);
+
             return new ProductResource($product);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -149,7 +154,6 @@ final class ProductController extends Controller
             return response()->json(['message' => "Produk dengan ID {$id} tidak ditemukan."], 404);
         }
 
-
         $storeId = $this->resolveStoreIdBySellerId($sellerId);
         if ($product->storeId() !== $storeId) {
             return response()->json(['message' => 'Forbidden. Produk ini bukan milik toko Anda.'], 403);
@@ -160,10 +164,13 @@ final class ProductController extends Controller
 
         if (isset($payload['sku'])) {
             $payload['sku'] = is_string($payload['sku']) ? trim($payload['sku']) : $payload['sku'];
-            if ($payload['sku'] === '') unset($payload['sku']);
+            if ($payload['sku'] === '') {
+                unset($payload['sku']);
+            }
         }
 
         $updated = $useCase->execute($id, $payload);
+
         return new ProductResource($updated);
     }
 
@@ -179,13 +186,13 @@ final class ProductController extends Controller
             return response()->json(['message' => "Produk dengan ID {$id} tidak ditemukan."], 404);
         }
 
-
         $storeId = $this->resolveStoreIdBySellerId($sellerId);
         if ($product->storeId() !== $storeId) {
             return response()->json(['message' => 'Forbidden. Produk ini bukan milik toko Anda.'], 403);
         }
 
         $useCase->execute($id);
+
         return response()->json(['message' => 'Produk berhasil dihapus.']);
     }
 }

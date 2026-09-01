@@ -81,7 +81,7 @@ final class AddressController extends Controller
     private function resolveOwner(Request $request): array
     {
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             throw new AccessDeniedHttpException('User tidak terautentikasi.');
         }
 
@@ -90,11 +90,12 @@ final class AddressController extends Controller
         }
 
         $activeRole = $this->userRepository->getActiveRoleFromCurrentToken($user);
-        if ($activeRole !== 'seller' || !$this->userRepository->hasSellerAccess($user)) {
+        if ($activeRole !== 'seller' || ! $this->userRepository->hasSellerAccess($user)) {
             throw new AccessDeniedHttpException('Akses alamat toko ditolak.');
         }
 
         $user->loadMissing('store');
+
         return [null, (string) $user->store->id];
     }
 }

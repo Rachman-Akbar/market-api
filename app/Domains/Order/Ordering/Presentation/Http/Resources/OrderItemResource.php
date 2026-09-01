@@ -15,7 +15,7 @@ final class OrderItemResource extends JsonResource
 
         $unitPrice = (float) ($this->read($item, 'unitPrice') ?? $this->read($item, 'unit_price') ?? $this->read($item, 'price') ?? 0);
         $quantity = (int) ($this->read($item, 'quantity') ?? 1);
-        
+
         // Kalkulasi subtotal dinamis jika fungsi kustom subtotal tidak ada di objek domain
         $subtotal = $this->read($item, 'subtotal') ?? ($unitPrice * $quantity);
 

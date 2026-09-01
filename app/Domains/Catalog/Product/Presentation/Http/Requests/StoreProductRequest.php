@@ -6,7 +6,6 @@ namespace App\Domains\Catalog\Product\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 final class StoreProductRequest extends FormRequest
@@ -79,6 +78,7 @@ final class StoreProductRequest extends FormRequest
             'category_ids.*' => ['integer', 'distinct', 'exists:categories,id'],
             'price' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['nullable', 'integer', 'min:0'],
+            'po_stock' => ['nullable', 'integer', 'min:0'],
             'images' => ['nullable', 'array'],
             'images.*.url' => ['required_with:images', 'string', 'max:2048'],
             'images.*.alt_text' => ['nullable', 'string', 'max:255'],
@@ -98,6 +98,7 @@ final class StoreProductRequest extends FormRequest
             'variants.*.name' => ['required_with:variants', 'string', 'max:255', 'distinct'],
             'variants.*.price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.stock' => ['nullable', 'integer', 'min:0'],
+            'variants.*.po_stock' => ['nullable', 'integer', 'min:0'],
             'variants.*.is_default' => ['nullable', 'boolean'],
             'variants.*.values' => ['nullable', 'array'],
             'variants.*.values.*.attribute_id' => ['required_with:variants.*.values', 'integer', 'exists:product_attributes,id'],

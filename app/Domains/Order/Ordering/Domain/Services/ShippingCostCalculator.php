@@ -22,14 +22,14 @@ class ShippingCostCalculator
         }
 
         if ($courier === 'haversine') {
-            if (!$this->hasCompleteCoordinates($context)) {
+            if (! $this->hasCompleteCoordinates($context)) {
                 throw new InvalidArgumentException('Koordinat asal atau tujuan belum lengkap untuk menghitung ongkir Haversine.');
             }
 
             return $this->expressCalculator->calculate($context);
         }
 
-        if (!$this->hasCompleteDestinationIds($context)) {
+        if (! $this->hasCompleteDestinationIds($context)) {
             throw new InvalidArgumentException(
                 'RajaOngkir belum tersedia karena destination ID asal atau tujuan belum ditemukan.'
             );
@@ -55,7 +55,7 @@ class ShippingCostCalculator
                     ];
                 }
             } catch (Throwable $exception) {
-                $warnings[] = 'RajaOngkir: ' . $exception->getMessage();
+                $warnings[] = 'RajaOngkir: '.$exception->getMessage();
             }
         } else {
             $warnings[] = 'RajaOngkir belum tersedia karena destination ID asal atau tujuan belum ditemukan.';
@@ -76,13 +76,13 @@ class ShippingCostCalculator
                     'courier_label' => 'Haversine',
                     'service' => 'HAVERSINE',
                     'description' => 'Pengiriman berdasarkan jarak koordinat toko ke alamat penerima.',
-                    'etd' => number_format($distance, 1, ',', '.') . ' km',
+                    'etd' => number_format($distance, 1, ',', '.').' km',
                     'cost' => $this->expressCalculator->calculate($context),
                     'provider' => 'haversine',
                     'requires_destination_id' => false,
                 ];
             } catch (Throwable $exception) {
-                $warnings[] = 'Haversine: ' . $exception->getMessage();
+                $warnings[] = 'Haversine: '.$exception->getMessage();
             }
         } else {
             $warnings[] = 'Haversine belum tersedia karena koordinat toko atau alamat penerima belum lengkap.';
@@ -138,7 +138,7 @@ class ShippingCostCalculator
             'latitude',
             'longitude',
         ] as $key) {
-            if (!array_key_exists($key, $context) || !is_numeric($context[$key])) {
+            if (! array_key_exists($key, $context) || ! is_numeric($context[$key])) {
                 return false;
             }
 
@@ -158,10 +158,10 @@ class ShippingCostCalculator
             return false;
         }
 
-        return !(
+        return ! (
             $coordinates['origin_latitude'] === 0.0
             && $coordinates['origin_longitude'] === 0.0
-        ) && !(
+        ) && ! (
             $coordinates['latitude'] === 0.0
             && $coordinates['longitude'] === 0.0
         );

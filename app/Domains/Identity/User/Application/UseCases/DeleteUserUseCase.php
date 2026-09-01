@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Identity\User\Application\UseCases;
 
-use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Identity\User\Domain\Exceptions\UserNotFoundException;
+use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
 
 class DeleteUserUseCase
 {
@@ -17,7 +17,7 @@ class DeleteUserUseCase
     {
         $deleted = $this->userRepository->delete($id);
 
-        if (!$deleted) {
+        if (! $deleted) {
             throw new UserNotFoundException("User with ID {$id} not found.");
         }
     }

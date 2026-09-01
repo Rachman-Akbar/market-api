@@ -9,14 +9,13 @@ use DomainException;
 final class Cart
 {
     /**
-     * @param CartItem[] $items
+     * @param  CartItem[]  $items
      */
     public function __construct(
         private readonly int $id,
         private readonly string $userId,
         private array $items = []
-    ) {
-    }
+    ) {}
 
     public function getId(): int
     {
@@ -43,15 +42,16 @@ final class Cart
             if ($item->getProductVariantId() === $productVariantId) {
                 $newQuantity = $item->getQuantity() + $quantity;
                 if ($newQuantity > $availableStock) {
-                    throw new DomainException("Stok tidak mencukupi untuk menambahkan barang.");
+                    throw new DomainException('Stok tidak mencukupi untuk menambahkan barang.');
                 }
                 $item->changeQuantity($newQuantity);
+
                 return;
             }
         }
 
         if ($quantity > $availableStock) {
-            throw new DomainException("Stok varian produk tidak mencukupi.");
+            throw new DomainException('Stok varian produk tidak mencukupi.');
         }
 
         // Id 0 menandakan item baru yang belum tersimpan di database instan

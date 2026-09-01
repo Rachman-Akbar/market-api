@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Template\Cart\Infrastructure\Persistence\Readers;
 
 use App\Domains\Template\Cart\Domain\Repositories\ProductForCartReaderInterface;
-use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
 final class EloquentProductForCartReader implements ProductForCartReaderInterface

@@ -10,8 +10,8 @@ class EloquentAddressRepository implements AddressRepositoryInterface
 {
     public function getByOwner(?string $userId, ?string $storeId): Collection
     {
-        return Address::when($userId, fn($q) => $q->where('user_id', $userId))
-            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
+        return Address::when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when($storeId, fn ($q) => $q->where('store_id', $storeId))
             ->orderByDesc('is_primary')
             ->latest('id')
             ->get();
@@ -20,14 +20,15 @@ class EloquentAddressRepository implements AddressRepositoryInterface
     public function findByIdAndOwner(int $id, ?string $userId, ?string $storeId): ?Address
     {
         return Address::where('id', $id)
-            ->when($userId, fn($q) => $q->where('user_id', $userId))
-            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when($storeId, fn ($q) => $q->where('store_id', $storeId))
             ->first();
     }
 
     public function save(Address $address): Address
     {
         $address->save();
+
         return $address;
     }
 
@@ -38,8 +39,8 @@ class EloquentAddressRepository implements AddressRepositoryInterface
 
     public function hasAddresses(?string $userId, ?string $storeId): bool
     {
-        return Address::when($userId, fn($q) => $q->where('user_id', $userId))
-            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
+        return Address::when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when($storeId, fn ($q) => $q->where('store_id', $storeId))
             ->exists();
     }
 }

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Seller\Stores\Application\UseCases;
 
 use App\Domains\Admin\Notification\Application\Services\AdminNotificationService;
-use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Identity\Auth\Application\DTOs\RegisterSellerDTO;
+use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Seller\Stores\Application\DTOs\StoreData;
 use App\Domains\Seller\Stores\Domain\Repositories\StoreRepositoryInterface;
 use Illuminate\Support\Facades\DB;
@@ -41,11 +41,12 @@ final readonly class CreateStoreUseCase
         $storeId = DB::transaction(function () use ($userId, $dto): int {
             $id = $this->userRepository->registerStore($userId, $dto);
             $this->userRepository->assignRoleByName($this->userRepository->findById($userId) ?? throw new RuntimeException('User tidak ditemukan.'), 'seller');
+
             return $id;
         });
 
         $store = $this->storeRepository->findById($storeId);
-        if (!$store) {
+        if (! $store) {
             throw new RuntimeException('Toko gagal dimuat setelah registrasi.');
         }
 
@@ -53,10 +54,10 @@ final readonly class CreateStoreUseCase
             'module' => 'stores',
             'type' => 'store.registration.created',
             'title' => 'Pendaftaran toko baru',
-            'message' => $store->name() . ' menunggu pemeriksaan admin.',
+            'message' => $store->name().' menunggu pemeriksaan admin.',
             'reference_type' => 'store',
             'reference_id' => $store->id(),
-            'url' => '/admin/stores?store=' . $store->id(),
+            'url' => '/admin/stores?store='.$store->id(),
             'meta' => ['status' => $store->status()],
         ], $userId, $store->id());
 

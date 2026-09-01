@@ -32,7 +32,7 @@ final class PasswordResetMail extends Mailable
         return new Content(
             htmlString: view('emails.password-reset', [
                 'url' => $this->resetUrl,
-                'expiresAt' => $this->expiresMinutes . ' menit',
+                'expiresAt' => $this->expiresMinutes.' menit',
             ])->render(),
         );
     }

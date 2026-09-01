@@ -1,5 +1,6 @@
 <?php
 
+use App\Infrastructure\Logging\StructuredLogFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -19,6 +20,20 @@ return [
     */
 
     'default' => env('LOG_CHANNEL', 'stack'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Request Log
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, a structured access log line is written per API request
+    | via App\Infrastructure\Logging\Middleware\RequestLogMiddleware.
+    |
+    */
+
+    'request_log' => [
+        'enabled' => filter_var(env('LOG_REQUESTS', false), FILTER_VALIDATE_BOOLEAN),
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -103,6 +118,15 @@ return [
             ],
             'formatter' => env('LOG_STDERR_FORMATTER'),
             'processors' => [PsrLogMessageProcessor::class],
+        ],
+
+        'json' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/laravel-json.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+            'tap' => [StructuredLogFormatter::class],
         ],
 
         'syslog' => [

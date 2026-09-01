@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Catalog\Banner\Application\Dtos;
 
-use Illuminate\Support\Str;
-
 final class BannerData
 {
     public function __construct(

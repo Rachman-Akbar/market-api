@@ -7,8 +7,8 @@ namespace App\Domains\Seller\Stores\Infrastructure\Persistence\Models;
 use App\Domains\Identity\User\Domain\Entities\User;
 use App\Domains\Shared\Infrastructure\Persistence\Concerns\HasActiveStatus;
 use App\Domains\Shared\Infrastructure\Persistence\Concerns\TracksUserChanges;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -46,7 +46,6 @@ final class StoreModel extends Model
         'is_active' => 'boolean',
         'deleted_at' => 'datetime',
     ];
-
 
     public function scopePubliclyAvailable(Builder $query): Builder
     {

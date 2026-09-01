@@ -10,13 +10,11 @@ use App\Domains\Template\Cart\Infrastructure\Persistence\Models\CartModel;
 
 final class CartMapper
 {
-    public function __construct(private readonly ?CartItemMapper $itemMapper = null)
-    {
-    }
+    public function __construct(private readonly ?CartItemMapper $itemMapper = null) {}
 
     public function toDomain(CartModel $model): Cart
     {
-        $mapper = $this->itemMapper ?? new CartItemMapper();
+        $mapper = $this->itemMapper ?? new CartItemMapper;
 
         if (! $model->relationLoaded('items')) {
             $model->load('items');

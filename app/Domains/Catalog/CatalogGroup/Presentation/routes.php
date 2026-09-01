@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\Route;
 use App\Domains\Catalog\CatalogGroup\Presentation\Http\Controllers\CatalogGroupController;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('catalog-groups')->name('catalog-groups.')->group(function () {
     Route::get('/', [CatalogGroupController::class, 'index'])->name('index');

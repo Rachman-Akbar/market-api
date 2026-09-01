@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\PPOB\Domain\Repositories;
 
 use App\Domains\PPOB\Domain\Entities\PpoTransaction;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface PpoTransactionRepositoryInterface
 {
@@ -18,5 +19,5 @@ interface PpoTransactionRepositoryInterface
 
     public function update(int $id, array $data): PpoTransaction;
 
-    public function getByUser(string $userId, array $filters = [], int $perPage = 15): \Illuminate\Contracts\Pagination\LengthAwarePaginator;
+    public function getByUser(string $userId, array $filters = [], int $perPage = 15): LengthAwarePaginator;
 }

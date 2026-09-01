@@ -50,13 +50,13 @@ class CreateOrderUseCase
             throw new RuntimeException('Sesi Anda telah berakhir. Silakan login kembali.');
         }
 
-        $ids = collect($cartItemIds)->map(fn($id) => (int) $id)->filter()->unique()->values();
+        $ids = collect($cartItemIds)->map(fn ($id) => (int) $id)->filter()->unique()->values();
         if ($ids->isEmpty()) {
             throw new RuntimeException('Pilih minimal satu produk untuk melakukan checkout.');
         }
 
         $cart = CartModel::where('user_id', $userId)->first();
-        if (!$cart) {
+        if (! $cart) {
             throw new RuntimeException('Keranjang belanja tidak ditemukan.');
         }
 
@@ -72,7 +72,7 @@ class CreateOrderUseCase
         $itemsTotal = 0.0;
         foreach ($selectedItems as $cartItem) {
             $details = $detailsMap[(int) $cartItem->product_variant_id] ?? null;
-            if (!$details) {
+            if (! $details) {
                 throw new RuntimeException('Data varian produk tidak ditemukan.');
             }
 
@@ -121,12 +121,12 @@ class CreateOrderUseCase
             }
             $service = 'PICKUP';
         } else {
-            if (!$addressId) {
+            if (! $addressId) {
                 throw new RuntimeException('Alamat pengiriman wajib ditentukan.');
             }
 
             $address = $this->addressRepository->findByIdAndOwner($addressId, $userId, null);
-            if (!$address) {
+            if (! $address) {
                 throw new RuntimeException('Alamat pengiriman tidak ditemukan.');
             }
 
@@ -145,10 +145,11 @@ class CreateOrderUseCase
                 if ($this->shippingCalculator->normalizeCourier((string) $option['courier']) !== $courier) {
                     return false;
                 }
-                return !$service || strtoupper((string) $option['service']) === $service;
+
+                return ! $service || strtoupper((string) $option['service']) === $service;
             });
 
-            if (!$selectedOption) {
+            if (! $selectedOption) {
                 throw new RuntimeException('Layanan pengiriman yang dipilih sudah tidak tersedia. Silakan hitung ulang ongkir.');
             }
 
@@ -168,7 +169,7 @@ class CreateOrderUseCase
             );
         }
 
-        $orderNumber = 'ORD-' . now()->format('YmdHis') . '-' . strtoupper(bin2hex(random_bytes(3)));
+        $orderNumber = 'ORD-'.now()->format('YmdHis').'-'.strtoupper(bin2hex(random_bytes(3)));
         $customer = DB::table('users')->where('id', $userId)->first(['name', 'email']);
 
         return DB::transaction(function () use (
@@ -178,13 +179,13 @@ class CreateOrderUseCase
             $shippingTotal,
             $shippingBreakdown,
             $storeSubtotals,
+            $groups,
             $shippingAddress,
             $destinationId,
             $courier,
             $service,
             $paymentMethod,
             $voucherCode,
-            $groups,
             $cart,
             $ids,
             $customer,
@@ -197,6 +198,7 @@ class CreateOrderUseCase
                 $voucherCode,
                 $itemsTotal,
                 $shippingTotal,
+                $groups,
                 $storeSubtotals,
                 $shippingBreakdown
             );
@@ -207,22 +209,25 @@ class CreateOrderUseCase
                 $storeItemsTotal = 0.0;
 
                 foreach ($items as $item) {
+                    $stockColumn = $orderType === 'preorder' ? 'po_stock' : 'stock';
+                    $stockLabel = $orderType === 'preorder' ? 'stok pre-order (PO)' : 'stok';
+
                     $lockedVariant = DB::table('product_variants')
                         ->where('id', $item['variant_id'])
                         ->lockForUpdate()
                         ->first();
 
-                    if (!$lockedVariant || (int) $lockedVariant->stock < (int) $item['quantity']) {
-                        throw new RuntimeException("Stok {$item['product_name']} tidak mencukupi.");
+                    if (! $lockedVariant || (int) $lockedVariant->{$stockColumn} < (int) $item['quantity']) {
+                        throw new RuntimeException("Stok {$item['product_name']} tidak mencukupi. {$stockLabel} varian tersebut habis.");
                     }
 
                     DB::table('product_variants')
                         ->where('id', $item['variant_id'])
-                        ->decrement('stock', $item['quantity']);
+                        ->decrement($stockColumn, $item['quantity']);
 
                     $storeItemsTotal += $item['price'] * $item['quantity'];
                     $label = $item['variant_name'] && $item['variant_name'] !== $item['product_name']
-                        ? $item['product_name'] . ' - ' . $item['variant_name']
+                        ? $item['product_name'].' - '.$item['variant_name']
                         : $item['product_name'];
 
                     $domainItems[] = new OrderItem(
@@ -241,7 +246,7 @@ class CreateOrderUseCase
                     id: null,
                     storeId: (int) $storeId,
                     storeName: (string) $items[0]['store_name'],
-                    subOrderNumber: $orderNumber . '-S' . $storeId,
+                    subOrderNumber: $orderNumber.'-S'.$storeId,
                     totalItemsPrice: $storeItemsTotal,
                     shippingCost: (float) ($shippingBreakdown[$storeId] ?? 0),
                     courier: $courier,
@@ -302,7 +307,7 @@ class CreateOrderUseCase
                 $userVoucherId = DB::table('user_vouchers')
                     ->where('user_id', $userId)
                     ->where('voucher_id', $voucherId)
-                    ->where('status', 'available')
+                    ->whereIn('status', ['available', 'claimed'])
                     ->orderBy('id')
                     ->value('id');
 
@@ -331,10 +336,10 @@ class CreateOrderUseCase
                 'module' => 'orders',
                 'type' => 'order.created',
                 'title' => 'Pesanan baru',
-                'message' => $orderNumber . ' · Rp ' . number_format($grossAmount, 0, ',', '.'),
+                'message' => $orderNumber.' · Rp '.number_format($grossAmount, 0, ',', '.'),
                 'reference_type' => 'order',
                 'reference_id' => $created->id,
-                'url' => '/admin/orders?order=' . $created->id,
+                'url' => '/admin/orders?order='.$created->id,
                 'meta' => ['order_number' => $orderNumber, 'order_type' => $orderType, 'payment_method' => $paymentMethod],
             ], $userId);
 
@@ -347,6 +352,7 @@ class CreateOrderUseCase
         ?string $voucherCode,
         float $itemsTotal,
         float $shippingTotal,
+        array $groups,
         array $storeSubtotals,
         array $shippingBreakdown
     ): array {
@@ -386,7 +392,7 @@ class CreateOrderUseCase
         if ($missionReward && ! DB::table('user_vouchers')
             ->where('user_id', $userId)
             ->where('voucher_id', $voucher->id)
-            ->where('status', 'available')
+            ->whereIn('status', ['available', 'claimed'])
             ->exists()) {
             throw new RuntimeException('Voucher ini hanya tersedia setelah misi diselesaikan.');
         }
@@ -400,6 +406,7 @@ class CreateOrderUseCase
             }
             $eligibleSubtotal = $itemsTotal;
             $eligibleShipping = $shippingTotal;
+            $eligibleStoreIds = array_keys($storeSubtotals);
         } elseif ($scope === 'store') {
             if ($targetStoreId === null || ! array_key_exists($targetStoreId, $storeSubtotals)) {
                 throw new RuntimeException('Voucher tidak berlaku untuk toko dalam pesanan ini.');
@@ -409,12 +416,36 @@ class CreateOrderUseCase
             }
             $eligibleSubtotal = (float) ($storeSubtotals[$targetStoreId] ?? 0);
             $eligibleShipping = (float) ($shippingBreakdown[$targetStoreId] ?? 0);
+            $eligibleStoreIds = [$targetStoreId];
         } else {
             throw new RuntimeException('Scope voucher tidak valid.');
         }
 
         if ($eligibleSubtotal < (float) $voucher->min_spend) {
             throw new RuntimeException('Minimal belanja voucher belum terpenuhi.');
+        }
+
+        // Syarat & ketentuan berbasis item (belanja minimal N item / N item berbeda).
+        $totalItems = 0;
+        $distinctProducts = 0;
+        foreach ($groups as $storeId => $items) {
+            if (! in_array((int) $storeId, array_map('intval', $eligibleStoreIds), true)) {
+                continue;
+            }
+            $products = [];
+            foreach ($items as $item) {
+                $totalItems += (int) ($item['quantity'] ?? 0);
+                $products[(int) ($item['product_id'] ?? 0)] = true;
+            }
+            $distinctProducts += count($products);
+        }
+
+        if ((int) $voucher->min_items > 0 && $totalItems < (int) $voucher->min_items) {
+            throw new RuntimeException("Voucher membutuhkan minimal {$voucher->min_items} item dalam pesanan.");
+        }
+
+        if ((int) $voucher->min_distinct_products > 0 && $distinctProducts < (int) $voucher->min_distinct_products) {
+            throw new RuntimeException("Voucher hanya berlaku untuk minimal {$voucher->min_distinct_products} item produk berbeda.");
         }
 
         $target = strtolower((string) $voucher->discount_target);
@@ -440,5 +471,4 @@ class CreateOrderUseCase
             $target === 'shipping' ? $discount : 0.0,
         ];
     }
-
 }

@@ -36,7 +36,7 @@ final class CatalogGroupModel extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (CatalogGroupModel $model): void {
+        self::creating(function (CatalogGroupModel $model): void {
             if (empty($model->slug)) {
                 $model->slug = Str::slug($model->name);
             }

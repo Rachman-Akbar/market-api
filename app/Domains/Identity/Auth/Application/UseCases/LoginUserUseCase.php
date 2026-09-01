@@ -27,7 +27,7 @@ final class LoginUserUseCase
     ): array {
         $user = $this->userRepository->findByEmail($email);
 
-        if (!$user || !Hash::check($password, (string) $user->password)) {
+        if (! $user || ! Hash::check($password, (string) $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Email atau password salah.'],
             ]);
@@ -58,13 +58,13 @@ final class LoginUserUseCase
         $role = strtolower(trim($requestedRole)) ?: 'buyer';
         $user->loadMissing('roles:id,name');
 
-        if (!$user->hasRole($role)) {
+        if (! $user->hasRole($role)) {
             throw ValidationException::withMessages([
                 'role' => ["Akun ini tidak memiliki akses {$role}."],
             ]);
         }
 
-        if ($role === 'seller' && !$this->userRepository->hasSellerAccess($user)) {
+        if ($role === 'seller' && ! $this->userRepository->hasSellerAccess($user)) {
             throw ValidationException::withMessages([
                 'role' => ['Akses seller belum aktif atau toko belum tersedia.'],
             ]);

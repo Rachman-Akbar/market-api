@@ -40,6 +40,7 @@ final class Order
                 return $subOrder->shippingCost;
             }
         }
+
         return 0.0;
     }
 }

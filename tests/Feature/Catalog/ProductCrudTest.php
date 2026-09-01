@@ -11,8 +11,8 @@ use Tests\TestCase;
 
 class ProductCrudTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsAsUser;
+    use RefreshDatabase;
 
     public function test_seller_can_create_update_and_delete_product(): void
     {
@@ -68,5 +68,25 @@ class ProductCrudTest extends TestCase
         $this->postJson('/api/v1/catalog/seller/products', [
             'name' => 'Nope',
         ])->assertForbidden();
+    }
+
+    public function test_public_catalog_sets_cache_headers(): void
+    {
+        [$seller, $store] = $this->actingAsSeller();
+
+        $this->postJson('/api/v1/catalog/seller/products', [
+            'name' => 'Produk Cache',
+            'price' => 100000,
+            'status' => 'published',
+        ])->assertOk();
+
+        $this->get('/api/v1/catalog/products')
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'max-age=60, public')
+            ->assertHeader('ETag');
+
+        $this->get('/api/v1/catalog/categories')
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'max-age=60, public');
     }
 }

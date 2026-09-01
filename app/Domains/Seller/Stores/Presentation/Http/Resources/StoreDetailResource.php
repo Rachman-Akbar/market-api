@@ -18,22 +18,22 @@ final class StoreDetailResource extends JsonResource
         }
 
         return [
-            'id'              => $detail->id,
-            'store_id'        => $detail->storeId,
-            'owner_name'      => $detail->ownerName,
-            'owner_phone'     => $detail->ownerPhone,
-            'description'     => $detail->description,
+            'id' => $detail->id,
+            'store_id' => $detail->storeId,
+            'owner_name' => $detail->ownerName,
+            'owner_phone' => $detail->ownerPhone,
+            'description' => $detail->description,
             'shipping_policy' => $detail->shippingPolicy,
-            'return_policy'   => $detail->returnPolicy,
-            'open_days'       => $detail->openDays,
-            'open_time'       => $detail->openTime,
-            'close_time'      => $detail->closeTime,
-            'whatsapp_url'    => $detail->whatsappUrl,
-            'instagram_url'   => $detail->instagramUrl,
-            'tiktok_url'      => $detail->tiktokUrl,
-            'website_url'     => $detail->websiteUrl,
-            'created_at'      => $detail->createdAt,
-            'updated_at'      => $detail->updatedAt,
+            'return_policy' => $detail->returnPolicy,
+            'open_days' => $detail->openDays,
+            'open_time' => $detail->openTime,
+            'close_time' => $detail->closeTime,
+            'whatsapp_url' => $detail->whatsappUrl,
+            'instagram_url' => $detail->instagramUrl,
+            'tiktok_url' => $detail->tiktokUrl,
+            'website_url' => $detail->websiteUrl,
+            'created_at' => $detail->createdAt,
+            'updated_at' => $detail->updatedAt,
         ];
     }
 }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\PPOB\Application\Services;
 
-use App\Domains\PPOB\Domain\Entities\PpoTransaction;
 use App\Domains\PPOB\Domain\Repositories\PpoFinanceRepositoryInterface;
 use App\Domains\PPOB\Infrastructure\Persistence\Models\PpoTransactionModel;
 

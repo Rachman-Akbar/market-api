@@ -28,13 +28,40 @@ final class CartItem
         }
     }
 
-    public function id(): ?int { return $this->id; }
-    public function cartId(): ?int { return $this->cartId; }
-    public function productId(): int { return $this->productId; }
-    public function quantity(): Quantity { return $this->quantity; }
-    public function priceSnapshot(): Money { return $this->priceSnapshot; }
-    public function productNameSnapshot(): string { return $this->productNameSnapshot; }
-    public function productImageSnapshot(): ?string { return $this->productImageSnapshot; }
+    public function id(): ?int
+    {
+        return $this->id;
+    }
+
+    public function cartId(): ?int
+    {
+        return $this->cartId;
+    }
+
+    public function productId(): int
+    {
+        return $this->productId;
+    }
+
+    public function quantity(): Quantity
+    {
+        return $this->quantity;
+    }
+
+    public function priceSnapshot(): Money
+    {
+        return $this->priceSnapshot;
+    }
+
+    public function productNameSnapshot(): string
+    {
+        return $this->productNameSnapshot;
+    }
+
+    public function productImageSnapshot(): ?string
+    {
+        return $this->productImageSnapshot;
+    }
 
     public function increase(Quantity $quantity): void
     {

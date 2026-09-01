@@ -37,7 +37,7 @@ final class ManageAddressUseCase
                 ]);
             }
 
-            $isFirstAddress = !$this->addressRepository->hasAddresses($dto->user_id, $dto->store_id);
+            $isFirstAddress = ! $this->addressRepository->hasAddresses($dto->user_id, $dto->store_id);
             $address = new Address(AddressMapper::toEntityArray($dto));
 
             if ($dto->store_id !== null) {
@@ -59,7 +59,7 @@ final class ManageAddressUseCase
         return DB::transaction(function () use ($id, $dto): Address {
             $address = $this->addressRepository->findByIdAndOwner($id, $dto->user_id, $dto->store_id);
 
-            if (!$address) {
+            if (! $address) {
                 throw new ModelNotFoundException('Alamat tidak ditemukan atau Anda tidak memiliki akses.');
             }
 
@@ -97,7 +97,7 @@ final class ManageAddressUseCase
         return DB::transaction(function () use ($id, $userId, $storeId): bool {
             $address = $this->addressRepository->findByIdAndOwner($id, $userId, $storeId);
 
-            if (!$address) {
+            if (! $address) {
                 throw new ModelNotFoundException('Alamat tidak ditemukan atau Anda tidak memiliki akses.');
             }
 
