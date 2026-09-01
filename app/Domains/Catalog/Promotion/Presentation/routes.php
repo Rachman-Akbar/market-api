@@ -6,7 +6,9 @@ use App\Domains\Catalog\Promotion\Presentation\Http\Controllers\PromotionControl
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('promotions')->name('promotions.')->group(function (): void {
-    Route::get('/', [PromotionController::class, 'index'])->name('index');
+    Route::get('/', [PromotionController::class, 'index'])
+        ->middleware('cache.headers:public;max_age=60;etag')
+        ->name('index');
 
     Route::middleware(['auth:sanctum', 'active.user', 'verified.email', 'active.role:admin'])->group(function (): void {
         Route::get('/manage', [PromotionController::class, 'manage'])->name('manage');

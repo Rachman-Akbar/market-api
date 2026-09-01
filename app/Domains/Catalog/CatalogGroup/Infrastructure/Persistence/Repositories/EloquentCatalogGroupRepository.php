@@ -11,7 +11,6 @@ use App\Domains\Catalog\CatalogGroup\Infrastructure\Persistence\Models\CatalogGr
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Mappers\CategoryMapper;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInterface
@@ -85,7 +84,6 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
         $model->is_active = $catalogGroup->isActive();
         $model->save();
         $model->setRelation('categories', collect());
-        $this->clearCache();
 
         return CatalogGroupMapper::toEntity($model);
     }
@@ -100,28 +98,10 @@ final class EloquentCatalogGroupRepository implements CatalogGroupRepositoryInte
 
         $deleted = (bool) $model->delete();
 
-        if ($deleted) {
-            $this->clearCache();
-        }
-
         return $deleted;
     }
 
-    public function clearCache(): void
-    {
-        foreach ([
-            'catalog_groups_public_categories_default_v7',
-            'catalog_groups_public_plain_default_v7',
-            'catalog_groups_manage_categories_default_v7',
-            'catalog_groups_manage_plain_default_v7',
-            'catalog_groups_manage_categories_active_v7',
-            'catalog_groups_manage_categories_inactive_v7',
-            'catalog_groups_manage_plain_active_v7',
-            'catalog_groups_manage_plain_inactive_v7',
-        ] as $key) {
-            Cache::forget($key);
-        }
-    }
+    public function clearCache(): void {}
 
     private function baseQuery(bool $withCategories, bool $includeInactive): Builder
     {

@@ -213,51 +213,68 @@ final class EloquentCategoryRepository implements CategoryRepositoryInterface
 
     private function categoryRows(bool $menuOnly, bool $includeInactive): array
     {
-        return $this->query($includeInactive)
-            ->select([
-                'id',
-                'catalog_group_id',
-                'parent_id',
-                'level',
-                'sort_order',
-                'is_active',
-                'is_visible_in_menu',
-                'name',
-                'slug',
-                'full_slug',
-                'image_url',
-                'icon_url',
-            ])
-            ->withCount([
-                'products' => fn ($query) => $includeInactive
-                    ? $query
-                    : $query
-                        ->where('products.is_active', true)
-                        ->whereRaw('LOWER(TRIM(products.status)) = ?', ['published'])
-                        ->whereHas('store', fn (Builder $storeQuery) => $storeQuery->publiclyAvailable()),
-            ])
-            ->where('level', '<=', 3)
-            ->when($menuOnly, fn (Builder $query) => $query->where('is_visible_in_menu', true))
-            ->orderBy('level')
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get()
-            ->map(fn (CategoryModel $model): array => [
-                'id' => (int) $model->id,
-                'catalog_group_id' => (int) $model->catalog_group_id,
-                'parent_id' => $model->parent_id !== null ? (int) $model->parent_id : null,
-                'level' => (int) $model->level,
-                'sort_order' => (int) $model->sort_order,
-                'is_active' => (bool) $model->is_active,
-                'is_visible_in_menu' => (bool) $model->is_visible_in_menu,
-                'name' => (string) $model->name,
-                'slug' => (string) $model->slug,
-                'full_slug' => (string) $model->full_slug,
-                'image_url' => $model->image_url,
-                'icon_url' => $model->icon_url,
-                'products_count' => (int) ($model->products_count ?? 0),
-            ])
-            ->all();
+        return Cache::remember(
+            $this->categoryRowsCacheKey($menuOnly, $includeInactive),
+            now()->addHour(),
+            function () use ($menuOnly, $includeInactive): array {
+                return $this->query($includeInactive)
+                    ->select([
+                        'id',
+                        'catalog_group_id',
+                        'parent_id',
+                        'level',
+                        'sort_order',
+                        'is_active',
+                        'is_visible_in_menu',
+                        'name',
+                        'slug',
+                        'full_slug',
+                        'image_url',
+                        'icon_url',
+                    ])
+                    ->withCount([
+                        'products' => fn ($query) => $includeInactive
+                            ? $query
+                            : $query
+                                ->where('products.is_active', true)
+                                ->whereRaw('LOWER(TRIM(products.status)) = ?', ['published'])
+                                ->whereHas('store', fn (Builder $storeQuery) => $storeQuery->publiclyAvailable()),
+                    ])
+                    ->where('level', '<=', 3)
+                    ->when($menuOnly, fn (Builder $query) => $query->where('is_visible_in_menu', true))
+                    ->orderBy('level')
+                    ->orderBy('sort_order')
+                    ->orderBy('name')
+                    ->get()
+                    ->map(fn (CategoryModel $model): array => [
+                        'id' => (int) $model->id,
+                        'catalog_group_id' => (int) $model->catalog_group_id,
+                        'parent_id' => $model->parent_id !== null ? (int) $model->parent_id : null,
+                        'level' => (int) $model->level,
+                        'sort_order' => (int) $model->sort_order,
+                        'is_active' => (bool) $model->is_active,
+                        'is_visible_in_menu' => (bool) $model->is_visible_in_menu,
+                        'name' => (string) $model->name,
+                        'slug' => (string) $model->slug,
+                        'full_slug' => (string) $model->full_slug,
+                        'image_url' => $model->image_url,
+                        'icon_url' => $model->icon_url,
+                        'products_count' => (int) ($model->products_count ?? 0),
+                    ])
+                    ->all();
+            }
+        );
+    }
+
+    private function categoryRowsCacheKey(bool $menuOnly, bool $includeInactive): string
+    {
+        if ($menuOnly) {
+            return 'catalog_categories_menu_rows_active_v3';
+        }
+
+        return $includeInactive
+            ? 'catalog_categories_tree_rows_manage_v3'
+            : 'catalog_categories_tree_rows_active_v3';
     }
 
     private function buildTreeFromRows(array $rows): array

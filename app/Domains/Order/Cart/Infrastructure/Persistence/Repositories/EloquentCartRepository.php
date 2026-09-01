@@ -92,12 +92,15 @@ final class EloquentCartRepository implements CartRepositoryInterface
 
         $itemModels = CartItemModel::where('cart_id', $cartModel->id)->get();
 
+        $variantIds = $itemModels->pluck('product_variant_id')->map(fn (mixed $id): int => (int) $id)->all();
+        $detailsMap = $this->productReader->getVariantsDetails($variantIds);
+
         $formattedItems = [];
         $totalItems = 0;
         $totalPrice = new Money(0);
 
         foreach ($itemModels as $itemModel) {
-            $details = $this->productReader->getVariantDetails((int) $itemModel->product_variant_id);
+            $details = $detailsMap[(int) $itemModel->product_variant_id] ?? null;
 
             if (! $details) {
                 continue;

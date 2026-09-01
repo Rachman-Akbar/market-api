@@ -6,7 +6,9 @@ use App\Domains\Catalog\Banner\Presentation\Http\Controllers\BannerController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('banners')->name('shop-banners.')->group(function (): void {
-    Route::get('/', [BannerController::class, 'index'])->name('index');
+    Route::get('/', [BannerController::class, 'index'])
+        ->middleware('cache.headers:public;max_age=60;etag')
+        ->name('index');
 
     Route::middleware(['auth:sanctum', 'active.user', 'verified.email', 'active.role:admin'])
         ->prefix('admin')

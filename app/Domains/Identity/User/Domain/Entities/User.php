@@ -30,10 +30,6 @@ final class User extends Authenticatable
 
     protected $keyType = 'string';
 
-    protected $with = [
-        'roles:id,name,is_active',
-    ];
-
     protected $fillable = [
         'firebase_uid',
         'email',
