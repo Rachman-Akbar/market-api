@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\PPOB;
 
 use App\Domains\PPOB\Application\Services\IakProviderService;
+use App\Domains\PPOB\Application\Services\InvoiceService;
 use App\Domains\PPOB\Application\Services\PpoCallbackHandler;
 use App\Domains\PPOB\Application\Services\PpoCatalogService;
 use App\Domains\PPOB\Application\Services\PpoFinanceService;
@@ -53,6 +54,7 @@ class PPOBServiceProvider extends ServiceProvider
         $this->app->singleton(IakProviderService::class);
         $this->app->singleton(PpoCallbackHandler::class);
         $this->app->singleton(PlacePpoOrderUseCase::class);
+        $this->app->singleton(InvoiceService::class);
     }
 
     public function boot(): void

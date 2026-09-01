@@ -15,10 +15,10 @@ use App\Domains\Order\Cart\Application\UseCases\UpdateCartItemQuantityUseCase;
 use App\Domains\Order\Cart\Presentation\Http\Requests\AddCartItemRequest;
 use App\Domains\Order\Cart\Presentation\Http\Requests\UpdateCartItemRequest;
 use App\Domains\Order\Cart\Presentation\Http\Resources\CartResource;
+use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 

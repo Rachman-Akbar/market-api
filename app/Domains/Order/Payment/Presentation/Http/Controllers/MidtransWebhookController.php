@@ -23,9 +23,6 @@ final class MidtransWebhookController extends Controller
     public function handleNotification(Request $request): JsonResponse
     {
         try {
-<<<<<<< HEAD
-            $this->webhookUseCase->execute($request->all());
-=======
             $orderId = (string) $request->input('order_id', '');
 
             if ($orderId !== '' && PpoTransactionModel::where('reference_id', $orderId)->exists()) {
@@ -33,7 +30,6 @@ final class MidtransWebhookController extends Controller
             } else {
                 $this->webhookUseCase->execute($request->all());
             }
->>>>>>> 766322f401066e067c940f8610801fb39e4fda37
 
             return response()->json(['success' => true, 'message' => 'Notifikasi Midtrans berhasil diproses.']);
         } catch (Throwable $exception) {

@@ -22,6 +22,6 @@ class PpoCallbackController extends Controller
         return response()->json([
             'success' => $handled,
             'message' => $handled ? 'OK' : 'Ignored',
-        ], $handled ? 200 : 200);
+        ]);
     }
 }

@@ -22,6 +22,7 @@ class PpoCallbackHandler
         private PpoTransactionLogRepositoryInterface $logs,
         private IakProviderClient $client,
         private PpoFinanceService $finance,
+        private InvoiceService $invoices,
     ) {}
 
     public function handle(array $data, ?string $ip = null): bool
@@ -82,6 +83,12 @@ class PpoCallbackHandler
 
         // Post finance once (idempotent).
         $this->finance->postForSuccess($tx);
+
+        // Generate a default invoice for successful digital top-ups.
+        $this->invoices->generateForTransaction($tx->fresh());
+
+        // Queue the invoice email (idempotent, one send per invoice).
+        $this->invoices->sendForTransaction($tx->fresh());
     }
 
     private function applyFailure(PpoTransactionModel $tx, array $data): void

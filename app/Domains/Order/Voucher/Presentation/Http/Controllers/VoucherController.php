@@ -11,6 +11,7 @@ use App\Domains\Order\Voucher\Domain\Entities\Voucher;
 use App\Domains\Order\Voucher\Presentation\Http\Requests\StoreVoucherRequest;
 use App\Domains\Order\Voucher\Presentation\Http\Resources\MyVoucherResource;
 use App\Domains\Order\Voucher\Presentation\Http\Resources\VoucherResource;
+use App\Domains\Shared\Presentation\Http\Concerns\ResolvesActiveRole;
 use App\Domains\Shared\Presentation\Http\Concerns\ResolvesSellerStoreContext;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -23,6 +24,7 @@ use Throwable;
 
 final class VoucherController extends Controller
 {
+    use ResolvesActiveRole;
     use ResolvesSellerStoreContext;
 
     public function __construct(

@@ -165,7 +165,7 @@ final class StoreController extends Controller
                 return;
             }
 
-            if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $time) || !$this->isValidTime($time)) {
+            if (! preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $time) || ! $this->isValidTime($time)) {
                 $fail('The :attribute field must match the format H:i.');
             }
         };

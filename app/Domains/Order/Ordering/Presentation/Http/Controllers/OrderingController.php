@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Order\Ordering\Presentation\Http\Controllers;
 
 use App\Domains\Engagement\Mission\Application\Services\MissionService;

@@ -10,6 +10,7 @@ use App\Domains\PPOB\Presentation\Http\Controllers\PpoBillController;
 use App\Domains\PPOB\Presentation\Http\Controllers\PpoCallbackController;
 use App\Domains\PPOB\Presentation\Http\Controllers\PpoCatalogController;
 use App\Domains\PPOB\Presentation\Http\Controllers\PpoTransactionController;
+use App\Domains\PPOB\Presentation\Http\Controllers\InvoiceController;
 use Illuminate\Support\Facades\Route;
 
 // IAK provider callback — public (no auth) so the provider can deliver status.
@@ -28,6 +29,12 @@ Route::middleware(['auth:sanctum', 'active.user'])->prefix('ppob')->group(functi
         Route::get('/', [PpoTransactionController::class, 'index']);
         Route::get('/{id}', [PpoTransactionController::class, 'show'])->whereNumber('id');
         Route::post('/{id}/check-status', [PpoTransactionController::class, 'checkStatus'])->whereNumber('id');
+    });
+
+    // Invoices (scoped to the current user)
+    Route::prefix('invoices')->group(function (): void {
+        Route::get('/', [InvoiceController::class, 'index']);
+        Route::get('/{referenceOrId}', [InvoiceController::class, 'show']);
     });
 
     // Postpaid bills (verified email required for payment actions)

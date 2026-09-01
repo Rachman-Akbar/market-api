@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\PPOB\Application\UseCases;
 
 use App\Domains\PPOB\Application\Services\IakProviderService;
+use App\Domains\PPOB\Application\Services\InvoiceService;
 use App\Domains\PPOB\Application\Services\PpoFinanceService;
 use App\Domains\PPOB\Domain\Entities\PpoTransactionStatus;
 use App\Domains\PPOB\Domain\Repositories\PpoTransactionRepositoryInterface;
@@ -23,6 +24,7 @@ final class FinalizePpobTopUpUseCase
         private PpoTransactionRepositoryInterface $transactions,
         private IakProviderService $provider,
         private PpoFinanceService $finance,
+        private InvoiceService $invoices,
     ) {}
 
     public function executeById(int $id): void
@@ -69,6 +71,12 @@ final class FinalizePpobTopUpUseCase
                 $tx->save();
 
                 $this->finance->postForSuccess($tx);
+
+                // Generate a default invoice for successful digital top-ups.
+                $this->invoices->generateForTransaction($tx->fresh());
+
+                // Queue the invoice email (idempotent, one send per invoice).
+                $this->invoices->sendForTransaction($tx->fresh());
             });
 
             return;

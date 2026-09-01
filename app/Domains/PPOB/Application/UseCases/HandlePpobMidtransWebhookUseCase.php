@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\PPOB\Application\UseCases;
 
-use App\Domains\PPOB\Domain\Entities\PpoTransactionStatus;
 use App\Domains\PPOB\Infrastructure\Persistence\Models\PpoTransactionModel;
 use RuntimeException;
 
@@ -42,7 +41,7 @@ final class HandlePpobMidtransWebhookUseCase
             throw new RuntimeException('MIDTRANS_SERVER_KEY belum dikonfigurasi.');
         }
 
-        $localSignature = hash('sha512', $referenceId . $statusCode . $grossAmount . $serverKey);
+        $localSignature = hash('sha512', $referenceId.$statusCode.$grossAmount.$serverKey);
         if (! hash_equals($localSignature, $incomingSignature)) {
             throw new RuntimeException('Signature Midtrans tidak valid.');
         }
