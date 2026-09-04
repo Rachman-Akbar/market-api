@@ -6,8 +6,8 @@ Dokumentasi perubahan/karya yang dilakukan per-hari pada **market-api**.
 
 | Tanggal | Topik | File |
 |---|---|---|
-| 2026-09-01 | Fitur **Invoice PPOB** (checkout → invoice → email) + perbaikan migrasi | [`PPOB-INVOICE.md`](./PPOB-INVOICE.md) |
-| 2026-09-01 | Changelog ringkas semua perubahan hari ini | [`CHANGELOG-2026-09-01.md`](./CHANGELOG-2026-09-01.md) |
+| 2026-09-01 | Fitur **Bukti Pembayaran (Receipt) PPOB** (checkout → receipt → email) + perbaikan migrasi | [`PPOB-RECEIPT.md`](./PPOB-RECEIPT.md) |
+| 2026-09-01 | Changelog ringkas semua perubahan hari ini (termasuk refactor invoice → receipt) | [`CHANGELOG-2026-09-01.md`](./CHANGELOG-2026-09-01.md) |
 
 ## Konvensi
 
