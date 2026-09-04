@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Domains\PPOB\Presentation\Http\Controllers;
 
 use App\Domains\PPOB\Application\Services\IakProviderService;
-use App\Domains\PPOB\Application\Services\InvoiceService;
 use App\Domains\PPOB\Application\Services\PpoFinanceService;
 use App\Domains\PPOB\Application\Services\PricingEngine;
+use App\Domains\PPOB\Application\Services\ReceiptService;
 use App\Domains\PPOB\Domain\Repositories\PpoInquiryRepositoryInterface;
 use App\Domains\PPOB\Domain\Repositories\PpoProductRepositoryInterface;
 use App\Domains\PPOB\Infrastructure\Persistence\Models\PpoInquiryModel;
@@ -30,7 +30,7 @@ class PpoBillController extends Controller
         private PpoProductRepositoryInterface $products,
         private PricingEngine $pricing,
         private PpoFinanceService $finance,
-        private InvoiceService $invoices,
+        private ReceiptService $receipts,
     ) {}
 
     public function inquiry(Request $request): JsonResponse
@@ -158,6 +158,8 @@ class PpoBillController extends Controller
                 'revenue' => (float) ($inquiry->bill_amount + ($inquiry->admin_charge ?: 0)),
                 'net_profit' => (float) ($inquiry->admin_charge ?: 0),
                 'total_amount' => (float) ($inquiry->bill_amount + ($inquiry->admin_charge ?: 0)),
+                'payment_method' => 'iak_direct',
+                'payment_status' => 'paid',
                 'status' => $result['status'] === 'success' ? 'success' : 'processing',
                 'tr_id' => $inquiry->tr_id,
                 'provider_status' => $result['provider_status'],
@@ -169,8 +171,8 @@ class PpoBillController extends Controller
 
             if ($result['status'] === 'success') {
                 $this->finance->postForSuccess($tx);
-                $this->invoices->generateForTransaction($tx->fresh());
-                $this->invoices->sendForTransaction($tx->fresh());
+                $this->receipts->generateForTransaction($tx->fresh());
+                $this->receipts->sendForTransaction($tx->fresh());
             }
 
             $inquiry->status = 'paid';

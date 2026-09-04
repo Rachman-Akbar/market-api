@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Domains\PPOB;
 
 use App\Domains\PPOB\Application\Services\IakProviderService;
-use App\Domains\PPOB\Application\Services\InvoiceService;
 use App\Domains\PPOB\Application\Services\PpoCallbackHandler;
 use App\Domains\PPOB\Application\Services\PpoCatalogService;
 use App\Domains\PPOB\Application\Services\PpoFinanceService;
 use App\Domains\PPOB\Application\Services\PricingEngine;
+use App\Domains\PPOB\Application\Services\ReceiptService;
 use App\Domains\PPOB\Application\UseCases\PlacePpoOrderUseCase;
 use App\Domains\PPOB\Domain\Repositories\PpoFinanceRepositoryInterface;
 use App\Domains\PPOB\Domain\Repositories\PpoInquiryRepositoryInterface;
@@ -54,7 +54,7 @@ class PPOBServiceProvider extends ServiceProvider
         $this->app->singleton(IakProviderService::class);
         $this->app->singleton(PpoCallbackHandler::class);
         $this->app->singleton(PlacePpoOrderUseCase::class);
-        $this->app->singleton(InvoiceService::class);
+        $this->app->singleton(ReceiptService::class);
     }
 
     public function boot(): void

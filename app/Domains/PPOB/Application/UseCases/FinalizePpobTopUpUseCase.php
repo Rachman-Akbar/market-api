@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\PPOB\Application\UseCases;
 
 use App\Domains\PPOB\Application\Services\IakProviderService;
-use App\Domains\PPOB\Application\Services\InvoiceService;
 use App\Domains\PPOB\Application\Services\PpoFinanceService;
+use App\Domains\PPOB\Application\Services\ReceiptService;
 use App\Domains\PPOB\Domain\Entities\PpoTransactionStatus;
 use App\Domains\PPOB\Domain\Repositories\PpoTransactionRepositoryInterface;
 use App\Domains\PPOB\Infrastructure\Persistence\Models\PpoTransactionModel;
@@ -24,7 +24,7 @@ final class FinalizePpobTopUpUseCase
         private PpoTransactionRepositoryInterface $transactions,
         private IakProviderService $provider,
         private PpoFinanceService $finance,
-        private InvoiceService $invoices,
+        private ReceiptService $receipts,
     ) {}
 
     public function executeById(int $id): void
@@ -72,11 +72,11 @@ final class FinalizePpobTopUpUseCase
 
                 $this->finance->postForSuccess($tx);
 
-                // Generate a default invoice for successful digital top-ups.
-                $this->invoices->generateForTransaction($tx->fresh());
+                // Generate a receipt (bukti pembayaran) for successful top-ups.
+                $this->receipts->generateForTransaction($tx->fresh());
 
-                // Queue the invoice email (idempotent, one send per invoice).
-                $this->invoices->sendForTransaction($tx->fresh());
+                // Send the receipt email (idempotent, one send per receipt).
+                $this->receipts->sendForTransaction($tx->fresh());
             });
 
             return;

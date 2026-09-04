@@ -8,19 +8,24 @@ use App\Domains\Identity\User\Domain\Entities\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class InvoiceModel extends Model
+/**
+ * A receipt (bukti pembayaran) for a completed transaction. Unlike an invoice
+ * (which is issued to request payment), a receipt proves that payment already
+ * happened. It backs both marketplace orders and digital (PPOB) transactions.
+ */
+class ReceiptModel extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'invoices';
+    protected $table = 'receipts';
 
     protected $fillable = [
-        'invoice_number',
+        'receipt_number',
         'user_id',
         'source_type',
         'source_id',
         'transaction_reference',
-        'invoice_type',
+        'receipt_type',
         'product_name',
         'category',
         'customer_id',

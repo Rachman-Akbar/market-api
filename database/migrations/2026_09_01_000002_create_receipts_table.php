@@ -10,16 +10,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('invoices', function (Blueprint $table): void {
+        Schema::create('receipts', function (Blueprint $table): void {
             $table->id();
-            // Unique, human-friendly invoice number e.g. INV-20260901-000001
-            $table->string('invoice_number', 64)->unique();
+            // Unique, human-friendly receipt number e.g. RCT-20260901-000001
+            $table->string('receipt_number', 64)->unique();
             $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
             // Polymorphic source: marketplace order or ppob transaction
             $table->string('source_type', 40)->index(); // order | ppob_transaction
             $table->string('source_id', 64)->index();
             $table->string('transaction_reference', 100)->nullable();
-            $table->string('invoice_type', 30)->default('digital'); // digital | order
+            $table->string('receipt_type', 30)->default('digital'); // digital | order
             $table->string('product_name', 200)->nullable();
             $table->string('category', 40)->nullable();
             $table->string('customer_id', 120)->nullable();
@@ -39,14 +39,14 @@ return new class extends Migration
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
             $table->softDeletes();
-            // Idempotency: one invoice per source
-            $table->unique(['source_type', 'source_id'], 'invoices_source_unique');
-            $table->index(['user_id', 'created_at'], 'invoices_user_created_index');
+            // Idempotency: one receipt per source
+            $table->unique(['source_type', 'source_id'], 'receipts_source_unique');
+            $table->index(['user_id', 'created_at'], 'receipts_user_created_index');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('invoices');
+        Schema::dropIfExists('receipts');
     }
 };

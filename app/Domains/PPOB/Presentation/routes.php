@@ -10,7 +10,7 @@ use App\Domains\PPOB\Presentation\Http\Controllers\PpoBillController;
 use App\Domains\PPOB\Presentation\Http\Controllers\PpoCallbackController;
 use App\Domains\PPOB\Presentation\Http\Controllers\PpoCatalogController;
 use App\Domains\PPOB\Presentation\Http\Controllers\PpoTransactionController;
-use App\Domains\PPOB\Presentation\Http\Controllers\InvoiceController;
+use App\Domains\PPOB\Presentation\Http\Controllers\ReceiptController;
 use Illuminate\Support\Facades\Route;
 
 // IAK provider callback — public (no auth) so the provider can deliver status.
@@ -31,10 +31,12 @@ Route::middleware(['auth:sanctum', 'active.user'])->prefix('ppob')->group(functi
         Route::post('/{id}/check-status', [PpoTransactionController::class, 'checkStatus'])->whereNumber('id');
     });
 
-    // Invoices (scoped to the current user)
-    Route::prefix('invoices')->group(function (): void {
-        Route::get('/', [InvoiceController::class, 'index']);
-        Route::get('/{referenceOrId}', [InvoiceController::class, 'show']);
+    // Receipts (bukti pembayaran, scoped to the current user)
+    Route::prefix('receipts')->group(function (): void {
+        Route::get('/', [ReceiptController::class, 'index']);
+        Route::get('/history', [ReceiptController::class, 'history']);
+        Route::get('/{referenceOrId}', [ReceiptController::class, 'show']);
+        Route::post('/{referenceOrId}/send-email', [ReceiptController::class, 'sendEmail']);
     });
 
     // Postpaid bills (verified email required for payment actions)

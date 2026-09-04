@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\PPOB\Presentation\Http\Controllers;
 
 use App\Domains\PPOB\Application\Services\IakProviderService;
-use App\Domains\PPOB\Application\Services\InvoiceService;
 use App\Domains\PPOB\Application\Services\PpoFinanceService;
+use App\Domains\PPOB\Application\Services\ReceiptService;
 use App\Domains\PPOB\Application\UseCases\PlacePpoOrderUseCase;
 use App\Domains\PPOB\Domain\Repositories\PpoTransactionRepositoryInterface;
 use App\Domains\PPOB\Infrastructure\Persistence\Models\PpoTransactionModel;
@@ -22,7 +22,7 @@ class PpoTransactionController extends Controller
         private PpoTransactionRepositoryInterface $transactions,
         private IakProviderService $provider,
         private PpoFinanceService $finance,
-        private InvoiceService $invoices,
+        private ReceiptService $receipts,
     ) {}
 
     public function store(Request $request): JsonResponse
@@ -149,8 +149,8 @@ class PpoTransactionController extends Controller
                 $tx->save();
 
                 $this->finance->postForSuccess($tx);
-                $this->invoices->generateForTransaction($tx->fresh());
-                $this->invoices->sendForTransaction($tx->fresh());
+                $this->receipts->generateForTransaction($tx->fresh());
+                $this->receipts->sendForTransaction($tx->fresh());
             });
         } elseif ($result['status'] === 'failed') {
             $tx->status = 'failed';
