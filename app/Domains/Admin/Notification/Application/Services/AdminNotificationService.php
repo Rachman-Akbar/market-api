@@ -113,4 +113,21 @@ final class AdminNotificationService
             ...$this->state($userId),
         ];
     }
+
+    public function delete(int $id, string $userId): void
+    {
+        if (! $this->repository->deleteForUser($id, $userId)) {
+            throw new InvalidArgumentException('Notifikasi tidak ditemukan.');
+        }
+    }
+
+    public function deleteAll(string $userId, ?string $module = null): array
+    {
+        $deleted = $this->repository->deleteAllForUser($userId, $module);
+
+        return [
+            'deleted' => $deleted,
+            ...$this->state($userId),
+        ];
+    }
 }

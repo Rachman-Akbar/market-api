@@ -1840,7 +1840,8 @@ final class SpreadsheetTransferController extends Controller
 
     private function assertHeaders(array $headers, array $allowed): void
     {
-        $unknown = array_diff(array_values($headers), $allowed);
+        $ignored = ['preview_image'];
+        $unknown = array_diff(array_values($headers), [...$allowed, ...$ignored]);
         if ($unknown !== []) {
             throw new InvalidArgumentException('Header Excel tidak dikenal: '.implode(', ', $unknown));
         }

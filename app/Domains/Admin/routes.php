@@ -31,4 +31,6 @@ Route::middleware(['auth:sanctum', 'active.user', 'verified.email', 'active.role
         Route::get('/notifications/state', [AdminNotificationController::class, 'state']);
         Route::patch('/notifications/read-all', [AdminNotificationController::class, 'markAllRead']);
         Route::patch('/notifications/{id}/read', [AdminNotificationController::class, 'markRead'])->whereNumber('id');
+        Route::delete('/notifications/{id}', [AdminNotificationController::class, 'destroy'])->whereNumber('id');
+        Route::delete('/notifications', [AdminNotificationController::class, 'destroyAll']);
     });

@@ -62,4 +62,34 @@ final class AdminNotificationController extends Controller
             ),
         ]);
     }
+
+    public function destroy(Request $request, int $id): JsonResponse
+    {
+        try {
+            $this->service->delete($id, (string) $request->user()->id);
+        } catch (\InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => ['deleted' => true],
+            'state' => $this->service->state((string) $request->user()->id),
+        ]);
+    }
+
+    public function destroyAll(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'module' => ['nullable', 'string', 'max:80'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->service->deleteAll(
+                (string) $request->user()->id,
+                isset($validated['module']) ? trim((string) $validated['module']) : null
+            ),
+        ]);
+    }
 }

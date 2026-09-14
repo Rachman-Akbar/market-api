@@ -20,28 +20,62 @@ class SellerWithdrawalController extends Controller
     public function index(Request $request): JsonResponse
     {
         $storeId = $request->route('storeId') ?? $request->user()->store->id;
+        $withdrawals = $this->withdrawalService->getStoreWithdrawals($storeId, $request->only(['status']), min(100, max(1, (int) $request->query('per_page', 20))));
 
-        $withdrawals = $this->withdrawalService->getStoreWithdrawals(
-            $storeId,
-            $request->only(['status']),
+        return response()->json([
+            'success' => true,
+            'data' => $withdrawals->through(fn ($w) => $this->mapWithdrawal($w)),
+            'available_balance' => $this->settlementService->getStoreBalance($storeId),
+            'total_withdrawn' => $this->withdrawalService->getTotalWithdrawn($storeId),
+        ]);
+    }
+
+    public function adminIndex(Request $request): JsonResponse
+    {
+        $withdrawals = $this->withdrawalService->getAllWithdrawals(
+            $request->only(['status', 'store_id']),
             min(100, max(1, (int) $request->query('per_page', 20)))
         );
 
         return response()->json([
             'success' => true,
-            'data' => $withdrawals->through(fn ($w) => [
-                'id' => $w->id,
-                'withdrawal_number' => $w->withdrawalNumber,
-                'amount' => $w->amount,
-                'method' => $w->method,
-                'status' => $w->status,
-                'rejection_reason' => $w->rejectionReason,
-                'processed_at' => $w->processedAt,
-                'created_at' => $w->createdAt,
-            ]),
-            'available_balance' => $this->settlementService->getStoreBalance($storeId),
-            'total_withdrawn' => $this->withdrawalService->getTotalWithdrawn($storeId),
+            'data' => $withdrawals->through(fn ($w) => $this->mapModel($w)),
+            'pending_count' => $this->withdrawalService->getPendingCount(),
         ]);
+    }
+
+    private function mapModel($w): array
+    {
+        return [
+            'id' => $w->id,
+            'withdrawal_number' => $w->withdrawal_number,
+            'store_id' => $w->store_id,
+            'store_name' => $w->store?->name ?? $w->store_id,
+            'amount' => (float) $w->amount,
+            'method' => $w->method,
+            'bank_details' => $w->bank_details,
+            'status' => $w->status,
+            'rejection_reason' => $w->rejection_reason,
+            'processed_at' => $w->processed_at?->toDateTimeString(),
+            'created_at' => $w->created_at?->toDateTimeString(),
+        ];
+    }
+
+    private function mapWithdrawal($w): array
+    {
+        return [
+            'id' => $w->id,
+            'withdrawal_number' => $w->withdrawalNumber,
+            'store_id' => $w->storeId,
+            'store_name' => $w->store?->name ?? $w->storeId,
+            'amount' => $w->amount,
+            'method' => $w->method,
+            'bank_details' => $w->bankDetails,
+            'status' => $w->status,
+            'rejection_reason' => $w->rejectionReason,
+            'processed_at' => $w->processedAt,
+            'created_at' => $w->createdAt,
+        ];
     }
 
     public function store(Request $request): JsonResponse

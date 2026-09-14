@@ -53,6 +53,7 @@ final class EloquentProductVariantRepository implements ProductVariantRepository
         $model->stock_booked = $variant->stockBooked();
         $model->stock_preorder = $variant->stockPreorder();
         $model->max_order_qty = $variant->maxOrderQty();
+        $model->min_stock = $variant->minStock();
         $model->is_default = $variant->isDefault();
         $model->save();
 

@@ -19,6 +19,7 @@ final class ProductVariant
         private readonly ?int $stockBooked = 0,
         private readonly ?int $stockPreorder = 0,
         private readonly ?int $maxOrderQty = 999999,
+        private readonly ?int $minStock = 0,
         private readonly ?bool $allowsPreorder = null,
         private readonly bool $isDefault = false,
         private readonly array $values = [],
@@ -84,6 +85,11 @@ final class ProductVariant
     public function maxOrderQty(): int
     {
         return (int) $this->maxOrderQty;
+    }
+
+    public function minStock(): int
+    {
+        return (int) $this->minStock;
     }
 
     public function allowsPreorder(): ?bool

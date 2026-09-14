@@ -56,11 +56,31 @@ class EloquentSellerWithdrawalRepository implements SellerWithdrawalRepositoryIn
             ->get();
     }
 
+    public function getAll(array $filters = [], int $perPage = 20): mixed
+    {
+        $query = SellerWithdrawalModel::with(['store' => fn ($q) => $q->select('id', 'name', 'slug')]);
+
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (! empty($filters['store_id'])) {
+            $query->where('store_id', $filters['store_id']);
+        }
+
+        return $query->orderByDesc('created_at')->paginate($perPage);
+    }
+
     public function getTotalWithdrawn(int $storeId): float
     {
         return (float) SellerWithdrawalModel::where('store_id', $storeId)
             ->whereIn('status', ['approved', 'completed'])
             ->sum('amount');
+    }
+
+    public function getPendingCount(): int
+    {
+        return (int) SellerWithdrawalModel::where('status', 'pending')->count();
     }
 
     private function toEntity(SellerWithdrawalModel $model): SellerWithdrawal

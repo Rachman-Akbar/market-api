@@ -20,4 +20,8 @@ interface AdminNotificationRepositoryInterface
     public function moduleUnreadCounts(string $userId): array;
 
     public function markAllRead(string $userId, ?string $module = null): int;
+
+    public function deleteForUser(int $id, string $userId): bool;
+
+    public function deleteAllForUser(string $userId, ?string $module = null): int;
 }

@@ -36,6 +36,7 @@ final class ProductVariantResource extends JsonResource
             'available_stock' => $available,
             'allows_preorder' => (bool) $variant->allowsPreorder(),
             'max_order_qty' => $variant->maxOrderQty(),
+            'min_stock' => $variant->minStock(),
             'po_stock' => $internal ? $variant->poStock() : null,
             'stock_reserved' => $internal ? $variant->stockReserved() : null,
             'stock_booked' => $internal ? $variant->stockBooked() : null,

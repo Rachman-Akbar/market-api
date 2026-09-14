@@ -75,8 +75,10 @@ final class CreateProductUseCase
                     sku: $sku,
                     name: $name,
                     price: (float) ($data['price'] ?? 0),
-                    stock: 0,
+                    stock: max(0, (int) ($data['stock'] ?? 0)),
                     poStock: max(0, (int) ($data['po_stock'] ?? 0)),
+                    maxOrderQty: max(1, (int) ($data['max_order_qty'] ?? 999999)),
+                    minStock: max(0, (int) ($data['min_stock'] ?? 0)),
                     isDefault: true
                 ));
             } else {
@@ -91,8 +93,10 @@ final class CreateProductUseCase
                         sku: $variantSku !== '' ? $variantSku : ($index === 0 ? $sku : $this->generateSku($variantData + $data, $storeId)),
                         name: $variantName !== '' ? $variantName : $name,
                         price: (float) ($variantData['price'] ?? 0),
-                        stock: 0,
+                        stock: max(0, (int) ($variantData['stock'] ?? 0)),
                         poStock: max(0, (int) ($variantData['po_stock'] ?? 0)),
+                        maxOrderQty: max(1, (int) ($variantData['max_order_qty'] ?? 999999)),
+                        minStock: max(0, (int) ($variantData['min_stock'] ?? 0)),
                         isDefault: array_key_exists('is_default', $variantData)
                             ? (bool) $variantData['is_default']
                             : $index === 0

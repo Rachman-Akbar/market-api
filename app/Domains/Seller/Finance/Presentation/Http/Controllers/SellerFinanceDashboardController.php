@@ -36,6 +36,25 @@ class SellerFinanceDashboardController extends Controller
         ]);
     }
 
+    public function orderTrend(Request $request): JsonResponse
+    {
+        $storeId = $request->route('storeId') ?? $request->user()->store->id ?? null;
+
+        if (! $storeId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Toko tidak ditemukan.',
+            ], 404);
+        }
+
+        $period = $request->query('period', 'monthly');
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->service->getOrderTrend($storeId, $period),
+        ]);
+    }
+
     public function cashflow(Request $request): JsonResponse
     {
         $storeId = $request->route('storeId') ?? $request->user()->store->id ?? null;

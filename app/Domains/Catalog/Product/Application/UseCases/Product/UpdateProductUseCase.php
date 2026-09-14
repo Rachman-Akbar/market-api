@@ -97,6 +97,12 @@ final class UpdateProductUseCase
                         poStock: array_key_exists('po_stock', $variantData)
                             ? max(0, (int) $variantData['po_stock'])
                             : ($oldVariant?->poStock() ?? 0),
+                        maxOrderQty: array_key_exists('max_order_qty', $variantData)
+                            ? max(1, (int) $variantData['max_order_qty'])
+                            : ($oldVariant?->maxOrderQty() ?? 999999),
+                        minStock: array_key_exists('min_stock', $variantData)
+                            ? max(0, (int) $variantData['min_stock'])
+                            : ($oldVariant?->minStock() ?? 0),
                         isDefault: $index === 0
                     ));
 

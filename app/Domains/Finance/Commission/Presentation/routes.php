@@ -30,7 +30,7 @@ Route::prefix('finance')->middleware(['auth:sanctum', 'active.user', 'throttle:6
 
     // Admin withdrawal management
     Route::prefix('admin/withdrawals')->middleware('permission:finance.manage')->group(function (): void {
-        Route::get('/', [SellerWithdrawalController::class, 'index']);
+        Route::get('/', [SellerWithdrawalController::class, 'adminIndex']);
         Route::post('/{id}/approve', [SellerWithdrawalController::class, 'approve']);
         Route::post('/{id}/reject', [SellerWithdrawalController::class, 'reject']);
     });

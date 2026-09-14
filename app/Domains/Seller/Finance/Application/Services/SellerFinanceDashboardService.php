@@ -6,6 +6,7 @@ namespace App\Domains\Seller\Finance\Application\Services;
 
 use App\Domains\Finance\Commission\Application\Services\SellerSettlementService;
 use App\Domains\Finance\Commission\Application\Services\SellerWithdrawalService;
+use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
 use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialTransactionModel;
 use Carbon\Carbon;
 
@@ -61,6 +62,47 @@ class SellerFinanceDashboardService
                 'occurred_at' => $t->occurred_at,
             ])->values()->all(),
             'daily_cashflow' => $this->getDailyCashflow($storeId, $startDate),
+        ];
+    }
+
+    public function getOrderTrend(int $storeId, ?string $period = null): array
+    {
+        $period = $period ?? 'monthly';
+        $startDate = $this->getStartDate($period);
+        $endDate = now();
+
+        $rows = SubOrderModel::where('store_id', $storeId)
+            ->where('created_at', '>=', $startDate)
+            ->where('created_at', '<=', $endDate)
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as orders')
+            ->selectRaw("SUM(CASE WHEN status != 'cancelled' THEN total_items_price + shipping_cost ELSE 0 END) as revenue")
+            ->selectRaw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
+            ->groupBy('day')
+            ->get()
+            ->keyBy('day');
+
+        $trend = [];
+        $current = Carbon::parse($startDate);
+
+        while ($current->lte($endDate)) {
+            $dayStr = $current->toDateString();
+            $row = $rows[$dayStr] ?? null;
+
+            $trend[] = [
+                'date' => $dayStr,
+                'orders' => (int) ($row->orders ?? 0),
+                'revenue' => round((float) ($row->revenue ?? 0), 2),
+                'completed' => (int) ($row->completed ?? 0),
+            ];
+
+            $current->addDay();
+        }
+
+        return [
+            'period' => $period,
+            'start_date' => $startDate->toDateString(),
+            'end_date' => $endDate->toDateString(),
+            'points' => $trend,
         ];
     }
 

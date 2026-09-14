@@ -52,6 +52,9 @@ final class UpdateProductVariantUseCase
                 maxOrderQty: array_key_exists('max_order_qty', $data)
                     ? max(1, (int) $data['max_order_qty'])
                     : $current->maxOrderQty(),
+                minStock: array_key_exists('min_stock', $data)
+                    ? max(0, (int) $data['min_stock'])
+                    : $current->minStock(),
                 isDefault: array_key_exists('is_default', $data) ? (bool) $data['is_default'] : $current->isDefault()
             ));
 

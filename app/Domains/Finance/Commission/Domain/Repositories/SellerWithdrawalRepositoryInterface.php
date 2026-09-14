@@ -18,5 +18,9 @@ interface SellerWithdrawalRepositoryInterface
 
     public function getPendingByStore(int $storeId): mixed;
 
+    public function getAll(array $filters = [], int $perPage = 20): mixed;
+
     public function getTotalWithdrawn(int $storeId): float;
+
+    public function getPendingCount(): int;
 }

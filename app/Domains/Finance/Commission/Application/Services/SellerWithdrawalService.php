@@ -72,6 +72,16 @@ class SellerWithdrawalService
         return $this->repository->getByStore($storeId, $filters, $perPage);
     }
 
+    public function getAllWithdrawals(array $filters = [], int $perPage = 20): mixed
+    {
+        return $this->repository->getAll($filters, $perPage);
+    }
+
+    public function getPendingCount(): int
+    {
+        return $this->repository->getPendingCount();
+    }
+
     public function getTotalWithdrawn(int $storeId): float
     {
         return $this->repository->getTotalWithdrawn($storeId);

@@ -28,6 +28,7 @@ final class ProductVariantMapper
             stockBooked: (int) $model->stock_booked,
             stockPreorder: (int) $model->stock_preorder,
             maxOrderQty: (int) $model->max_order_qty,
+            minStock: (int) $model->min_stock,
             allowsPreorder: $model->product ? (bool) $model->product->allows_preorder : null,
             isDefault: (bool) $model->is_default,
             values: $values,

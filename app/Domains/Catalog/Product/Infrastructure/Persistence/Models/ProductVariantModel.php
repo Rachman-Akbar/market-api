@@ -21,6 +21,7 @@ final class ProductVariantModel extends Model
         'stock',
         'po_stock',
         'is_default',
+        'min_stock',
     ];
 
     protected $casts = [
@@ -30,6 +31,7 @@ final class ProductVariantModel extends Model
         'stock' => 'integer',
         'po_stock' => 'integer',
         'is_default' => 'boolean',
+        'min_stock' => 'integer',
     ];
 
     protected function name(): Attribute

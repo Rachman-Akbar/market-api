@@ -73,4 +73,20 @@ final class EloquentAdminNotificationRepository implements AdminNotificationRepo
             ->when($module, fn ($query) => $query->where('module', $module))
             ->update(['read_at' => now(), 'updated_at' => now()]);
     }
+
+    public function deleteForUser(int $id, string $userId): bool
+    {
+        return (bool) AdminNotificationModel::query()
+            ->where('user_id', $userId)
+            ->whereKey($id)
+            ->delete();
+    }
+
+    public function deleteAllForUser(string $userId, ?string $module = null): int
+    {
+        return AdminNotificationModel::query()
+            ->where('user_id', $userId)
+            ->when($module, fn ($query) => $query->where('module', $module))
+            ->delete();
+    }
 }

@@ -45,6 +45,7 @@ final class CreateProductVariantUseCase
                 stockBooked: 0,
                 stockPreorder: 0,
                 maxOrderQty: max(1, (int) ($data['max_order_qty'] ?? 999999)),
+                minStock: max(0, (int) ($data['min_stock'] ?? 0)),
                 isDefault: (bool) ($data['is_default'] ?? false)
             ));
 

@@ -36,6 +36,7 @@ final class ProductResource extends JsonResource
         $available = $targetVariant ? $targetVariant->availableStock() : 0;
         $targetMaxOrderQty = $targetVariant ? $targetVariant->maxOrderQty() : 999999;
         $targetAllowsPreorder = $targetVariant ? $targetVariant->allowsPreorder() : false;
+        $targetMinStock = $targetVariant ? $targetVariant->minStock() : 0;
 
         return [
             'id' => $product->id(),
@@ -55,6 +56,7 @@ final class ProductResource extends JsonResource
             'available_stock' => $available,
             'allows_preorder' => (bool) $targetAllowsPreorder,
             'max_order_qty' => $targetMaxOrderQty,
+            'min_stock' => $targetMinStock,
             'po_stock' => $internal && $targetVariant ? $targetVariant->poStock() : null,
             'total_stock' => $internal && $targetVariant ? $targetVariant->totalStock() : $available,
             'average_rating' => $product->averageRating(),

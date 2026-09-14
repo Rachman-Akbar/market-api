@@ -19,11 +19,16 @@ class AdminFeeConfigController extends Controller
     {
         $configs = $this->service->getAll();
 
+        $categories = \Illuminate\Support\Facades\DB::table('categories')
+            ->whereIn('id', collect($configs)->pluck('categoryId')->filter()->unique()->all())
+            ->pluck('name', 'id');
+
         return response()->json([
             'success' => true,
             'data' => collect($configs)->map(fn ($config) => [
                 'id' => $config->id,
                 'category_id' => $config->categoryId,
+                'category_name' => $config->categoryId ? ($categories[$config->categoryId] ?? null) : null,
                 'name' => $config->name,
                 'code' => $config->code,
                 'percentage' => $config->percentage,

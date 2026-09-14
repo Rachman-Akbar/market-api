@@ -101,6 +101,7 @@ final class UpdateProductRequest extends FormRequest
             'variants.*.price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.stock' => ['nullable', 'integer', 'min:0'],
             'variants.*.po_stock' => ['nullable', 'integer', 'min:0'],
+            'variants.*.min_stock' => ['nullable', 'integer', 'min:0'],
             'variants.*.is_default' => ['nullable', 'boolean'],
             'variants.*.values' => ['nullable', 'array'],
             'variants.*.values.*.attribute_id' => ['required_with:variants.*.values', 'integer', 'exists:product_attributes,id'],

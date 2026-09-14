@@ -13,6 +13,7 @@ Route::middleware(['auth:sanctum', 'active.user', 'verified.email', 'role:seller
         // Dashboard
         Route::get('/dashboard', [SellerFinanceDashboardController::class, 'index']);
         Route::get('/dashboard/cashflow', [SellerFinanceDashboardController::class, 'cashflow']);
+        Route::get('/dashboard/order-trend', [SellerFinanceDashboardController::class, 'orderTrend']);
 
         // Transactions
         Route::get('/', [FinancialTransactionController::class, 'index']);
