@@ -7,11 +7,14 @@ namespace App\Domains\Shared\Spreadsheet\Presentation\Http\Controllers;
 use App\Domains\Catalog\Banner\Infrastructure\Persistence\Models\BannerModel;
 use App\Domains\Catalog\CatalogGroup\Infrastructure\Persistence\Models\CatalogGroupModel;
 use App\Domains\Catalog\Category\Infrastructure\Persistence\Models\CategoryModel;
+use App\Domains\Catalog\Product\Costing\Application\Services\ProductCostingService;
+use App\Domains\Catalog\Product\Costing\Infrastructure\Persistence\Models\ProductCostingModel;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductImageModel;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductVariantModel;
 use App\Domains\Catalog\Promotion\Infrastructure\Persistence\Models\PromotionModel;
 use App\Domains\Order\Voucher\Domain\Entities\Voucher;
+use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialModel;
 use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use App\Domains\Shared\Spreadsheet\Application\Services\AdvancedSpreadsheetTransferService;
 use App\Domains\Shared\Spreadsheet\Application\SpreadsheetModuleRegistry;
@@ -48,7 +51,10 @@ final class SpreadsheetTransferController extends Controller
 {
     private array $createdProductIds = [];
 
-    public function __construct(private AdvancedSpreadsheetTransferService $advancedTransfer) {}
+    public function __construct(
+        private AdvancedSpreadsheetTransferService $advancedTransfer,
+        private ProductCostingService $productCostingService,
+    ) {}
 
     public function template(Request $request, string $module): BinaryFileResponse|JsonResponse
     {
@@ -709,6 +715,61 @@ final class SpreadsheetTransferController extends Controller
         if ($wasNewProduct && $this->importMode($request) === 'create') {
             $this->createdProductIds[$this->productImportKey($storeId, $name)] = (int) $product->id;
         }
+
+        $this->persistProductCostingFromImport($storeId, $product, $row);
+    }
+
+    private function persistProductCostingFromImport(int $storeId, ProductModel $product, array $row): void
+    {
+        if (! $this->hasAnyValue($row, ['materials', 'labor_cost', 'overhead_cost', 'other_cost', 'margin_percent', 'selling_price'])) {
+            return;
+        }
+
+        $materials = [];
+        foreach ($this->parseMaterialRecipe((string) ($row['materials'] ?? '')) as $recipe) {
+            $material = RawMaterialModel::query()
+                ->where('store_id', $storeId)
+                ->whereRaw('LOWER(TRIM(code)) = ?', [strtolower(trim((string) $recipe['code']))])
+                ->first();
+            if (! $material) {
+                throw new InvalidArgumentException('Bahan baku '.$recipe['code'].' tidak ditemukan pada toko untuk Product '.$product->name.'.');
+            }
+            $materials[] = ['raw_material_id' => $material->id, 'quantity' => $recipe['quantity']];
+        }
+
+        $this->productCostingService->save($product->id, [
+            'materials' => $materials,
+            'labor_cost' => max(0, (float) ($row['labor_cost'] ?? 0)),
+            'overhead_cost' => max(0, (float) ($row['overhead_cost'] ?? 0)),
+            'other_cost' => max(0, (float) ($row['other_cost'] ?? 0)),
+            'margin_percent' => $this->cleanImportNumber($row['margin_percent'] ?? null) !== null
+                ? max(0, (float) $row['margin_percent'])
+                : 30,
+            'selling_price' => $this->cleanImportNumber($row['selling_price'] ?? null) !== null
+                ? max(0, (float) $row['selling_price'])
+                : null,
+            'apply_to_variants' => false,
+        ], $storeId);
+    }
+
+    private function parseMaterialRecipe(string $value): array
+    {
+        $recipes = [];
+
+        foreach (explode('|', $value) as $segment) {
+            $segment = trim($segment);
+            if ($segment === '') {
+                continue;
+            }
+            if (str_contains($segment, ':')) {
+                [$code, $quantity] = explode(':', $segment, 2);
+                $recipes[] = ['code' => trim($code), 'quantity' => max(0, (float) $quantity)];
+            } else {
+                $recipes[] = ['code' => $segment, 'quantity' => 1.0];
+            }
+        }
+
+        return $recipes;
     }
 
     private function persistCategory(Request $request, array $row): void
@@ -971,6 +1032,23 @@ final class SpreadsheetTransferController extends Controller
             $row['variant_name'] = $variant?->name ?: '';
             $row['price'] = $variant?->price ?: '';
             $row['is_default'] = $variant ? ($variant->is_default ? 1 : 0) : '';
+
+            $costing = ProductCostingModel::query()->where('product_id', $model->id)->first();
+            if ($costing) {
+                $row['labor_cost'] = $costing->labor_cost;
+                $row['overhead_cost'] = $costing->overhead_cost;
+                $row['other_cost'] = $costing->other_cost;
+                $row['margin_percent'] = $costing->margin_percent;
+                $row['selling_price'] = $costing->selling_price;
+                $row['materials'] = DB::table('product_materials as pm')
+                    ->join('raw_materials as rm', 'rm.id', '=', 'pm.raw_material_id')
+                    ->where('pm.product_id', $model->id)
+                    ->whereNull('rm.deleted_at')
+                    ->orderBy('pm.id')
+                    ->get()
+                    ->map(fn (object $entry): string => $entry->code.':'.rtrim(rtrim((string) number_format((float) $entry->quantity, 4, '.', ''), '0'), '.'))
+                    ->implode('|');
+            }
         }
 
         if ($module === 'category') {
@@ -1046,6 +1124,20 @@ final class SpreadsheetTransferController extends Controller
                 foreach (array_unique($names) as $name) {
                     if (! $this->categoryExists($name, $groupName)) {
                         $add('category', $name, $rowNumber, $groupName !== '', $groupName);
+                    }
+                }
+
+                if ($this->cleanName($row['materials'] ?? null) !== '') {
+                    $storeId = $role === 'seller'
+                        ? $this->sellerStoreId($request)
+                        : ($this->resolveStoreId($row['store_name'] ?? null, false) ?: 0);
+                    if ($storeId > 0) {
+                        $storeQuery = RawMaterialModel::query()->where('store_id', $storeId);
+                        foreach ($this->parseMaterialRecipe((string) ($row['materials'] ?? '')) as $recipe) {
+                            if (! $this->firstByNormalizedName(clone $storeQuery, 'code', $recipe['code'])) {
+                                $add('raw_material', $recipe['code'], $rowNumber, false);
+                            }
+                        }
                     }
                 }
             }
@@ -1912,6 +2004,13 @@ final class SpreadsheetTransferController extends Controller
     private function nullableFloat(mixed $value): ?float
     {
         return is_numeric($value) ? (float) $value : null;
+    }
+
+    private function cleanImportNumber(mixed $value): ?float
+    {
+        $text = trim((string) ($value ?? ''));
+
+        return is_numeric($text) ? (float) $text : null;
     }
 
     private function dateValue(mixed $value): string

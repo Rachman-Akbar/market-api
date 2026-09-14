@@ -15,7 +15,7 @@ final class EloquentProductVariantRepository implements ProductVariantRepository
     public function paginate(int $productId, int $perPage = 15)
     {
         return ProductVariantModel::query()
-            ->with(['values.attribute'])
+            ->with(['values.attribute', 'product'])
             ->where('product_id', $productId)
             ->orderByDesc('is_default')
             ->orderBy('id')
@@ -26,7 +26,7 @@ final class EloquentProductVariantRepository implements ProductVariantRepository
     public function findById(int $id): ?ProductVariant
     {
         $model = ProductVariantModel::query()
-            ->with(['values.attribute'])
+            ->with(['values.attribute', 'product'])
             ->find($id);
 
         return $model ? ProductVariantMapper::toEntity($model) : null;
@@ -49,6 +49,10 @@ final class EloquentProductVariantRepository implements ProductVariantRepository
         $model->price = $variant->price();
         $model->stock = $variant->stock();
         $model->po_stock = $variant->poStock();
+        $model->stock_reserved = $variant->stockReserved();
+        $model->stock_booked = $variant->stockBooked();
+        $model->stock_preorder = $variant->stockPreorder();
+        $model->max_order_qty = $variant->maxOrderQty();
         $model->is_default = $variant->isDefault();
         $model->save();
 
@@ -59,7 +63,7 @@ final class EloquentProductVariantRepository implements ProductVariantRepository
                 ->update(['is_default' => false]);
         }
 
-        $model->load(['values.attribute']);
+        $model->load(['values.attribute', 'product']);
 
         return ProductVariantMapper::toEntity($model);
     }

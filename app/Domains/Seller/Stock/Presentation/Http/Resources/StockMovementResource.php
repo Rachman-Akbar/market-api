@@ -21,11 +21,15 @@ final class StockMovementResource extends JsonResource
             'variant_name' => $this->variant?->name,
             'sku' => $this->variant?->sku,
             'current_stock' => $this->variant?->stock,
+            'current_available' => $this->variant
+                ? (int) $this->variant->stock - (int) $this->variant->stock_reserved - (int) $this->variant->stock_booked
+                : null,
             'order_id' => $this->order_id,
             'order_number' => $this->order?->order_number,
             'type' => $this->type,
             'quantity_delta' => $this->quantity_delta,
             'balance_after' => $this->balance_after,
+            'stock_dimension' => $this->stock_dimension,
             'reference_type' => $this->reference_type,
             'reference_id' => $this->reference_id,
             'notes' => $this->notes,

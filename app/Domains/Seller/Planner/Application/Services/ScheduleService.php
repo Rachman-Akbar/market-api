@@ -38,6 +38,18 @@ class ScheduleService
         return $schedule;
     }
 
+    public function getBoard(string $userId, array $filters = [], ?int $storeId = null, bool $isAdmin = false): array
+    {
+        return $this->repository->getBoard($userId, $storeId, $isAdmin, $filters);
+    }
+
+    public function move(int $id, string $userId, bool $isAdmin, string $status, int $toIndex): Schedule
+    {
+        $this->requireEditable($id, $userId, $isAdmin);
+
+        return $this->repository->moveAndReorder($id, $status, $toIndex);
+    }
+
     public function requireEditable(int $id, string $userId, bool $isAdmin): Schedule
     {
         $schedule = $this->getById($id, $userId, $isAdmin);
@@ -64,9 +76,9 @@ class ScheduleService
         $this->repository->delete($id);
     }
 
-    public function markComplete(int $id): Schedule
+    public function markComplete(int $id, ?array $proof = null): Schedule
     {
-        return $this->repository->markComplete($id);
+        return $this->repository->markComplete($id, $proof);
     }
 
     public function getGrid(string $userId, int $year, int $month, ?int $storeId = null, bool $isAdmin = false): array

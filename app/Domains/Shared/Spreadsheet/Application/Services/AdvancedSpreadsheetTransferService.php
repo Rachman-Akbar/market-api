@@ -307,7 +307,7 @@ final class AdvancedSpreadsheetTransferService
                             'destination_id' => $subOrder->destination_id,
                             'tracking_number' => $subOrder->tracking_number,
                             'preorder_release_at' => $this->formatDate($model->preorder_release_at),
-                            'booking_expires_at' => $this->formatDate($model->booking_expires_at),
+                            'scheduled_at' => $this->formatDate($model->scheduled_at),
                             'received_at' => $this->formatDate($model->received_at),
                         ];
                     }
@@ -779,15 +779,15 @@ final class AdvancedSpreadsheetTransferService
         if ($orderType === 'preorder' && ! $this->nullableDate($row['preorder_release_at'] ?? null)) {
             throw new InvalidArgumentException('Tanggal rilis wajib untuk preorder.');
         }
-        if ($orderType === 'booking' && ! $this->nullableDate($row['booking_expires_at'] ?? null)) {
-            throw new InvalidArgumentException('Batas booking wajib untuk pesanan booking.');
+        if ($orderType === 'booking' && ! $this->nullableDate($row['scheduled_at'] ?? null)) {
+            throw new InvalidArgumentException('Jadwal kirim/pickup wajib untuk pesanan booking.');
         }
 
         $order->fill([
             'order_number' => $orderNumber,
             'order_type' => $orderType,
             'preorder_release_at' => $this->nullableDate($row['preorder_release_at'] ?? null),
-            'booking_expires_at' => $this->nullableDate($row['booking_expires_at'] ?? null),
+            'scheduled_at' => $this->nullableDate($row['scheduled_at'] ?? null),
             'received_at' => $this->nullableDate($row['received_at'] ?? null),
             'user_id' => $buyer->id,
             'status' => $status,

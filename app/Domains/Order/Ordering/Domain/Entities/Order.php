@@ -11,7 +11,7 @@ final class Order
         public string $orderNumber,
         public string $orderType,
         public ?string $preorderReleaseAt,
-        public ?string $bookingExpiresAt,
+        public ?string $scheduledAt,
         public ?string $receivedAt,
         public string $userId,
         public ?int $voucherId,

@@ -78,7 +78,7 @@ class EloquentOrderRepository implements OrderRepositoryInterface
             $model->update([
                 'order_type' => $order->orderType,
                 'preorder_release_at' => $order->preorderReleaseAt,
-                'booking_expires_at' => $order->bookingExpiresAt,
+                'scheduled_at' => $order->scheduledAt,
                 'received_at' => $receivedAt,
                 'status' => $order->status,
                 'payment_status' => $order->paymentStatus,

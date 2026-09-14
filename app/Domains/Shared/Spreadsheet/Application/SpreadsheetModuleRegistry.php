@@ -59,7 +59,7 @@ final class SpreadsheetModuleRegistry
                 'roles' => ['admin', 'seller'],
                 'image_fields' => ['thumbnail', 'image_url'],
                 'headers' => [
-                    'id', 'store_name', 'catalog_group_name', 'name', 'slug', 'description', 'brand', 'primary_category_name', 'category_names', 'status', 'is_active', 'thumbnail', 'image_url', 'image_alt', 'sku', 'variant_name', 'price', 'is_default',
+                    'id', 'store_name', 'catalog_group_name', 'name', 'slug', 'description', 'brand', 'primary_category_name', 'category_names', 'status', 'is_active', 'thumbnail', 'image_url', 'image_alt', 'sku', 'variant_name', 'price', 'is_default', 'materials', 'labor_cost', 'overhead_cost', 'other_cost', 'margin_percent', 'selling_price',
                 ],
                 'examples' => self::productExamples(),
                 'guides' => [
@@ -72,6 +72,7 @@ final class SpreadsheetModuleRegistry
                     ['Category dan Catalog Group', 'Gunakan nama relasi, bukan ID. Jika belum ada, preview import akan menaruh permintaan pembuatan relasi pada tab Antrean untuk dipilih Lanjutkan atau Batal.'],
                     ['Gambar', 'Isi URL/path pada thumbnail atau image_url, atau tempel gambar pada cell/baris yang sama. File akan disimpan ke storage Laravel saat import.'],
                     ['Status marketplace', 'Agar tampil kepada Buyer, gunakan status=published dan is_active=1. Product juga tetap mengikuti status toko dan relasi publik.'],
+                    ['HPP sekaligus', 'Isi kolom materials dengan format KODE:QTY (pisahkan dengan |) dan lengkapi labor_cost, overhead_cost, other_cost, margin_percent atau selling_price. Backend menghitung HPP & harga saran dari average_cost bahan secara realtime. Cukup buat bahan baku terlebih dahulu lewat modul Bahan Baku.'],
                 ],
                 'descriptions' => self::productDescriptions(),
             ],
@@ -80,7 +81,7 @@ final class SpreadsheetModuleRegistry
                 'model' => OrderModel::class,
                 'roles' => ['admin', 'seller'],
                 'image_fields' => [],
-                'headers' => ['id', 'order_number', 'buyer_email', 'store_name', 'sub_order_number', 'order_type', 'status', 'payment_status', 'payment_method', 'shipping_address', 'sku', 'product_name', 'variant_name', 'quantity', 'price', 'shipping_cost', 'courier', 'service', 'destination_id', 'tracking_number', 'preorder_release_at', 'booking_expires_at', 'received_at'],
+                'headers' => ['id', 'order_number', 'buyer_email', 'store_name', 'sub_order_number', 'order_type', 'status', 'payment_status', 'payment_method', 'shipping_address', 'sku', 'product_name', 'variant_name', 'quantity', 'price', 'shipping_cost', 'courier', 'service', 'destination_id', 'tracking_number', 'preorder_release_at', 'scheduled_at', 'received_at'],
                 'examples' => self::orderExamples(),
                 'guides' => [
                     ['Satu pesanan banyak item', 'Gunakan order_number dan store_name yang sama pada beberapa baris. Setiap baris mewakili satu SKU.'],
@@ -291,6 +292,9 @@ final class SpreadsheetModuleRegistry
         return [
             self::example($simpleAutoSku, 'Product Baru Sederhana', 'Toko menjual satu Product dengan satu harga dan tidak memiliki pilihan warna atau ukuran. Stok tidak dibentuk dari import Product.', 'Pilih Import Data Baru. Kosongkan id dan sku, isi variant_name=Default, price, serta is_default=1. Saldo stok diisi terpisah melalui import Stok Produk.', 'Product baru dan default variant dibuat. Backend membentuk SKU unik otomatis.', 'Ini pola yang disarankan untuk barang biasa yang hanya memiliki satu harga.'),
             self::example([
+                ...$simpleAutoSku, 'name' => 'Cemilan Sambal Bawang 250 ml', 'description' => 'Cemilan produksi rumahan berbahan baku lokal', 'primary_category_name' => 'Cemilan', 'category_names' => 'Cemilan, Makanan Ringan', 'thumbnail' => '', 'image_url' => '', 'sku' => '', 'price' => '26000', 'materials' => 'RM-BAWANG:0.2|RM-MINYAK:0.1|RM-KEMAS:1', 'labor_cost' => '3000', 'overhead_cost' => '2000', 'other_cost' => '0', 'margin_percent' => '30', 'selling_price' => '',
+            ], 'Product + HPP dalam Satu File', 'Membuat Product sekaligus resep bahan, biaya, margin, dan harga jual dalam satu import.', 'Pastikan bahan baku sudah ada pada modul Bahan Baku, lalu isi materials dengan format KODE:QTY dipisahkan | serta kolom biaya dan margin. Kosongkan selling_price untuk memakai harga saran.', 'Product dibuat, resep dan HPP dihitung dari average_cost bahan secara realtime, lalu margin diterapkan.', 'Jika hanya ingin memperbarui resep/HPP Product yang sudah ada, gunakan modul HPP & Harga Jual.'),
+            self::example([
                 ...$simpleAutoSku, 'name' => 'Kecap Manis Refill 500 ml', 'description' => 'Kecap manis kemasan refill', 'thumbnail' => 'https://example.com/kecap-refill.jpg', 'image_url' => '', 'image_alt' => 'Kecap Manis Refill 500 ml', 'sku' => 'KECAP-REFILL-500', 'price' => '18000',
             ], 'Product Baru dengan SKU Manual', 'Toko mempunyai kode SKU internal sendiri untuk Product sederhana.', 'Pilih Import Data Baru, kosongkan id, lalu isi SKU manual yang belum pernah digunakan di toko tersebut.', 'Product dibuat menggunakan SKU KECAP-REFILL-500.', 'SKU manual harus unik dalam file dan unik pada toko yang sama.'),
             self::exampleRows([
@@ -345,6 +349,12 @@ final class SpreadsheetModuleRegistry
             ['variant_name', 'Wajib saat membuat variant', 'Teks', 'Default atau Hitam - M', 'Jika variant dibuat dan nama kosong, sistem menggunakan Default.', 'Untuk barang tanpa pilihan, gunakan nama Default.'],
             ['price', 'Wajib saat membuat variant', 'Angka ≥ 0', '25000', 'Tidak memakai pemisah ribuan atau simbol Rp.', 'Harga berada pada variant, bukan Product utama.'],
             ['is_default', 'Wajib untuk multi-variant, optional untuk variant pertama', '1|0|ya|tidak', '1', 'Hanya satu variant per Product boleh bernilai aktif sebagai default.', 'Jika kosong pada variant pertama, sistem menjadikannya default. Variant berikutnya yang kosong tidak mengganti default lama.'],
+            ['materials', 'Optional', 'KODE:QTY dipisahkan |', 'RM-BOX:1|RM-LABEL:2', 'Membuat resep bahan baku dan menghitung biaya bahan dari average_cost saat import.', 'Bahan baku harus tersedia pada toko terkait; kode yang tidak ditemukan akan masuk file error.'],
+            ['labor_cost', 'Optional', 'Angka ≥ 0', '3000', 'Biaya tenaga kerja yang dimasukkan ke HPP.', 'Diabaikan bila seluruh kolom HPP kosong.'],
+            ['overhead_cost', 'Optional', 'Angka ≥ 0', '2000', 'Biaya overhead yang dimasukkan ke HPP.', 'Diabaikan bila seluruh kolom HPP kosong.'],
+            ['other_cost', 'Optional', 'Angka ≥ 0', '0', 'Biaya lain yang dimasukkan ke HPP.', 'Diabaikan bila seluruh kolom HPP kosong.'],
+            ['margin_percent', 'Optional', 'Angka ≥ 0', '30', 'Persentase margin untuk menghitung harga saran (HPP × (1 + margin/100)).', 'Hanya dipakai bila selling_price kosong. Nilai bawaan 30.'],
+            ['selling_price', 'Optional', 'Angka ≥ 0', '28000', 'Harga jual aktual. Jika kosong, memakai harga saran dari HPP dan margin.', 'Kolom ini tidak mengubah harga variant yang sudah ada.'],
         ];
     }
 
@@ -607,13 +617,14 @@ final class SpreadsheetModuleRegistry
 
     private static function orderExamples(): array
     {
-        $base = ['id' => '', 'order_number' => 'ORD-202608-0001', 'buyer_email' => 'buyer@example.com', 'store_name' => 'Toko Nusantara', 'sub_order_number' => 'SUB-202608-0001', 'order_type' => 'normal', 'status' => 'pending', 'payment_status' => 'pending', 'payment_method' => 'bank_transfer', 'shipping_address' => 'Jl. Merdeka No. 1, Jakarta', 'sku' => 'PRODUK-001', 'product_name' => 'Produk Contoh', 'variant_name' => 'Default', 'quantity' => '2', 'price' => '75000', 'shipping_cost' => '15000', 'courier' => 'JNE', 'service' => 'REG', 'destination_id' => '501', 'tracking_number' => '', 'preorder_release_at' => '', 'booking_expires_at' => '', 'received_at' => ''];
+        $base = ['id' => '', 'order_number' => 'ORD-202608-0001', 'buyer_email' => 'buyer@example.com', 'store_name' => 'Toko Nusantara', 'sub_order_number' => 'SUB-202608-0001', 'order_type' => 'normal', 'status' => 'pending', 'payment_status' => 'pending', 'payment_method' => 'bank_transfer', 'shipping_address' => 'Jl. Merdeka No. 1, Jakarta', 'sku' => 'PRODUK-001', 'product_name' => 'Produk Contoh', 'variant_name' => 'Default', 'quantity' => '2', 'price' => '75000', 'shipping_cost' => '15000', 'courier' => 'JNE', 'service' => 'REG', 'destination_id' => '501', 'tracking_number' => '', 'preorder_release_at' => '', 'scheduled_at' => '', 'received_at' => ''];
 
         return [
             self::example($base, 'Order Normal', 'Membuat pesanan normal satu item.', 'Isi buyer, toko, SKU, quantity, harga, dan pengiriman.', 'Order, sub-order, dan item dibuat.'),
             self::exampleRows([$base, [...$base, 'sku' => 'PRODUK-002', 'product_name' => 'Produk Kedua', 'quantity' => '1', 'price' => '125000']], 'Multi Item', 'Satu pesanan memiliki dua SKU.', 'Ulangi order_number dan sub_order_number pada dua baris.', 'Dua item masuk ke sub-order yang sama.'),
             self::example([...$base, 'order_number' => 'ORD-PRE-0001', 'sub_order_number' => 'SUB-PRE-0001', 'order_type' => 'preorder', 'preorder_release_at' => '2026-09-01 09:00:00'], 'Preorder', 'Membuat pesanan preorder.', 'Gunakan order_type=preorder dan isi preorder_release_at.', 'Tanggal rilis preorder tersimpan.'),
-            self::example([...$base, 'order_number' => 'ORD-BOOK-0001', 'sub_order_number' => 'SUB-BOOK-0001', 'order_type' => 'booking', 'booking_expires_at' => '2026-08-10 23:59:59'], 'Booking', 'Membuat pesanan booking.', 'Gunakan order_type=booking dan isi booking_expires_at.', 'Batas booking tersimpan.'),
+            self::example([...$base, 'order_number' => 'ORD-BOOK-0001', 'sub_order_number' => 'SUB-BOOK-0001', 'order_type' => 'booking', 'scheduled_at' => '2026-08-12 14:30:00'], 'Booking', 'Membuat pesanan booking (jadwal kirim/pickup).', 'Gunakan order_type=booking dan isi scheduled_at.', 'Jadwal kirim/pickup tersimpan.'),
+            self::example([...$base, 'order_number' => 'ORD-PO-0001', 'sub_order_number' => 'SUB-PO-0001', 'order_type' => 'preorder', 'preorder_release_at' => ''], 'Preorder Otomatis', 'Preorder tanpa kuota saat stok kosong.', 'order_type=preorder tetap opsional; server otomatis menetapkan preorder saat stok habis.', 'Preorder terhubung ke stok pesanan (stock_preorder).'),
             self::example([...$base, 'status' => 'processing', 'payment_status' => 'paid'], 'Sudah Dibayar', 'Pesanan telah dibayar dan sedang diproses.', 'Gunakan status processing dan payment_status paid.', 'Order tampil sebagai dibayar dan diproses.'),
             self::example([...$base, 'status' => 'shipped', 'payment_status' => 'paid', 'tracking_number' => 'JNE123456789'], 'Dikirim', 'Pesanan sudah dikirim.', 'Isi tracking_number dan status shipped.', 'Nomor resi tersimpan.'),
             self::example([...$base, 'status' => 'received', 'payment_status' => 'paid', 'received_at' => '2026-08-08 14:00:00'], 'Diterima', 'Buyer telah menerima pesanan.', 'Isi status received dan received_at.', 'Pesanan dapat direview.'),
@@ -646,8 +657,8 @@ final class SpreadsheetModuleRegistry
             ['service', 'Optional', 'Teks', 'REG', 'Per sub-order.', 'Layanan kurir.'],
             ['destination_id', 'Optional', 'Teks', '501', 'Sesuai integrasi ongkir.', 'Tujuan pengiriman.'],
             ['tracking_number', 'Optional', 'Teks', 'JNE123456789', 'Isi ketika dikirim.', 'Nomor resi.'],
-            ['preorder_release_at', 'Kondisional', 'Tanggal dan waktu', '2026-09-01 09:00:00', 'Wajib untuk preorder.', 'Tanggal rilis.'],
-            ['booking_expires_at', 'Kondisional', 'Tanggal dan waktu', '2026-08-10 23:59:59', 'Wajib untuk booking.', 'Batas booking.'],
+            ['preorder_release_at', 'Kondisional', 'Tanggal dan waktu', '2026-09-01 09:00:00', 'Opsional; server menetapkan preorder otomatis saat stok habis.', 'Tanggal rilis / perkiraan selesai produksi.'],
+            ['scheduled_at', 'Kondisional', 'Tanggal dan waktu', '2026-08-12 14:30:00', 'Wajib untuk booking.', 'Jadwal kirim atau slot pickup yang dijanjikan.'],
             ['received_at', 'Kondisional', 'Tanggal dan waktu', '2026-08-08 14:00:00', 'Isi untuk status received/completed.', 'Waktu diterima buyer.'],
         ];
     }

@@ -20,7 +20,7 @@ class OrderModel extends Model
         'admin_fee' => 'decimal:2',
         'seller_net' => 'decimal:2',
         'preorder_release_at' => 'datetime',
-        'booking_expires_at' => 'datetime',
+        'scheduled_at' => 'datetime',
         'received_at' => 'datetime',
     ];
 

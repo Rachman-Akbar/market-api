@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Seller\Planner\Presentation\Http\Controllers;
 
 use App\Domains\Seller\Planner\Application\Services\ScheduleService;
+use App\Domains\Seller\Planner\Domain\Entities\Schedule;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -44,31 +45,37 @@ class ScheduleController extends Controller
             'title' => ['required', 'string', 'max:200'],
             'description' => ['nullable', 'string', 'max:1000'],
             'type' => ['required', 'string', 'in:task,meeting,reminder,shipment,restock'],
+            'status' => ['nullable', 'string', 'in:todo,in_progress,done'],
+            'assignee' => ['nullable', 'string', 'max:120'],
+            'label' => ['nullable', 'string', 'max:80'],
             'priority' => ['nullable', 'string', 'in:low,normal,high,urgent'],
             'color' => ['nullable', 'string', 'max:20'],
             'date' => ['required', 'date'],
             'start_time' => ['nullable', 'date_format:H:i'],
             'end_time' => ['nullable', 'date_format:H:i', 'after_or_equal:start_time'],
             'is_all_day' => ['nullable', 'boolean'],
+            'store_id' => ['nullable', 'integer', 'exists:stores,id'],
             'metadata' => ['nullable', 'array'],
         ]);
 
-        $validated['user_id'] = $request->user()->id;
-        $validated['store_id'] = $request->user()->store->id ?? null;
-        $validated['created_by'] = $request->user()->id;
+        $user = $request->user();
+        $isAdmin = $user->hasRole('admin') || $user->hasRole('super_admin');
+
+        $validated['user_id'] = $user->id;
+        $validated['store_id'] = $isAdmin && ! empty($validated['store_id'])
+            ? (int) $validated['store_id']
+            : ($isAdmin ? null : ($request->user()->store->id ?? null));
+        $validated['created_by'] = $user->id;
         $validated['is_active'] = true;
         $validated['is_completed'] = false;
+        $validated['status'] = $validated['status'] ?? 'todo';
 
         $schedule = $this->service->create($validated);
 
         return response()->json([
             'success' => true,
             'message' => 'Jadwal berhasil dibuat.',
-            'data' => [
-                'id' => $schedule->id,
-                'title' => $schedule->title,
-                'date' => $schedule->date,
-            ],
+            'data' => $this->card($schedule),
         ], 201);
     }
 
@@ -88,6 +95,10 @@ class ScheduleController extends Controller
                 'title' => $schedule->title,
                 'description' => $schedule->description,
                 'type' => $schedule->type,
+                'status' => $schedule->status,
+                'position' => $schedule->position,
+                'assignee' => $schedule->assignee,
+                'label' => $schedule->label,
                 'priority' => $schedule->priority,
                 'color' => $schedule->color,
                 'date' => $schedule->date,
@@ -96,6 +107,8 @@ class ScheduleController extends Controller
                 'is_all_day' => $schedule->isAllDay,
                 'is_completed' => $schedule->isCompleted,
                 'completed_at' => $schedule->completedAt,
+                'completion_proof' => $schedule->completionProof,
+                'store_id' => $schedule->storeId,
                 'duration_minutes' => $schedule->getDurationInMinutes(),
             ],
         ]);
@@ -107,6 +120,9 @@ class ScheduleController extends Controller
             'title' => ['sometimes', 'string', 'max:200'],
             'description' => ['nullable', 'string', 'max:1000'],
             'type' => ['sometimes', 'string', 'in:task,meeting,reminder,shipment,restock'],
+            'status' => ['sometimes', 'string', 'in:todo,in_progress,done'],
+            'assignee' => ['nullable', 'string', 'max:120'],
+            'label' => ['nullable', 'string', 'max:80'],
             'priority' => ['sometimes', 'string', 'in:low,normal,high,urgent'],
             'color' => ['nullable', 'string', 'max:20'],
             'date' => ['sometimes', 'date'],
@@ -130,10 +146,7 @@ class ScheduleController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Jadwal berhasil diperbarui.',
-            'data' => [
-                'id' => $schedule->id,
-                'title' => $schedule->title,
-            ],
+            'data' => $this->card($schedule),
         ]);
     }
 
@@ -156,6 +169,17 @@ class ScheduleController extends Controller
 
     public function complete(Request $request, int $id): JsonResponse
     {
+        $validated = $request->validate([
+            'note' => ['nullable', 'string', 'max:2000'],
+            'files' => ['nullable', 'array'],
+            'files.*' => ['string', 'max:500'],
+        ]);
+
+        $proof = [
+            'note' => trim((string) ($validated['note'] ?? '')) !== '' ? trim((string) $validated['note']) : null,
+            'files' => array_values(array_filter($validated['files'] ?? [], fn ($file) => trim((string) $file) !== '')),
+        ];
+
         $user = $request->user();
         try {
             $this->service->requireEditable($id, (string) $user->id, $user->hasRole('admin') || $user->hasRole('super_admin'));
@@ -163,16 +187,61 @@ class ScheduleController extends Controller
             return response()->json(['success' => false, 'message' => 'Jadwal tidak ditemukan.'], 404);
         }
 
-        $schedule = $this->service->markComplete($id);
+        $schedule = $this->service->markComplete($id, $proof);
 
         return response()->json([
             'success' => true,
             'message' => 'Jadwal ditandai selesai.',
-            'data' => [
-                'id' => $schedule->id,
-                'is_completed' => $schedule->isCompleted,
-                'completed_at' => $schedule->completedAt,
-            ],
+            'data' => $this->card($schedule),
+        ]);
+    }
+
+    public function board(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $isAdmin = $user->hasRole('admin') || $user->hasRole('super_admin');
+        $storeId = $isAdmin && $request->filled('store_id') ? (int) $request->query('store_id') : null;
+
+        $board = $this->service->getBoard(
+            (string) $user->id,
+            $request->only(['type', 'priority', 'status']),
+            $storeId,
+            $isAdmin
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => $board,
+        ]);
+    }
+
+    public function move(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'string', 'in:todo,in_progress,done'],
+            'to_index' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $user = $request->user();
+
+        try {
+            $schedule = $this->service->move(
+                $id,
+                (string) $user->id,
+                $user->hasRole('admin') || $user->hasRole('super_admin'),
+                (string) $validated['status'],
+                (int) ($validated['to_index'] ?? 0)
+            );
+        } catch (ModelNotFoundException) {
+            return response()->json(['success' => false, 'message' => 'Jadwal tidak ditemukan.'], 404);
+        } catch (\InvalidArgumentException $exception) {
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Jadwal dipindahkan.',
+            'data' => $this->card($schedule),
         ]);
     }
 
@@ -205,5 +274,33 @@ class ScheduleController extends Controller
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="jadwal-export.csv"',
         ]);
+    }
+
+    private function card(
+        Schedule $schedule
+    ): array {
+        return [
+            'id' => $schedule->id,
+            'user_id' => $schedule->userId,
+            'store_id' => $schedule->storeId,
+            'title' => $schedule->title,
+            'description' => $schedule->description,
+            'type' => $schedule->type,
+            'status' => $schedule->status,
+            'position' => $schedule->position,
+            'assignee' => $schedule->assignee,
+            'label' => $schedule->label,
+            'priority' => $schedule->priority,
+            'color' => $schedule->color,
+            'date' => $schedule->date,
+            'start_time' => $schedule->startTime,
+            'end_time' => $schedule->endTime,
+            'is_all_day' => $schedule->isAllDay,
+            'is_completed' => $schedule->isCompleted,
+            'completed_at' => $schedule->completedAt,
+            'completion_proof' => $schedule->completionProof ?: ['note' => null, 'files' => []],
+            'created_at' => $schedule->createdAt,
+            'updated_at' => $schedule->updatedAt,
+        ];
     }
 }

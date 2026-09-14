@@ -22,8 +22,8 @@ class CreateOrderRequest extends FormRequest
             'payment_method' => ['required', 'string', 'in:midtrans,transfer_manual,cod,tunai_toko'],
             'voucher_code' => ['nullable', 'string', 'max:100'],
             'order_type' => ['nullable', 'string', 'in:normal,preorder,booking'],
-            'preorder_release_at' => ['nullable', 'required_if:order_type,preorder', 'date', 'after:now'],
-            'booking_expires_at' => ['nullable', 'required_if:order_type,booking', 'date', 'after:now'],
+            'preorder_release_at' => ['nullable', 'date', 'after:now'],
+            'scheduled_at' => ['nullable', 'required_if:order_type,booking', 'date', 'after:now'],
         ];
     }
 }

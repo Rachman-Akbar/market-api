@@ -20,11 +20,15 @@ interface ScheduleRepositoryInterface
 
     public function getGridDataByStore(int $storeId, int $year, int $month): array;
 
+    public function getBoard(?string $userId, ?int $storeId, bool $isAdmin, array $filters = []): array;
+
     public function create(array $data): Schedule;
 
     public function update(int $id, array $data): Schedule;
 
     public function delete(int $id): void;
 
-    public function markComplete(int $id): Schedule;
+    public function markComplete(int $id, ?array $proof = null): Schedule;
+
+    public function moveAndReorder(int $id, string $status, int $toIndex): Schedule;
 }

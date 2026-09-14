@@ -15,6 +15,7 @@ use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
 use App\Domains\Order\Ordering\Presentation\Http\Requests\CreateOrderRequest;
 use App\Domains\Order\Ordering\Presentation\Http\Resources\OrderResource;
+use App\Domains\Seller\Finance\Application\Services\AutoOrderIncomeService;
 use App\Domains\Seller\Stock\Application\Services\StockMovementService;
 use App\Domains\Shared\Presentation\Http\Concerns\ResolvesSellerStoreContext;
 use App\Http\Controllers\Controller;
@@ -36,6 +37,7 @@ class OrderingController extends Controller
         private OrderRepositoryInterface $orderRepository,
         private UserRepositoryInterface $userRepository,
         private StockMovementService $stockMovementService,
+        private AutoOrderIncomeService $autoOrderIncome,
         private MissionService $missionService
     ) {}
 
@@ -70,7 +72,7 @@ class OrderingController extends Controller
                 voucherCode: $data['voucher_code'] ?? null,
                 orderType: $data['order_type'] ?? 'normal',
                 preorderReleaseAt: $data['preorder_release_at'] ?? null,
-                bookingExpiresAt: $data['booking_expires_at'] ?? null
+                scheduledAt: $data['scheduled_at'] ?? null
             );
 
             return (new OrderResource($order))
@@ -268,6 +270,11 @@ class OrderingController extends Controller
                 ])->save();
 
                 $this->stockMovementService->syncSubOrderStatus((int) $subOrder->id, $previousStatus, $nextStatus);
+
+                if ($nextStatus === 'completed') {
+                    $this->autoOrderIncome->recordForSubOrder((int) $subOrder->id, (string) $parent->user_id);
+                }
+
                 $statuses = SubOrderModel::query()->where('order_id', $parent->id)->pluck('status');
                 $parentStatus = 'pending';
 

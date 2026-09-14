@@ -46,6 +46,12 @@ final class UpdateProductVariantUseCase
                 poStock: array_key_exists('po_stock', $data)
                     ? max(0, (int) $data['po_stock'])
                     : $current->poStock(),
+                stockReserved: $current->stockReserved(),
+                stockBooked: $current->stockBooked(),
+                stockPreorder: $current->stockPreorder(),
+                maxOrderQty: array_key_exists('max_order_qty', $data)
+                    ? max(1, (int) $data['max_order_qty'])
+                    : $current->maxOrderQty(),
                 isDefault: array_key_exists('is_default', $data) ? (bool) $data['is_default'] : $current->isDefault()
             ));
 

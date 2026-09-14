@@ -44,6 +44,7 @@ final class StoreProductVariantRequest extends FormRequest
             'price' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['nullable', 'integer', 'min:0'],
             'po_stock' => ['nullable', 'integer', 'min:0'],
+            'max_order_qty' => ['nullable', 'integer', 'min:1'],
             'is_default' => ['nullable', 'boolean'],
             'values' => ['nullable', 'array'],
             'values.*.attribute_id' => ['required_with:values', 'integer', 'exists:product_attributes,id'],

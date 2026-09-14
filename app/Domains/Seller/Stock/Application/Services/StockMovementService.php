@@ -10,12 +10,20 @@ use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialSt
 use App\Domains\Seller\Stock\Domain\Repositories\StockMovementRepositoryInterface;
 use App\Domains\Seller\Stock\Infrastructure\Persistence\Models\StockMovementModel;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 final class StockMovementService
 {
+    private const DIMENSION_COLUMNS = [
+        'available' => 'stock',
+        'reserved' => 'stock_reserved',
+        'booked' => 'stock_booked',
+        'preorder' => 'stock_preorder',
+    ];
+
     public function __construct(private StockMovementRepositoryInterface $repository) {}
 
     public function paginate(array $filters, int $perPage, ?int $storeId): LengthAwarePaginator
@@ -91,47 +99,44 @@ final class StockMovementService
         });
     }
 
-    public function recordCheckoutReservation(int $orderId): void
+    public function reserveCheckout(int $orderId): void
     {
-        DB::transaction(function () use ($orderId): void {
-            $items = DB::table('order_items')
-                ->join('sub_orders', 'sub_orders.id', '=', 'order_items.sub_order_id')
-                ->join('orders', 'orders.id', '=', 'sub_orders.order_id')
-                ->join('product_variants', 'product_variants.id', '=', 'order_items.variant_id')
-                ->where('sub_orders.order_id', $orderId)
-                ->select([
-                    'order_items.id as order_item_id',
-                    'order_items.product_id',
-                    'order_items.variant_id',
-                    'order_items.quantity',
-                    'sub_orders.store_id',
-                    'orders.order_type',
-                    DB::raw("CASE WHEN orders.order_type = 'preorder' THEN product_variants.po_stock ELSE product_variants.stock END as balance_after"),
-                ])
-                ->get();
+        foreach ($this->loadOrderItems(orderId: $orderId) as $item) {
+            foreach ($this->resolveReservationDimensions($item) as $dimension) {
+                $movementKey = 'checkout-reserved.'.$dimension;
 
-            foreach ($items as $item) {
-                if ($this->repository->existsForOrderItem((int) $item->order_item_id, 'checkout-reserved')) {
+                if ($this->repository->existsForOrderItem((int) $item->order_item_id, $movementKey)) {
                     continue;
                 }
 
-                $this->repository->save(new StockMovementModel([
-                    'store_id' => (int) $item->store_id,
-                    'product_id' => (int) $item->product_id,
-                    'variant_id' => (int) $item->variant_id,
-                    'order_id' => $orderId,
-                    'order_item_id' => (int) $item->order_item_id,
-                    'movement_key' => 'checkout-reserved',
-                    'type' => 'outbound',
-                    'quantity_delta' => -1 * (int) $item->quantity,
-                    'balance_after' => (int) $item->balance_after,
-                    'reference_type' => 'order',
-                    'reference_id' => (string) $orderId,
-                    'notes' => 'Reservasi stok saat checkout',
-                    'occurred_at' => now(),
-                ]));
+                $variant = ProductVariantModel::query()->lockForUpdate()->find((int) $item->variant_id);
+                if (! $variant) {
+                    continue;
+                }
+
+                $column = self::DIMENSION_COLUMNS[$dimension];
+                $nextBalance = (int) $variant->{$column} + (int) $item->quantity;
+                $variant->forceFill([$column => $nextBalance])->save();
+
+                $this->saveItemMovement(
+                    $orderId,
+                    $item,
+                    $movementKey,
+                    'reservation',
+                    -1 * (int) $item->quantity,
+                    $nextBalance,
+                    $dimension,
+                    'checkout',
+                    'Reservasi stok saat checkout',
+                    (string) $orderId
+                );
             }
-        });
+        }
+    }
+
+    public function commitCheckout(int $orderId): void
+    {
+        $this->commitOrderItems($orderId, null);
     }
 
     public function syncOrderStatus(int $orderId, string $previousStatus, string $nextStatus): void
@@ -141,7 +146,7 @@ final class StockMovementService
         }
 
         if ($nextStatus === 'cancelled') {
-            $this->releaseCancelledOrder($orderId);
+            $this->releaseOrderItems($orderId, null);
 
             return;
         }
@@ -150,46 +155,7 @@ final class StockMovementService
             return;
         }
 
-        DB::transaction(function () use ($orderId, $nextStatus): void {
-            $items = DB::table('order_items')
-                ->join('sub_orders', 'sub_orders.id', '=', 'order_items.sub_order_id')
-                ->join('orders', 'orders.id', '=', 'sub_orders.order_id')
-                ->join('product_variants', 'product_variants.id', '=', 'order_items.variant_id')
-                ->where('sub_orders.order_id', $orderId)
-                ->select([
-                    'order_items.id as order_item_id',
-                    'order_items.product_id',
-                    'order_items.variant_id',
-                    'sub_orders.store_id',
-                    'orders.order_type',
-                    DB::raw("CASE WHEN orders.order_type = 'preorder' THEN product_variants.po_stock ELSE product_variants.stock END as balance_after"),
-                ])
-                ->get();
-
-            foreach ($items as $item) {
-                $key = 'order-status-'.$nextStatus;
-
-                if ($this->repository->existsForOrderItem((int) $item->order_item_id, $key)) {
-                    continue;
-                }
-
-                $this->repository->save(new StockMovementModel([
-                    'store_id' => (int) $item->store_id,
-                    'product_id' => (int) $item->product_id,
-                    'variant_id' => (int) $item->variant_id,
-                    'order_id' => $orderId,
-                    'order_item_id' => (int) $item->order_item_id,
-                    'movement_key' => $key,
-                    'type' => 'status',
-                    'quantity_delta' => 0,
-                    'balance_after' => (int) $item->balance_after,
-                    'reference_type' => 'order_status',
-                    'reference_id' => $nextStatus,
-                    'notes' => 'Status pesanan berubah menjadi '.$nextStatus,
-                    'occurred_at' => now(),
-                ]));
-            }
-        });
+        $this->applyStatusTransition($orderId, null, $nextStatus);
     }
 
     public function syncSubOrderStatus(int $subOrderId, string $previousStatus, string $nextStatus): void
@@ -199,7 +165,7 @@ final class StockMovementService
         }
 
         if ($nextStatus === 'cancelled') {
-            $this->releaseCancelledSubOrder($subOrderId);
+            $this->releaseOrderItems(null, $subOrderId);
 
             return;
         }
@@ -208,152 +174,333 @@ final class StockMovementService
             return;
         }
 
-        DB::transaction(function () use ($subOrderId, $nextStatus): void {
-            $items = DB::table('order_items')
-                ->join('sub_orders', 'sub_orders.id', '=', 'order_items.sub_order_id')
-                ->join('orders', 'orders.id', '=', 'sub_orders.order_id')
-                ->join('product_variants', 'product_variants.id', '=', 'order_items.variant_id')
-                ->where('sub_orders.id', $subOrderId)
-                ->select([
-                    'order_items.id as order_item_id',
-                    'order_items.product_id',
-                    'order_items.variant_id',
-                    'sub_orders.order_id',
-                    'sub_orders.store_id',
-                    'orders.order_type',
-                    DB::raw("CASE WHEN orders.order_type = 'preorder' THEN product_variants.po_stock ELSE product_variants.stock END as balance_after"),
-                ])
-                ->get();
-
-            foreach ($items as $item) {
-                $key = 'sub-order-status-'.$nextStatus;
-
-                if ($this->repository->existsForOrderItem((int) $item->order_item_id, $key)) {
-                    continue;
-                }
-
-                $this->repository->save(new StockMovementModel([
-                    'store_id' => (int) $item->store_id,
-                    'product_id' => (int) $item->product_id,
-                    'variant_id' => (int) $item->variant_id,
-                    'order_id' => (int) $item->order_id,
-                    'order_item_id' => (int) $item->order_item_id,
-                    'movement_key' => $key,
-                    'type' => 'status',
-                    'quantity_delta' => 0,
-                    'balance_after' => (int) $item->balance_after,
-                    'reference_type' => 'sub_order_status',
-                    'reference_id' => (string) $subOrderId,
-                    'notes' => 'Status sub-order berubah menjadi '.$nextStatus,
-                    'occurred_at' => now(),
-                ]));
-            }
-        });
+        $this->applyStatusTransition(null, $subOrderId, $nextStatus);
     }
 
-    private function releaseCancelledOrder(int $orderId): void
+    private function applyStatusTransition(?int $orderId, ?int $subOrderId, string $nextStatus): void
     {
-        DB::transaction(function () use ($orderId): void {
-            $items = DB::table('order_items')
-                ->join('sub_orders', 'sub_orders.id', '=', 'order_items.sub_order_id')
-                ->join('orders', 'orders.id', '=', 'sub_orders.order_id')
-                ->where('sub_orders.order_id', $orderId)
-                ->whereNotNull('order_items.variant_id')
-                ->select([
-                    'order_items.id as order_item_id',
-                    'order_items.product_id',
-                    'order_items.variant_id',
-                    'order_items.quantity',
-                    'sub_orders.store_id',
-                    'orders.order_type',
-                ])
-                ->get();
+        DB::transaction(function () use ($orderId, $subOrderId, $nextStatus): void {
+            if ($nextStatus === 'processing') {
+                $this->commitOrderItems($orderId, $subOrderId);
+            }
 
-            foreach ($items as $item) {
-                if ($this->repository->existsForOrderItem((int) $item->order_item_id, 'cancel-release')) {
+            if ($nextStatus === 'completed') {
+                $this->releasePreorderCommit($orderId, $subOrderId);
+            }
+
+            $keyPrefix = $subOrderId !== null ? 'sub-order' : 'order';
+            $referenceType = $subOrderId !== null ? 'sub_order_status' : 'order_status';
+            $referenceId = $subOrderId !== null ? (string) $subOrderId : (string) $orderId;
+
+            foreach ($this->loadOrderItems($orderId, $subOrderId) as $item) {
+                $movementKey = $keyPrefix.'-status-'.$nextStatus;
+
+                if ($this->repository->existsForOrderItem((int) $item->order_item_id, $movementKey)) {
                     continue;
                 }
 
                 $variant = ProductVariantModel::query()->lockForUpdate()->find((int) $item->variant_id);
 
-                if (! $variant) {
-                    continue;
-                }
-
-                $stockColumn = $item->order_type === 'preorder' ? 'po_stock' : 'stock';
-                $variant->increment($stockColumn, (int) $item->quantity);
-                $variant->refresh();
-
-                $this->repository->save(new StockMovementModel([
-                    'store_id' => (int) $item->store_id,
-                    'product_id' => (int) $item->product_id,
-                    'variant_id' => (int) $item->variant_id,
-                    'order_id' => $orderId,
-                    'order_item_id' => (int) $item->order_item_id,
-                    'movement_key' => 'cancel-release',
-                    'type' => 'release',
-                    'quantity_delta' => (int) $item->quantity,
-                    'balance_after' => (int) $variant->{$stockColumn},
-                    'reference_type' => 'order_cancelled',
-                    'reference_id' => (string) $orderId,
-                    'notes' => 'Stok dikembalikan karena pesanan dibatalkan',
-                    'occurred_at' => now(),
-                ]));
+                $this->saveItemMovement(
+                    (int) ($item->order_id ?? $orderId),
+                    $item,
+                    $movementKey,
+                    'status',
+                    0,
+                    (int) ($variant?->stock ?? 0),
+                    'available',
+                    $referenceType,
+                    'Status pesanan berubah menjadi '.$nextStatus,
+                    $referenceId
+                );
             }
         });
     }
 
-    private function releaseCancelledSubOrder(int $subOrderId): void
+    private function commitOrderItems(?int $orderId, ?int $subOrderId): void
     {
-        DB::transaction(function () use ($subOrderId): void {
-            $items = DB::table('order_items')
-                ->join('sub_orders', 'sub_orders.id', '=', 'order_items.sub_order_id')
-                ->join('orders', 'orders.id', '=', 'sub_orders.order_id')
-                ->where('sub_orders.id', $subOrderId)
-                ->whereNotNull('order_items.variant_id')
-                ->select([
-                    'order_items.id as order_item_id',
-                    'order_items.product_id',
-                    'order_items.variant_id',
-                    'order_items.quantity',
-                    'sub_orders.order_id',
-                    'sub_orders.store_id',
-                    'orders.order_type',
-                ])
-                ->get();
+        if (($orderId === null) === ($subOrderId === null)) {
+            throw new InvalidArgumentException('commitOrderItems membutuhkan orderId atau subOrderId yang spesifik.');
+        }
 
-            foreach ($items as $item) {
-                if ($this->repository->existsForOrderItem((int) $item->order_item_id, 'cancel-release')) {
-                    continue;
-                }
-
-                $variant = ProductVariantModel::query()->lockForUpdate()->find((int) $item->variant_id);
-
-                if (! $variant) {
-                    continue;
-                }
-
-                $stockColumn = $item->order_type === 'preorder' ? 'po_stock' : 'stock';
-                $variant->increment($stockColumn, (int) $item->quantity);
-                $variant->refresh();
-
-                $this->repository->save(new StockMovementModel([
-                    'store_id' => (int) $item->store_id,
-                    'product_id' => (int) $item->product_id,
-                    'variant_id' => (int) $item->variant_id,
-                    'order_id' => (int) $item->order_id,
-                    'order_item_id' => (int) $item->order_item_id,
-                    'movement_key' => 'cancel-release',
-                    'type' => 'release',
-                    'quantity_delta' => (int) $item->quantity,
-                    'balance_after' => (int) $variant->{$stockColumn},
-                    'reference_type' => 'sub_order_cancelled',
-                    'reference_id' => (string) $subOrderId,
-                    'notes' => 'Stok dikembalikan karena sub-order dibatalkan',
-                    'occurred_at' => now(),
-                ]));
+        foreach ($this->loadOrderItems($orderId, $subOrderId) as $item) {
+            if ($this->repository->existsForOrderItem((int) $item->order_item_id, 'paid-commit.available')
+                || $this->repository->existsForOrderItem((int) $item->order_item_id, 'paid-commit.preorder')) {
+                continue;
             }
-        });
+
+            $variant = ProductVariantModel::query()->lockForUpdate()->find((int) $item->variant_id);
+            if (! $variant) {
+                continue;
+            }
+
+            $quantity = (int) $item->quantity;
+            $orderIdValue = (int) ($item->order_id ?? $orderId);
+
+            foreach (['reserved', 'booked', 'preorder'] as $dimension) {
+                if (! $this->repository->existsForOrderItem((int) $item->order_item_id, 'checkout-reserved.'.$dimension)) {
+                    continue;
+                }
+
+                if ($dimension === 'preorder') {
+                    $this->saveItemMovement(
+                        $orderIdValue,
+                        $item,
+                        'paid-commit.preorder',
+                        'status',
+                        0,
+                        (int) $variant->stock_preorder,
+                        'preorder',
+                        'payment',
+                        'Komitmen preorder dikonfirmasi, menunggu produksi',
+                        (string) $orderIdValue
+                    );
+
+                    continue;
+                }
+
+                $column = self::DIMENSION_COLUMNS[$dimension];
+                $nextBalance = (int) $variant->{$column} - $quantity;
+                $variant->forceFill([$column => $nextBalance])->save();
+
+                $this->saveItemMovement(
+                    $orderIdValue,
+                    $item,
+                    'paid-commit.'.$dimension,
+                    'outbound',
+                    -1 * $quantity,
+                    $nextBalance,
+                    $dimension,
+                    'payment',
+                    'Komitmen '.$dimension.' dipotong saat pembayaran berhasil',
+                    (string) $orderIdValue
+                );
+            }
+
+            if ($this->repository->existsForOrderItem((int) $item->order_item_id, 'checkout-reserved.reserved')
+                || $this->repository->existsForOrderItem((int) $item->order_item_id, 'checkout-reserved.booked')) {
+                $nextStock = (int) $variant->stock - $quantity;
+                $variant->forceFill(['stock' => $nextStock])->save();
+
+                $this->saveItemMovement(
+                    $orderIdValue,
+                    $item,
+                    'paid-commit.available',
+                    'outbound',
+                    -1 * $quantity,
+                    $nextStock,
+                    'available',
+                    'payment',
+                    'Stok terpotong saat pembayaran berhasil',
+                    (string) $orderIdValue
+                );
+            }
+        }
+    }
+
+    private function releasePreorderCommit(?int $orderId, ?int $subOrderId): void
+    {
+        foreach ($this->loadOrderItems($orderId, $subOrderId) as $item) {
+            if (! $this->repository->existsForOrderItem((int) $item->order_item_id, 'paid-commit.preorder')) {
+                continue;
+            }
+
+            if ($this->repository->existsForOrderItem((int) $item->order_item_id, 'preorder-fulfilled')) {
+                continue;
+            }
+
+            $variant = ProductVariantModel::query()->lockForUpdate()->find((int) $item->variant_id);
+            if (! $variant) {
+                continue;
+            }
+
+            $quantity = (int) $item->quantity;
+            $nextBalance = (int) $variant->stock_preorder - $quantity;
+            $variant->forceFill(['stock_preorder' => $nextBalance])->save();
+
+            $this->saveItemMovement(
+                (int) ($item->order_id ?? $orderId),
+                $item,
+                'preorder-fulfilled',
+                'outbound',
+                -1 * $quantity,
+                $nextBalance,
+                'preorder',
+                'order_completed',
+                'Komitmen preorder terpenuhi',
+                (string) ($item->order_id ?? $orderId)
+            );
+        }
+    }
+
+    private function releaseOrderItems(?int $orderId, ?int $subOrderId): void
+    {
+        foreach ($this->loadOrderItems($orderId, $subOrderId) as $item) {
+            $variant = ProductVariantModel::query()->lockForUpdate()->find((int) $item->variant_id);
+            if (! $variant) {
+                continue;
+            }
+
+            $quantity = (int) $item->quantity;
+            $orderIdValue = (int) ($item->order_id ?? $orderId);
+            $committed = $this->repository->existsForOrderItem((int) $item->order_item_id, 'paid-commit.available')
+                || $this->repository->existsForOrderItem((int) $item->order_item_id, 'paid-commit.preorder');
+
+            if ($committed) {
+                $physical = $this->repository->existsForOrderItem((int) $item->order_item_id, 'checkout-reserved.reserved')
+                    || $this->repository->existsForOrderItem((int) $item->order_item_id, 'checkout-reserved.booked');
+
+                if ($physical) {
+                    $nextBalance = (int) $variant->stock + $quantity;
+                    $variant->forceFill(['stock' => $nextBalance])->save();
+
+                    $this->saveItemMovement(
+                        $orderIdValue,
+                        $item,
+                        'cancel-release.available',
+                        'release',
+                        $quantity,
+                        $nextBalance,
+                        'available',
+                        'order_cancelled',
+                        'Stok dikembalikan karena pesanan dibatalkan',
+                        (string) $orderIdValue
+                    );
+                } else {
+                    $this->saveItemMovement(
+                        $orderIdValue,
+                        $item,
+                        'cancel-release.preorder',
+                        'status',
+                        0,
+                        (int) $variant->stock_preorder,
+                        'preorder',
+                        'order_cancelled',
+                        'Komitmen preorder dibatalkan',
+                        (string) $orderIdValue
+                    );
+                }
+
+                continue;
+            }
+
+            foreach (['reserved', 'booked', 'preorder'] as $dimension) {
+                if (! $this->repository->existsForOrderItem((int) $item->order_item_id, 'checkout-reserved.'.$dimension)) {
+                    continue;
+                }
+
+                $column = self::DIMENSION_COLUMNS[$dimension];
+                $nextBalance = (int) $variant->{$column} - $quantity;
+                $variant->forceFill([$column => $nextBalance])->save();
+
+                $this->saveItemMovement(
+                    $orderIdValue,
+                    $item,
+                    'cancel-release.'.$dimension,
+                    'release',
+                    -1 * $quantity,
+                    $nextBalance,
+                    $dimension,
+                    'order_cancelled',
+                    'Komitmen '.$dimension.' dilepas karena pesanan dibatalkan',
+                    (string) $orderIdValue
+                );
+            }
+        }
+    }
+
+    private function loadOrderItems(?int $orderId, ?int $subOrderId): Collection
+    {
+        if (($orderId === null) === ($subOrderId === null)) {
+            throw new InvalidArgumentException('loadOrderItems membutuhkan orderId atau subOrderId yang spesifik.');
+        }
+
+        $query = DB::table('order_items')
+            ->join('sub_orders', 'sub_orders.id', '=', 'order_items.sub_order_id')
+            ->join('orders', 'orders.id', '=', 'sub_orders.order_id')
+            ->join('product_variants', 'product_variants.id', '=', 'order_items.variant_id')
+            ->join('products', 'products.id', '=', 'product_variants.product_id')
+            ->whereNotNull('order_items.variant_id')
+            ->select([
+                'order_items.id as order_item_id',
+                'order_items.product_id',
+                'order_items.variant_id',
+                'order_items.quantity',
+                'sub_orders.id as sub_order_id',
+                'sub_orders.order_id',
+                'sub_orders.store_id',
+                'orders.order_type',
+                'product_variants.stock',
+                'product_variants.stock_reserved',
+                'product_variants.stock_booked',
+                'product_variants.stock_preorder',
+                'product_variants.max_order_qty',
+                'products.allows_preorder',
+            ]);
+
+        if ($orderId !== null) {
+            $query->where('sub_orders.order_id', $orderId);
+        } else {
+            $query->where('sub_orders.id', $subOrderId);
+        }
+
+        return $query->get();
+    }
+
+    private function resolveReservationDimensions(object $item): array
+    {
+        $quantity = (int) $item->quantity;
+        $maxOrderQty = (int) $item->max_order_qty;
+
+        if ($maxOrderQty > 0 && $quantity > $maxOrderQty) {
+            throw new InvalidArgumentException('Jumlah pesanan melebihi batas order toko (maksimal '.$maxOrderQty.' unit).');
+        }
+
+        $available = max(0, (int) $item->stock - (int) $item->stock_reserved - (int) $item->stock_booked);
+
+        if ($quantity <= $available) {
+            return $item->order_type === 'booking' ? ['reserved', 'booked'] : ['reserved'];
+        }
+
+        if ((int) $item->stock === 0) {
+            if ((bool) $item->allows_preorder) {
+                return ['preorder'];
+            }
+
+            throw new InvalidArgumentException('Stok varian habis dan preorder untuk produk ini tidak tersedia.');
+        }
+
+        throw new InvalidArgumentException('Stok tidak mencukupi. Tersedia '.$available.' unit.');
+    }
+
+    private function saveItemMovement(
+        int $orderId,
+        object $item,
+        string $movementKey,
+        string $type,
+        int $delta,
+        int $balanceAfter,
+        string $dimension,
+        string $referenceType,
+        string $notes,
+        ?string $referenceId = null
+    ): void {
+        $this->repository->save(new StockMovementModel([
+            'store_id' => (int) $item->store_id,
+            'product_id' => (int) $item->product_id,
+            'variant_id' => (int) $item->variant_id,
+            'order_id' => $orderId,
+            'order_item_id' => (int) $item->order_item_id,
+            'movement_key' => $movementKey,
+            'type' => $type,
+            'quantity_delta' => $delta,
+            'balance_after' => $balanceAfter,
+            'stock_dimension' => $dimension,
+            'reference_type' => $referenceType,
+            'reference_id' => $referenceId,
+            'notes' => $notes,
+            'occurred_at' => now(),
+        ]));
     }
 
     private function consumeRawMaterialsForProduction(int $productId, int $storeId, int $producedQuantity, string $referenceType, mixed $referenceId, mixed $occurredAt): void

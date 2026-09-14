@@ -41,6 +41,10 @@ final class CreateProductVariantUseCase
                 price: (float) ($data['price'] ?? 0),
                 stock: 0,
                 poStock: max(0, (int) ($data['po_stock'] ?? 0)),
+                stockReserved: 0,
+                stockBooked: 0,
+                stockPreorder: 0,
+                maxOrderQty: max(1, (int) ($data['max_order_qty'] ?? 999999)),
                 isDefault: (bool) ($data['is_default'] ?? false)
             ));
 

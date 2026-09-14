@@ -9,6 +9,8 @@ use App\Domains\Order\Ordering\Infrastructure\Mail\OrderCancelledMail;
 use App\Domains\Order\Ordering\Infrastructure\Mail\OrderConfirmedMail;
 use App\Domains\Order\Ordering\Infrastructure\Mail\OrderDeliveredMail;
 use App\Domains\Order\Ordering\Infrastructure\Mail\OrderShippedMail;
+use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
+use App\Domains\Seller\Finance\Application\Services\AutoOrderIncomeService;
 use DomainException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -26,7 +28,8 @@ class UpdateOrderStatusUseCase
 
     public function __construct(
         private OrderRepositoryInterface $orderRepository,
-        private MissionService $missionService
+        private MissionService $missionService,
+        private AutoOrderIncomeService $autoOrderIncome
     ) {}
 
     public function execute(int $orderId, string $status, ?string $reason = null): void
@@ -66,6 +69,15 @@ class UpdateOrderStatusUseCase
                 'order_id' => $orderId,
                 'order_type' => $order->orderType,
             ]);
+
+            SubOrderModel::query()
+                ->where('order_id', $orderId)
+                ->where('status', 'completed')
+                ->get()
+                ->each(fn (SubOrderModel $subOrder) => $this->autoOrderIncome->recordForSubOrder(
+                    (int) $subOrder->id,
+                    $order->userId
+                ));
         }
     }
 

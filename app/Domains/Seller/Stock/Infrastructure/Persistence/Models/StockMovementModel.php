@@ -31,6 +31,7 @@ final class StockMovementModel extends Model
         'type',
         'quantity_delta',
         'balance_after',
+        'stock_dimension',
         'reference_type',
         'reference_id',
         'notes',

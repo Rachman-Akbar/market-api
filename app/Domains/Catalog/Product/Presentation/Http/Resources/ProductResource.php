@@ -32,6 +32,10 @@ final class ProductResource extends JsonResource
         }
 
         $store = $product->store();
+        $internal = ProductVariantResource::isInternalRequest($request);
+        $available = $targetVariant ? $targetVariant->availableStock() : 0;
+        $targetMaxOrderQty = $targetVariant ? $targetVariant->maxOrderQty() : 999999;
+        $targetAllowsPreorder = $targetVariant ? $targetVariant->allowsPreorder() : false;
 
         return [
             'id' => $product->id(),
@@ -48,8 +52,11 @@ final class ProductResource extends JsonResource
             'sku' => $targetVariant ? $targetVariant->sku() : null,
             'price' => $targetVariant ? $targetVariant->price() : 0.0,
             'stock' => $targetVariant ? $targetVariant->stock() : 0,
-            'po_stock' => $targetVariant ? $targetVariant->poStock() : 0,
-            'total_stock' => $targetVariant ? $targetVariant->totalStock() : 0,
+            'available_stock' => $available,
+            'allows_preorder' => (bool) $targetAllowsPreorder,
+            'max_order_qty' => $targetMaxOrderQty,
+            'po_stock' => $internal && $targetVariant ? $targetVariant->poStock() : null,
+            'total_stock' => $internal && $targetVariant ? $targetVariant->totalStock() : $available,
             'average_rating' => $product->averageRating(),
             'review_count' => $product->reviewCount(),
             'description' => $product->description(),

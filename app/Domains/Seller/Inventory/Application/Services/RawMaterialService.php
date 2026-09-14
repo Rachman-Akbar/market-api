@@ -15,7 +15,10 @@ use InvalidArgumentException;
 
 final class RawMaterialService
 {
-    public function __construct(private ProductCostingService $productCostingService) {}
+    public function __construct(
+        private ProductCostingService $productCostingService,
+        private RawMaterialMutasiNotifier $mutasiNotifier,
+    ) {}
 
     public function paginate(array $filters, int $perPage, ?int $storeId): LengthAwarePaginator
     {
@@ -135,6 +138,9 @@ final class RawMaterialService
             $material->stock = $after;
             $material->save();
 
+            $referenceType = trim((string) ($data['reference_type'] ?? 'manual')) !== '' ? (string) $data['reference_type'] : $movementType;
+            $referenceNumber = $this->referenceNumber($material, $movementType, $data['reference_number'] ?? null);
+
             $movement = RawMaterialStockMovementModel::query()->create([
                 'store_id' => $material->store_id,
                 'raw_material_id' => $material->id,
@@ -143,8 +149,8 @@ final class RawMaterialService
                 'balance_after' => $after,
                 'unit_cost' => $unitCost,
                 'total_cost' => abs($delta) * $unitCost,
-                'reference_type' => $data['reference_type'] ?? 'manual',
-                'reference_number' => $data['reference_number'] ?? null,
+                'reference_type' => $referenceType,
+                'reference_number' => $referenceNumber,
                 'notes' => $data['notes'] ?? null,
                 'occurred_at' => $data['occurred_at'] ?? now(),
             ]);
@@ -156,15 +162,53 @@ final class RawMaterialService
                     $oldAverageCost,
                     $newAverageCost,
                     $movement->id,
-                    (string) ($data['reference_type'] ?? 'restock'),
-                    $data['reference_number'] ?? null,
+                    $referenceType,
+                    $referenceNumber,
                     $movement->occurred_at
                 );
                 $this->productCostingService->refreshForRawMaterial($material->id, $history->id, $movement->occurred_at);
             }
 
+            $this->mutasiNotifier->notify([
+                'store_id' => $material->store_id,
+                'material_code' => $material->code,
+                'material_name' => $material->name,
+                'unit' => $material->unit,
+                'movement_type' => $movementType,
+                'delta' => $delta,
+                'balance_after' => $after,
+                'unit_cost' => $unitCost,
+                'average_cost_before' => $oldAverageCost,
+                'average_cost_after' => $newAverageCost,
+                'reference_type' => $referenceType,
+                'reference_number' => $referenceNumber,
+                'notes' => $data['notes'] ?? null,
+                'occurred_at' => $movement->occurred_at,
+            ]);
+
             return $material->refresh();
         });
+    }
+
+    private function referenceNumber(RawMaterialModel $material, string $movementType, mixed $provided): string
+    {
+        $provided = trim((string) $provided);
+        if ($provided !== '') {
+            return $provided;
+        }
+
+        $prefix = match ($movementType) {
+            'restock' => 'RM-RSK',
+            'usage' => 'RM-USG',
+            'production_usage' => 'RM-PRD',
+            default => 'RM-ADJ',
+        };
+        $sequence = RawMaterialStockMovementModel::query()
+            ->where('store_id', $material->store_id)
+            ->whereDate('occurred_at', today()->toDateString())
+            ->count() + 1;
+
+        return $prefix.'-'.today()->format('Ymd').'-'.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
     }
 
     private function recordCostHistory(RawMaterialModel $material, float $oldCost, float $newCost, ?int $movementId, string $referenceType, ?string $referenceNumber, mixed $occurredAt): RawMaterialCostHistoryModel

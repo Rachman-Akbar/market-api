@@ -44,7 +44,7 @@ class CreateOrderUseCase
         ?string $voucherCode = null,
         string $orderType = 'normal',
         ?string $preorderReleaseAt = null,
-        ?string $bookingExpiresAt = null
+        ?string $scheduledAt = null
     ): Order {
         if (trim($userId) === '') {
             throw new RuntimeException('Sesi Anda telah berakhir. Silakan login kembali.');
@@ -191,8 +191,10 @@ class CreateOrderUseCase
             $customer,
             $orderType,
             $preorderReleaseAt,
-            $bookingExpiresAt
+            $scheduledAt
         ): Order {
+            $orderType = $this->resolveOrderType($orderType, $groups, $scheduledAt);
+
             [$voucherId, $discountAmount, $shippingDiscountAmount] = $this->calculateVoucher(
                 $userId,
                 $voucherCode,
@@ -209,22 +211,6 @@ class CreateOrderUseCase
                 $storeItemsTotal = 0.0;
 
                 foreach ($items as $item) {
-                    $stockColumn = $orderType === 'preorder' ? 'po_stock' : 'stock';
-                    $stockLabel = $orderType === 'preorder' ? 'stok pre-order (PO)' : 'stok';
-
-                    $lockedVariant = DB::table('product_variants')
-                        ->where('id', $item['variant_id'])
-                        ->lockForUpdate()
-                        ->first();
-
-                    if (! $lockedVariant || (int) $lockedVariant->{$stockColumn} < (int) $item['quantity']) {
-                        throw new RuntimeException("Stok {$item['product_name']} tidak mencukupi. {$stockLabel} varian tersebut habis.");
-                    }
-
-                    DB::table('product_variants')
-                        ->where('id', $item['variant_id'])
-                        ->decrement($stockColumn, $item['quantity']);
-
                     $storeItemsTotal += $item['price'] * $item['quantity'];
                     $label = $item['variant_name'] && $item['variant_name'] !== $item['product_name']
                         ? $item['product_name'].' - '.$item['variant_name']
@@ -275,7 +261,7 @@ class CreateOrderUseCase
                 orderNumber: $orderNumber,
                 orderType: $orderType,
                 preorderReleaseAt: $orderType === 'preorder' ? $preorderReleaseAt : null,
-                bookingExpiresAt: $orderType === 'booking' ? $bookingExpiresAt : null,
+                scheduledAt: $orderType === 'booking' ? $scheduledAt : null,
                 receivedAt: null,
                 userId: $userId,
                 voucherId: $voucherId,
@@ -291,7 +277,12 @@ class CreateOrderUseCase
             );
 
             $created = $this->orderRepository->create($order);
-            $this->stockMovementService->recordCheckoutReservation((int) $created->id);
+            $this->stockMovementService->reserveCheckout((int) $created->id);
+
+            if ($grossAmount <= 0) {
+                $this->stockMovementService->commitCheckout((int) $created->id);
+            }
+
             $this->paymentRepository->save(new Payment(
                 id: null,
                 orderNumber: $orderNumber,
@@ -345,6 +336,72 @@ class CreateOrderUseCase
 
             return $created;
         });
+    }
+
+    private function resolveOrderType(string $requestedType, array $groups, ?string $scheduledAt): string
+    {
+        $requestedType = in_array($requestedType, ['normal', 'preorder', 'booking'], true) ? $requestedType : 'normal';
+        $needsPreorder = false;
+
+        foreach ($groups as $items) {
+            foreach ($items as $item) {
+                $variant = DB::table('product_variants')
+                    ->where('id', $item['variant_id'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $variant) {
+                    throw new RuntimeException("Data varian {$item['product_name']} tidak ditemukan.");
+                }
+
+                $maxOrderQty = (int) $variant->max_order_qty;
+                if ($maxOrderQty > 0 && (int) $item['quantity'] > $maxOrderQty) {
+                    throw new RuntimeException(
+                        "Maksimal {$maxOrderQty} unit {$item['product_name']} per pesanan (batas order toko)."
+                    );
+                }
+
+                $available = (int) $variant->stock - (int) $variant->stock_reserved - (int) $variant->stock_booked;
+                $available = max(0, $available);
+                $quantity = (int) $item['quantity'];
+
+                if ($quantity <= $available) {
+                    continue;
+                }
+
+                if ((int) $variant->stock === 0) {
+                    $allowsPreorder = (bool) DB::table('products')
+                        ->where('id', $item['product_id'])
+                        ->value('allows_preorder');
+
+                    if (! $allowsPreorder) {
+                        throw new RuntimeException("Stok {$item['product_name']} habis dan preorder untuk produk ini tidak tersedia.");
+                    }
+
+                    $needsPreorder = true;
+
+                    continue;
+                }
+
+                throw new RuntimeException(
+                    "Stok {$item['product_name']} tidak mencukupi. Tersedia {$available} unit. Kurangi jumlah pesanan."
+                );
+            }
+        }
+
+        if ($needsPreorder) {
+            return 'preorder';
+        }
+
+        if ($requestedType === 'booking') {
+            if ($scheduledAt === null) {
+                throw new RuntimeException('Jadwal kirim/pickup wajib diisi untuk pesanan booking.');
+            }
+
+            return 'booking';
+        }
+
+        return $requestedType === 'preorder' ? 'preorder' : 'normal';
     }
 
     private function calculateVoucher(

@@ -15,6 +15,11 @@ final class ProductVariant
         private readonly float $price,
         private readonly int $stock,
         private readonly ?int $poStock = 0,
+        private readonly ?int $stockReserved = 0,
+        private readonly ?int $stockBooked = 0,
+        private readonly ?int $stockPreorder = 0,
+        private readonly ?int $maxOrderQty = 999999,
+        private readonly ?bool $allowsPreorder = null,
         private readonly bool $isDefault = false,
         private readonly array $values = [],
         private readonly ?string $createdAt = null,
@@ -59,6 +64,36 @@ final class ProductVariant
     public function poStock(): int
     {
         return (int) $this->poStock;
+    }
+
+    public function stockReserved(): int
+    {
+        return (int) $this->stockReserved;
+    }
+
+    public function stockBooked(): int
+    {
+        return (int) $this->stockBooked;
+    }
+
+    public function stockPreorder(): int
+    {
+        return (int) $this->stockPreorder;
+    }
+
+    public function maxOrderQty(): int
+    {
+        return (int) $this->maxOrderQty;
+    }
+
+    public function allowsPreorder(): ?bool
+    {
+        return $this->allowsPreorder;
+    }
+
+    public function availableStock(): int
+    {
+        return max(0, $this->stock() - $this->stockReserved() - $this->stockBooked());
     }
 
     public function totalStock(): int

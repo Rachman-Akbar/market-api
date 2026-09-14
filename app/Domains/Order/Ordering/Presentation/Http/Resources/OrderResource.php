@@ -53,7 +53,7 @@ final class OrderResource extends JsonResource
             'order_number' => $this->read($order, 'orderNumber') ?? $this->read($order, 'order_number'),
             'order_type' => $this->read($order, 'orderType') ?? $this->read($order, 'order_type') ?? 'normal',
             'preorder_release_at' => $this->date($this->read($order, 'preorderReleaseAt') ?? $this->read($order, 'preorder_release_at')),
-            'booking_expires_at' => $this->date($this->read($order, 'bookingExpiresAt') ?? $this->read($order, 'booking_expires_at')),
+            'scheduled_at' => $this->date($this->read($order, 'scheduledAt') ?? $this->read($order, 'scheduled_at')),
             'received_at' => $this->date($this->read($order, 'receivedAt') ?? $this->read($order, 'received_at')),
             'user_id' => $this->read($order, 'userId') ?? $this->read($order, 'user_id'),
             'status' => $this->read($order, 'status'),
