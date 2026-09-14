@@ -46,15 +46,10 @@
   /* ---------- canvas ---------- */
   .canvas{position:relative; margin-top:16px; background:#fff;
     border:1px solid var(--line); border-radius:16px; box-shadow:0 10px 30px rgba(15,23,42,.06);
-    box-sizing:content-box; max-width:100%; overflow:hidden; cursor:grab;
-    touch-action:none; user-select:none; -webkit-user-select:none;}
-  .canvas.panning{cursor:grabbing;}
-  #view{position:absolute; top:0; left:0; transform-origin:0 0; will-change:transform;}
-  #svg{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0;}
-  #svgTop{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2;}
-  #svg.hl{z-index:3;}
+    box-sizing:content-box;}
+  #svg{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1;}
   .panel{position:absolute; background:var(--panel-bg);
-    border:1px solid var(--line); border-radius:12px; overflow:hidden; z-index:1;}
+    border:1px solid var(--line); border-radius:12px; overflow:hidden;}
   .panel .pbar{display:flex; align-items:center; gap:8px; padding:9px 12px; color:#fff;
     font-weight:800; font-size:12.5px;}
   .panel .pbar .cnt{margin-left:auto; background:rgba(255,255,255,.25); border-radius:999px;
@@ -75,9 +70,6 @@
     overflow:hidden; text-overflow:ellipsis; max-width:92px;}
   .tbl .c .cb{display:inline-flex; gap:3px;}
   .tbl .c:hover{background:#f8fafc;}
-  .tbl{cursor:pointer;}
-  .tbl.active{box-shadow:0 0 0 2px #fff, 0 0 0 4.5px var(--hl,#3b82f6), 0 12px 22px rgba(15,23,42,.22);}
-  .tbl.conn{box-shadow:0 0 0 2px #fff, 0 0 0 4px var(--hl,#3b82f6);}
 
   /* ---------- print ---------- */
   @page{size:landscape; margin:8mm;}
@@ -86,8 +78,7 @@
     .noprint{max-width:none;}
     .head{border-radius:0;}
     .legend{margin-top:8px;}
-    .canvas{border-radius:0; box-shadow:none; border:none; margin-top:8px; max-width:none;}
-    .toolbar{display:none;}
+    .canvas{border-radius:0; box-shadow:none; border:none; margin-top:8px;}
     .tbl .c:hover{background:transparent;}
     .no-page-break{break-inside:avoid;}
   }
@@ -96,22 +87,6 @@
     background:#fefce8; border:1px solid #fde68a; border-radius:10px; padding:10px 14px; line-height:1.6;}
   .tip b{color:#92400e;}
   .nb{color:#94a3b8; font-size:9.5px;}
-
-  /* ---------- toolbar ---------- */
-  .toolbar{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:14px auto 0;
-    font-size:11px; color:var(--muted); max-width:1400px;}
-  .tb-group{display:flex; align-items:center; gap:2px; background:#fff; border:1px solid var(--line);
-    border-radius:10px; padding:3px; box-shadow:0 2px 8px rgba(15,23,42,.05);}
-  .tb-group button{background:transparent; border:0; cursor:pointer; font-weight:700; font-size:12px;
-    color:#334155; padding:5px 10px; border-radius:7px; line-height:1;}
-  .tb-group button:hover{background:#f1f5f9;}
-  .tb-group button:active{background:#e2e8f0;}
-  .tb-group .zval{font-weight:800; color:#0f172a; min-width:42px; text-align:center; font-size:11px;}
-  .btn-edge{background:#fff; border:1px solid var(--line); color:#334155; cursor:pointer; font-weight:600;
-    font-size:11px; padding:6px 12px; border-radius:10px; box-shadow:0 2px 8px rgba(15,23,42,.05);}
-  .btn-edge:hover{background:#f8fafc;}
-  .btn-edge.on{color:#fff; background:#3b82f6; border-color:#3b82f6;}
-  .tb-hint{color:#94a3b8; font-size:10.5px; line-height:1.5;}
 </style>
 </head>
 <body>
@@ -147,24 +122,9 @@
     </div>
   </div>
 
-  <div class="toolbar noprint">
-    <div class="tb-group">
-      <button id="zIn" title="Perbesar">+</button>
-      <button id="zOut" title="Perkecil">&minus;</button>
-      <button id="zReset" title="Kembalikan ke 100%">100%</button>
-      <button id="zFit" title="Sesuaikan dengan lebar layar">Fit</button>
-      <span class="zval" id="zVal">100%</span>
-    </div>
-    <button class="btn-edge" id="togEdges">Sembunyikan garis relasi</button>
-    <span class="tb-hint">Scroll = memperbesar/menjauhkan &middot; tahan &amp; seret = menggeser tampilan &middot; arahkan kursor ke tabel untuk menyorot relasinya &middot; klik tabel = kunci sorotan &middot; klik area kosong = lepas kunci.</span>
-  </div>
-
   <div class="canvas" id="canvas" style="min-width:1500px; padding:0;">
-    <div id="view">
-      <svg id="svg"></svg>
-      <svg id="svgTop"></svg>
-      <div id="panels"></div>
-    </div>
+    <svg id="svg"></svg>
+    <div id="panels"></div>
   </div>
 
   <div class="nb noprint" style="margin-top:8px;">
@@ -177,16 +137,14 @@ const PANEL_W = 850, COLS = 4, PAD = 26, COL_GAP = 34, ROW_GAP = 26;
 
 const canvas = document.getElementById('canvas');
 const svg = document.getElementById('svg');
-const svgTop = document.getElementById('svgTop');
-const view = document.getElementById('view');
 const panelsBox = document.getElementById('panels');
 
-const NS = 'http://www.w3.org/2000/svg';
 const grey = '#94a3b8';
 const TBL_EL = new Map();
 
 // ---------- build panels ----------
 const colTops = new Array(COLS).fill(PAD);
+const modEls = [];
 DATA.modules.forEach((m) => {
   const panel = document.createElement('div');
   panel.className = 'panel';
@@ -214,8 +172,6 @@ DATA.modules.forEach((m) => {
   m.tables.forEach((t) => {
     const card = document.createElement('div');
     card.className = 'tbl no-page-break';
-    card.dataset.key = m.id + '::' + t.name;
-    card.dataset.color = m.color;
     const h = document.createElement('div');
     h.className = 'tbh';
     h.style.background = m.color;
@@ -237,292 +193,75 @@ DATA.modules.forEach((m) => {
   panelsBox.appendChild(panel);
 
   colTops[m.col] += panel.offsetHeight + ROW_GAP;
+  modEls.push(panel);
 });
 
-// ---------- canvas & view size ----------
+// ---------- canvas size ----------
 const cw = PAD * 2 + COLS * PANEL_W + (COLS - 1) * COL_GAP;
 const ch = Math.max(...colTops) + PAD;
 canvas.style.width = cw + 'px';
 canvas.style.height = ch + 'px';
-view.style.width = cw + 'px';
-view.style.height = ch + 'px';
 svg.setAttribute('width', cw);
 svg.setAttribute('height', ch);
 svg.setAttribute('viewBox', '0 0 ' + cw + ' ' + ch);
-svgTop.setAttribute('width', cw);
-svgTop.setAttribute('height', ch);
-svgTop.setAttribute('viewBox', '0 0 ' + cw + ' ' + ch);
 
-// ---------- geometry helpers ----------
-function rectOf(el) {
+// ---------- edge drawing ----------
+function center(el) {
   const c = canvas.getBoundingClientRect();
   const r = el.getBoundingClientRect();
-  return { x: r.left - c.left, y: r.top - c.top, w: r.width, h: r.height };
-}
-function center(el) { const r = rectOf(el); return { x: r.x + r.w / 2, y: r.y + r.h / 2 }; }
-function clipPoint(cx, cy, tx, ty, r) {
-  let dx = tx - cx, dy = ty - cy;
-  if (!dx && !dy) return { x: cx, y: cy };
-  const sx = dx > 0 ? r.x + r.w : r.x;
-  const sy = dy > 0 ? r.y + r.h : r.y;
-  let t = Infinity;
-  if (dx !== 0) { const t0 = (sx - cx) / dx; if (t0 >= 0 && t0 < t) t = t0; }
-  if (dy !== 0) { const t1 = (sy - cy) / dy; if (t1 >= 0 && t1 < t) t = t1; }
-  if (!isFinite(t)) t = 0;
-  return { x: cx + dx * t, y: cy + dy * t };
-}
-function endpoints(from, to) {
-  const af = center(from), at = center(to);
-  const rf = rectOf(from), rt = rectOf(to);
-  return [clipPoint(af.x, af.y, at.x, at.y, rf), clipPoint(at.x, at.y, af.x, af.y, rt)];
+  return {
+    x: r.left - c.left + r.width / 2,
+    y: r.top - c.top + r.height / 2,
+  };
 }
 
-// ---------- arrow markers (kept in the top layer so always visible) ----------
-function addMarker(color) {
-  const id = 'arr-' + color.replace('#', '');
-  let mk = document.getElementById(id);
-  if (!mk) {
-    mk = document.createElementNS(NS, 'marker');
-    mk.setAttribute('id', id);
-    mk.setAttribute('viewBox', '0 0 10 10');
-    mk.setAttribute('refX', '9');
-    mk.setAttribute('refY', '5');
-    mk.setAttribute('markerWidth', '5.5');
-    mk.setAttribute('markerHeight', '5.5');
-    mk.setAttribute('orient', 'auto');
-    const p = document.createElementNS(NS, 'path');
-    p.setAttribute('d', 'M 0 1 L 9 5 L 0 9 z');
-    p.setAttribute('fill', color);
-    mk.appendChild(p);
-    svgTop.appendChild(mk);
+function defs(id, color) {
+  let m = document.getElementById(id);
+  if (!m) {
+    m = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    m.setAttribute('id', id);
+    m.setAttribute('viewBox', '0 0 10 10');
+    m.setAttribute('refX', '9');
+    m.setAttribute('refY', '5');
+    m.setAttribute('markerWidth', '6');
+    m.setAttribute('markerHeight', '6');
+    m.setAttribute('orient', 'auto-start-reverse');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+    path.setAttribute('fill', color);
+    m.appendChild(path);
+    svg.appendChild(m);
   }
   return 'url(#' + id + ')';
 }
 
-function lineEl(x1, y1, x2, y2, color, arrow) {
-  const l = document.createElementNS(NS, 'line');
-  l.setAttribute('x1', x1); l.setAttribute('y1', y1);
-  l.setAttribute('x2', x2); l.setAttribute('y2', y2);
-  l.setAttribute('stroke', color);
-  l.setAttribute('stroke-width', '1.1');
-  l.setAttribute('stroke-opacity', '0.32');
-  l.setAttribute('stroke-linecap', 'round');
-  if (arrow) l.setAttribute('marker-end', addMarker(color));
-  l.classList.add('edge');
-  return l;
-}
-
-// ---------- edges ----------
-const edgeMap = new Map();
-DATA.modules.forEach(m => m.tables.forEach(t => edgeMap.set(m.id + '::' + t.name, m.color)));
+// ---- edges ----
+const edgeMap = DATA.modules.reduce((acc, m) => {
+  m.tables.forEach(t => acc.set(m.id + '::' + t.name, m.color));
+  return acc;
+}, new Map());
 
 const drawn = new Set();
-const lines = [];
 DATA.edges.forEach((e) => {
   const key = e.from + '->' + e.to;
   if (drawn.has(key)) return;
   drawn.add(key);
-  const fromEl = TBL_EL.get(e.from), toEl = TBL_EL.get(e.to);
-  if (!fromEl || !toEl) return;
-  const color = edgeMap.get(e.from) || grey;
-  const rec = { from: e.from, to: e.to, color: color, els: [] };
-
-  if (e.from === e.to) {
-    // self-referencing FK -> small loop above the card
-    const r = rectOf(fromEl);
-    const x = r.x + r.w / 2, y = r.y + 2;
-    const path = document.createElementNS(NS, 'path');
-    path.setAttribute('d', 'M ' + (x - 10) + ' ' + y +
-      ' C ' + (x - 10) + ' ' + (y - 24) + ' ' + (x + 10) + ' ' + (y - 24) + ' ' + (x + 10) + ' ' + y);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', color);
-    path.setAttribute('stroke-width', '1.1');
-    path.setAttribute('stroke-opacity', '0.45');
-    path.setAttribute('marker-end', addMarker(color));
-    path.classList.add('edge');
-    svgTop.appendChild(path);
-    rec.els.push(path);
-  } else {
-    const [sa, ta] = endpoints(fromEl, toEl);
-    const dx = ta.x - sa.x, dy = ta.y - sa.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const ux = dx / len, uy = dy / len;
-    const STUB = Math.min(13, len / 3);
-
-    // main segment, rendered BELOW panels so it never overlaps card text
-    const main = lineEl(sa.x + ux * STUB, sa.y + uy * STUB, ta.x - ux * STUB, ta.y - uy * STUB, color);
-    svg.appendChild(main);
-    rec.els.push(main);
-
-    // short docking stub at the source edge (above panels)
-    const sStub = lineEl(sa.x, sa.y, sa.x + ux * STUB, sa.y + uy * STUB, color);
-    svgTop.appendChild(sStub);
-    rec.els.push(sStub);
-
-    // short docking stub + arrow at the target edge (above panels)
-    const tStub = lineEl(ta.x - ux * STUB, ta.y - uy * STUB, ta.x, ta.y, color, true);
-    svgTop.appendChild(tStub);
-    rec.els.push(tStub);
-  }
-
-  lines.push(rec);
+  const from = TBL_EL.get(e.from);
+  const to = TBL_EL.get(e.to);
+  if (!from || !to) return;
+  const srcColor = edgeMap.get(e.from) || grey;
+  const a = center(from), b = center(to);
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+  line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+  line.setAttribute('stroke', srcColor);
+  line.setAttribute('stroke-width', '1.6');
+  line.setAttribute('stroke-opacity', '0.45');
+  line.setAttribute('marker-end', defs('arr-' + srcColor.replace('#', ''), srcColor));
+  svg.appendChild(line);
 });
 
-// ---------- table index ----------
-const byTable = new Map();
-lines.forEach((l) => {
-  const add = (k) => { if (!byTable.has(k)) byTable.set(k, []); byTable.get(k).push(l); };
-  add(l.from); add(l.to);
-});
-
-// ---------- highlight / hover ----------
-let hover_ = null, pinned_ = null, hidden = false;
-
-function repaint() {
-  const hot = pinned_ || hover_;
-  lines.forEach((rec) => {
-    const on = !!hot && (rec.from === hot || rec.to === hot);
-    let op, w;
-    if (on) { op = 0.95; w = 2.1; }
-    else if (hot) { op = 0.045; w = 0.9; }
-    else if (hidden) { op = 0; w = 0.9; }
-    else { op = 0.32; w = 1.1; }
-    rec.els.forEach((el) => {
-      el.setAttribute('stroke-opacity', op);
-      el.setAttribute('stroke-width', w);
-    });
-  });
-  svg.classList.toggle('hl', !!hot);
-
-  document.querySelectorAll('.tbl.active, .tbl.conn').forEach((c) => {
-    c.classList.remove('active', 'conn');
-    c.style.removeProperty('--hl');
-  });
-  if (hot) {
-    const mainEl = TBL_EL.get(hot);
-    if (mainEl) {
-      mainEl.classList.add('active');
-      mainEl.style.setProperty('--hl', edgeMap.get(hot) || '#3b82f6');
-    }
-    (byTable.get(hot) || []).forEach((rec) => {
-      const other = rec.from === hot ? rec.to : rec.from;
-      const c = TBL_EL.get(other);
-      if (c) {
-        c.classList.add('conn');
-        if (!c.style.getPropertyValue('--hl')) c.style.setProperty('--hl', rec.color);
-      }
-    });
-  }
-}
-
-TBL_EL.forEach((card, key) => {
-  card.addEventListener('mouseenter', () => { hover_ = key; repaint(); });
-  card.addEventListener('mouseleave', () => { hover_ = null; repaint(); });
-  card.addEventListener('click', (ev) => {
-    ev.stopPropagation();
-    pinned_ = (pinned_ === key) ? null : key;
-    repaint();
-  });
-});
-
-// ---------- zoom & pan ----------
-const zIn = document.getElementById('zIn');
-const zOut = document.getElementById('zOut');
-const zReset = document.getElementById('zReset');
-const zFit = document.getElementById('zFit');
-const zVal = document.getElementById('zVal');
-const togEdges = document.getElementById('togEdges');
-
-let scale = 1, tx = 0, ty = 0;
-
-function applyView() {
-  view.style.transform = 'translate(' + tx + 'px, ' + ty + 'px) scale(' + scale + ')';
-  zVal.textContent = Math.round(scale * 100) + '%';
-}
-function zoomAt(px, py, f) {
-  const ns = Math.min(4, Math.max(0.03, scale * f));
-  tx = px - (px - tx) * (ns / scale);
-  ty = py - (py - ty) * (ns / scale);
-  scale = ns;
-  applyView();
-}
-function resetView() { scale = 1; tx = 0; ty = 0; applyView(); }
-function fitView() {
-  const wv = canvas.clientWidth, hv = canvas.clientHeight;
-  scale = Math.min(wv / cw, hv / ch, 1);
-  scale = Math.max(scale, 0.03);
-  tx = (wv - cw * scale) / 2;
-  ty = (hv - ch * scale) / 2;
-  applyView();
-}
-
-canvas.addEventListener('wheel', (e) => {
-  e.preventDefault();
-  const r = canvas.getBoundingClientRect();
-  zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.12 : 1 / 1.12);
-}, { passive: false });
-
-let panning = false, pMoved = false, p0 = { x: 0, y: 0 }, pt = { x: 0, y: 0 };
-canvas.addEventListener('pointerdown', (e) => {
-  panning = true; pMoved = false;
-  p0 = { x: e.clientX, y: e.clientY };
-  pt = { x: tx, y: ty };
-  try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
-});
-canvas.addEventListener('pointermove', (e) => {
-  if (!panning) return;
-  const dx = e.clientX - p0.x, dy = e.clientY - p0.y;
-  if (!pMoved && Math.hypot(dx, dy) > 4) pMoved = true;
-  if (pMoved) {
-    tx = pt.x + dx; ty = pt.y + dy;
-    applyView();
-    canvas.classList.add('panning');
-  }
-});
-function endPan(e) {
-  if (!panning) return;
-  canvas.classList.remove('panning');
-  panning = false;
-  if (!pMoved && !(e.target && e.target.closest && e.target.closest('.tbl'))) {
-    pinned_ = null; hover_ = null;
-    repaint();
-  }
-}
-canvas.addEventListener('pointerup', endPan);
-canvas.addEventListener('pointercancel', endPan);
-
-zIn.onclick = () => zoomAt(canvas.clientWidth / 2, canvas.clientHeight / 2, 1.3);
-zOut.onclick = () => zoomAt(canvas.clientWidth / 2, canvas.clientHeight / 2, 1 / 1.3);
-zReset.onclick = resetView;
-zFit.onclick = fitView;
-togEdges.onclick = () => {
-  hidden = !hidden;
-  togEdges.textContent = hidden ? 'Tampilkan garis relasi' : 'Sembunyikan garis relasi';
-  togEdges.classList.toggle('on', hidden);
-  repaint();
-};
-
-// start in "fit" view
-fitView();
-
-// print: temporarily reset zoom so the whole diagram prints
-let savedView = null;
-window.addEventListener('beforeprint', () => {
-  savedView = { scale: scale, tx: tx, ty: ty };
-  scale = 1; tx = 0; ty = 0;
-  applyView();
-});
-window.addEventListener('afterprint', () => {
-  if (savedView) {
-    scale = savedView.scale; tx = savedView.tx; ty = savedView.ty;
-    savedView = null;
-    applyView();
-  }
-});
-
-window.addEventListener('resize', () => { if (scale === 1) fitView(); });
-
-document.documentElement.style.setProperty('--ttl', DATA.total);
-</script>
+// refresh meta counts
+document.documentElement.style.setProperty('--ttl', DATA.total);</script>
 </body>
 </html>
