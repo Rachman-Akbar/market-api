@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Domains\Engagement\Gaming\Infrastructure\Persistence\Repositories\EloquentGameContentRepository;
+use App\Domains\Engagement\Gaming\Presentation\Http\Controllers\GameContentController;
 use App\Domains\Engagement\Gaming\Presentation\Http\Controllers\GameController;
 use App\Domains\Engagement\Mission\Presentation\Http\Controllers\MissionController;
 use Illuminate\Support\Facades\Route;
@@ -23,7 +25,16 @@ Route::middleware(['auth:sanctum', 'active.user', 'verified.email', 'throttle:60
     ->prefix('engagement/games')
     ->group(function (): void {
         Route::post('report', [GameController::class, 'report']);
+        Route::get('summary', [GameController::class, 'summary']);
         Route::get('{gameType}/history', [GameController::class, 'history'])->whereIn('gameType', ['arithmetic_kilat', 'sudoku']);
         Route::get('{gameType}/stats', [GameController::class, 'stats'])->whereIn('gameType', ['arithmetic_kilat', 'sudoku']);
         Route::get('{gameType}/leaderboard', [GameController::class, 'leaderboard'])->whereIn('gameType', ['arithmetic_kilat', 'sudoku']);
+    });
+
+// Game question / content banks served from the database
+Route::middleware(['auth:sanctum', 'active.user', 'verified.email'])
+    ->prefix('engagement/game-content')
+    ->group(function (): void {
+        Route::get('{gameType}', [GameContentController::class, 'index'])
+            ->whereIn('gameType', EloquentGameContentRepository::SUPPORTED_TYPES);
     });

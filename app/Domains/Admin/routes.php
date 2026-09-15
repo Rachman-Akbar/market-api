@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domains\Admin\Dashboard\Presentation\Http\Controllers\AdminDashboardController;
+use App\Domains\Admin\GameContent\Presentation\Http\Controllers\AdminGameContentController;
 use App\Domains\Admin\Notification\Presentation\Http\Controllers\AdminNotificationController;
 use App\Domains\Admin\StoreContext\Presentation\Http\Controllers\AdminStoreContextController;
 use Illuminate\Support\Facades\Route;
@@ -33,4 +34,14 @@ Route::middleware(['auth:sanctum', 'active.user', 'verified.email', 'active.role
         Route::patch('/notifications/{id}/read', [AdminNotificationController::class, 'markRead'])->whereNumber('id');
         Route::delete('/notifications/{id}', [AdminNotificationController::class, 'destroy'])->whereNumber('id');
         Route::delete('/notifications', [AdminNotificationController::class, 'destroyAll']);
+
+        // Game content management (quiz, myth_fact, trash_sort, match_card, arithmetic_kilat)
+        Route::prefix('game-content')->group(function (): void {
+            Route::get('/', [AdminGameContentController::class, 'index']);
+            Route::get('types', [AdminGameContentController::class, 'types']);
+            Route::post('/', [AdminGameContentController::class, 'store']);
+            Route::get('{id}', [AdminGameContentController::class, 'show'])->whereNumber('id');
+            Route::put('{id}', [AdminGameContentController::class, 'update'])->whereNumber('id');
+            Route::delete('{id}', [AdminGameContentController::class, 'destroy'])->whereNumber('id');
+        });
     });

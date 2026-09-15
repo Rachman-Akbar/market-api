@@ -24,5 +24,7 @@ final class DatabaseSeeder extends Seeder
         $this->call(DemoProductsAndInventorySeeder::class);
         $this->call(DemoCommerceSeeder::class);
         $this->call(PpobCatalogSeeder::class);
+        $this->call(GameContentSeeder::class);
+        $this->call(DailyMissionSeeder::class);
     }
 }

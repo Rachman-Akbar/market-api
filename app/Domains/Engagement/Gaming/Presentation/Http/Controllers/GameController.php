@@ -6,6 +6,7 @@ namespace App\Domains\Engagement\Gaming\Presentation\Http\Controllers;
 
 use App\Domains\Engagement\Gaming\Application\Services\GameReportService;
 use App\Domains\Engagement\Gaming\Domain\Repositories\GameSessionRepositoryInterface;
+use App\Domains\Engagement\Gaming\Infrastructure\Persistence\Models\GameSessionModel;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -94,6 +95,45 @@ final class GameController extends Controller
         return response()->json([
             'success' => true,
             'data' => $this->sessions->leaderboard($gameType, min(50, (int) $request->query('limit', 20))),
+        ]);
+    }
+
+    /**
+     * Ringkasan aktivitas game tervalidasi untuk profil pengguna.
+     * Data ini dihitung langsung dari tabel game_sessions.
+     */
+    public function summary(Request $request): JsonResponse
+    {
+        $userId = (string) $request->user()->id;
+
+        $total = \App\Domains\Engagement\Gaming\Infrastructure\Persistence\Models\GameSessionModel::query()
+            ->where('user_id', $userId)
+            ->where('is_active', true)
+            ->count('id');
+
+        $correct = \App\Domains\Engagement\Gaming\Infrastructure\Persistence\Models\GameSessionModel::query()
+            ->where('user_id', $userId)
+            ->where('is_active', true)
+            ->sum('correct_count');
+
+        $questions = \App\Domains\Engagement\Gaming\Infrastructure\Persistence\Models\GameSessionModel::query()
+            ->where('user_id', $userId)
+            ->where('is_active', true)
+            ->sum('total_questions');
+
+        $coins = \App\Domains\Engagement\Gaming\Infrastructure\Persistence\Models\GameSessionModel::query()
+            ->where('user_id', $userId)
+            ->where('is_active', true)
+            ->sum('coins_awarded');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'games_played' => (int) $total,
+                'correct_answers' => (int) $correct,
+                'total_questions' => (int) $questions,
+                'coins_earned' => (int) $coins,
+            ],
         ]);
     }
 }
