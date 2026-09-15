@@ -112,6 +112,61 @@ final class ConversationService
         });
     }
 
+    public function startModeration(array $data, string $adminId): ConversationModel
+    {
+        return DB::transaction(function () use ($data, $adminId): ConversationModel {
+            $type = strtolower(trim((string) ($data['type'] ?? 'direct')));
+            $storeId = isset($data['store_id']) && $data['store_id'] !== null ? (int) $data['store_id'] : null;
+            $participantIds = collect($data['participant_ids'] ?? [])
+                ->map(fn ($id) => (string) $id)
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($type === 'store') {
+                if (! $storeId) {
+                    throw new InvalidArgumentException('Moderasi toko memerlukan store_id.');
+                }
+
+                $ownerId = (string) DB::table('stores')
+                    ->where('id', $storeId)
+                    ->whereNull('deleted_at')
+                    ->value('user_id');
+
+                if ($ownerId === '') {
+                    throw new InvalidArgumentException('Toko untuk percakapan moderasi tidak ditemukan.');
+                }
+
+                $participantIds->push($ownerId);
+            }
+
+            $participantIds->push($adminId);
+            $participantIds = $participantIds->map(fn ($id) => (string) $id)->filter()->unique()->values();
+
+            $existing = $this->findMatchingConversation($type, $storeId, null, $participantIds);
+
+            if ($existing) {
+                return $this->repository->findForUser($existing->id, $adminId, true) ?? $existing;
+            }
+
+            $model = $this->repository->save(new ConversationModel([
+                'type' => $type,
+                'store_id' => $storeId,
+                'order_id' => null,
+                'subject' => $data['subject'] ?? null,
+                'target_role' => $data['target_role'] ?? null,
+                'is_active' => true,
+                'created_by' => $adminId,
+                'updated_by' => $adminId,
+            ]));
+
+            $rows = $participantIds->mapWithKeys(fn (string $id) => [$id => ['joined_at' => now()]])->all();
+            $model->participants()->syncWithoutDetaching($rows);
+
+            return $this->repository->findForUser($model->id, $adminId, true) ?? $model;
+        });
+    }
+
     public function announce(array $data, string $adminId): ConversationModel
     {
         return DB::transaction(function () use ($data, $adminId): ConversationModel {

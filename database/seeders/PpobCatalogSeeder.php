@@ -221,7 +221,7 @@ final class PpobCatalogSeeder extends Seeder
 
     private function resolveAdminId(): ?string
     {
-        $id = SeederIds::SUPER_ADMIN;
+        $id = DemoIds::SUPER_ADMIN;
         if (DB::table('users')->where('id', $id)->exists()) {
             return $id;
         }

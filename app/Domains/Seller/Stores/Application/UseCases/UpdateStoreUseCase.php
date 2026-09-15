@@ -6,13 +6,17 @@ namespace App\Domains\Seller\Stores\Application\UseCases;
 
 use App\Domains\Seller\Stores\Application\DTOs\StoreData;
 use App\Domains\Seller\Stores\Domain\Repositories\StoreRepositoryInterface;
+use App\Domains\Shared\Moderation\Application\Services\ModerationChatService;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final readonly class UpdateStoreUseCase
 {
-    public function __construct(private StoreRepositoryInterface $storeRepository) {}
+    public function __construct(
+        private StoreRepositoryInterface $storeRepository,
+        private ModerationChatService $moderationChat
+    ) {}
 
     public function execute(int $storeId, string $currentUserId, string $role, array $data): StoreData
     {
@@ -41,10 +45,23 @@ final readonly class UpdateStoreUseCase
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : $store->isActive()
         );
 
+        $previousStatus = $store->status();
+
         if ($role === 'admin' && isset($data['status'])) {
             $store->changeStatus((string) $data['status']);
         }
 
-        return StoreData::fromEntity($this->storeRepository->update($store, $data['detail'] ?? null));
+        $storeData = StoreData::fromEntity($this->storeRepository->update($store, $data['detail'] ?? null));
+
+        if ($role === 'admin' && isset($data['status']) && $data['status'] !== $previousStatus && in_array($data['status'], ['approved', 'suspended'], true)) {
+            $this->moderationChat->notifyStoreStatus(
+                (int) $storeData->id,
+                (string) $data['status'],
+                $currentUserId,
+                is_string($data['message'] ?? null) ? $data['message'] : null
+            );
+        }
+
+        return $storeData;
     }
 }

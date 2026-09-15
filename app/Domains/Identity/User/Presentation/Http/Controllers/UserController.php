@@ -20,6 +20,7 @@ use App\Domains\Identity\User\Presentation\Http\Requests\StoreUserRequest;
 use App\Domains\Identity\User\Presentation\Http\Requests\UpdateUserRequest;
 use App\Domains\Identity\User\Presentation\Http\Resources\UserCollection;
 use App\Domains\Identity\User\Presentation\Http\Resources\UserResource;
+use App\Domains\Shared\Moderation\Application\Services\ModerationChatService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,7 +38,8 @@ final class UserController extends Controller
         private readonly UpdateUserUseCase $updateUserUseCase,
         private readonly DeleteUserUseCase $deleteUserUseCase,
         private readonly UserRepositoryInterface $userRepository,
-        private readonly EmailVerificationEngine $verificationEngine
+        private readonly EmailVerificationEngine $verificationEngine,
+        private readonly ModerationChatService $moderationChat
     ) {}
 
     public function index(Request $request): UserCollection
@@ -122,7 +124,25 @@ final class UserController extends Controller
         }
 
         try {
+            $previousUser = $this->getUserUseCase->execute($id);
             $user = $this->updateUserUseCase->execute($id, UpdateUserDTO::fromArray($validated));
+
+            $banStateChanged = $previousUser->is_active !== $user->is_active
+                || (string) $previousUser->banned_at !== (string) $user->banned_at;
+
+            if ($activeRole === 'admin' && $banStateChanged) {
+                $wasBanned = (bool) $previousUser->banned_at || ! $previousUser->is_active;
+                $isBanned = (bool) $user->banned_at || ! $user->is_active;
+
+                if ($wasBanned !== $isBanned) {
+                    $this->moderationChat->notifyUserStatus(
+                        $id,
+                        $isBanned ? 'banned' : 'unbanned',
+                        (string) $request->user()->id,
+                        is_string($validated['message'] ?? null) ? $validated['message'] : null
+                    );
+                }
+            }
 
             return (new UserResource($user))->response()->setStatusCode(Response::HTTP_OK);
         } catch (UserNotFoundException $exception) {

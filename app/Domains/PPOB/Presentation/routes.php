@@ -18,11 +18,6 @@ Route::post('ppob/callback', [PpoCallbackController::class, 'handle'])
     ->name('ppob.callback');
 
 Route::middleware(['auth:sanctum', 'active.user'])->prefix('ppob')->group(function (): void {
-    // Catalog (available to any authenticated user)
-    Route::get('categories', [PpoCatalogController::class, 'categories']);
-    Route::get('operators', [PpoCatalogController::class, 'operators']);
-    Route::get('products', [PpoCatalogController::class, 'products']);
-
     // Buyer transactions
     Route::prefix('transactions')->group(function (): void {
         Route::post('/', [PpoTransactionController::class, 'store']);
@@ -44,6 +39,13 @@ Route::middleware(['auth:sanctum', 'active.user'])->prefix('ppob')->group(functi
         Route::post('inquiry', [PpoBillController::class, 'inquiry']);
         Route::post('pay', [PpoBillController::class, 'pay']);
     });
+});
+
+// Public catalog — read-only pages (home page widget & /ppob browsing) work without login.
+Route::prefix('ppob')->group(function (): void {
+    Route::get('categories', [PpoCatalogController::class, 'categories']);
+    Route::get('operators', [PpoCatalogController::class, 'operators']);
+    Route::get('products', [PpoCatalogController::class, 'products']);
 });
 
 // Admin PPOB management + dashboard

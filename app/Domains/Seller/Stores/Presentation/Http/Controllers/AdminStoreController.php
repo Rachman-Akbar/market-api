@@ -31,6 +31,7 @@ final class AdminStoreController extends Controller
             'province' => ['nullable', 'string', 'max:80'],
             'status' => ['sometimes', Rule::in(['pending', 'approved', 'suspended'])],
             'is_active' => ['sometimes', 'boolean'],
+            'message' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $payload = [
@@ -56,6 +57,7 @@ final class AdminStoreController extends Controller
         $data = $request->validate([
             'status' => ['required', Rule::in(['pending', 'approved', 'suspended'])],
             'is_active' => ['nullable', 'boolean'],
+            'message' => ['nullable', 'string', 'max:1000'],
         ]);
 
         if ($data['status'] === 'suspended') {
