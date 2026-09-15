@@ -6,6 +6,7 @@ namespace App\Domains\PPOB\Presentation\Http\Controllers;
 
 use App\Domains\PPOB\Application\Services\IakProviderService;
 use App\Domains\PPOB\Application\Services\PpoFinanceService;
+use App\Domains\PPOB\Application\Services\PpobStatusNotifier;
 use App\Domains\PPOB\Application\Services\PricingEngine;
 use App\Domains\PPOB\Application\Services\ReceiptService;
 use App\Domains\PPOB\Domain\Repositories\PpoInquiryRepositoryInterface;
@@ -31,6 +32,7 @@ class PpoBillController extends Controller
         private PricingEngine $pricing,
         private PpoFinanceService $finance,
         private ReceiptService $receipts,
+        private PpobStatusNotifier $notifier,
     ) {}
 
     public function inquiry(Request $request): JsonResponse
@@ -173,6 +175,7 @@ class PpoBillController extends Controller
                 $this->finance->postForSuccess($tx);
                 $this->receipts->generateForTransaction($tx->fresh());
                 $this->receipts->sendForTransaction($tx->fresh());
+                $this->notifier->notifySuccess($tx->fresh());
             }
 
             $inquiry->status = 'paid';

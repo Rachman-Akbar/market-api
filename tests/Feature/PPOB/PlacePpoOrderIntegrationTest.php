@@ -6,6 +6,7 @@ namespace Tests\Feature\PPOB;
 
 use App\Domains\PPOB\Application\Services\PpoFinanceService;
 use App\Domains\PPOB\Application\Services\PricingEngine;
+use App\Domains\PPOB\Application\UseCases\FinalizePpobTopUpUseCase;
 use App\Domains\PPOB\Application\UseCases\PlacePpoOrderUseCase;
 use App\Domains\PPOB\Domain\Repositories\PpoOperatorRepositoryInterface;
 use App\Domains\PPOB\Domain\Repositories\PpoPricingRuleRepositoryInterface;
@@ -38,6 +39,10 @@ class PlacePpoOrderIntegrationTest extends TestCase
                     'rc' => '00',
                 ],
                 'meta' => [],
+            ], 200),
+            '*/snap/v1/transactions' => Http::response([
+                'token' => 'snap-token-int-test',
+                'redirect_url' => 'https://app.sandbox.midtrans.com/snap/v2/vtweb/snap-token-int-test',
             ], 200),
         ]);
 
@@ -96,6 +101,13 @@ class PlacePpoOrderIntegrationTest extends TestCase
 
         $order = $useCase->execute((string) $testUser->id, $product->id, '08123456789');
         $tx = $order['transaction'] ?? $order;
+
+        // Place order holds the transaction in "pending payment" until Midtrans settles.
+        $this->assertSame('pending', $tx->status, 'Order should await payment after creation.');
+
+        $finalizer = $this->app->make(FinalizePpobTopUpUseCase::class);
+        $finalizer->markPaidAndSubmit((int) $tx->id, 'midtrans-int-payment-1');
+        $tx = $tx->fresh();
 
         $this->assertEquals('success', $tx->status, 'Order status should be success.');
         $this->assertEqualsWithDelta(10400, (float) $tx->total_amount, 0.01, 'Order total_amount');

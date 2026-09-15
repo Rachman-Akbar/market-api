@@ -3,17 +3,11 @@
 namespace App\Domains\Order\Ordering\Application\UseCases;
 
 use App\Domains\Engagement\Mission\Application\Services\MissionService;
-use App\Domains\Identity\User\Domain\Entities\User;
+use App\Domains\Order\Ordering\Application\Services\OrderStatusNotifier;
 use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
-use App\Domains\Order\Ordering\Infrastructure\Mail\OrderCancelledMail;
-use App\Domains\Order\Ordering\Infrastructure\Mail\OrderConfirmedMail;
-use App\Domains\Order\Ordering\Infrastructure\Mail\OrderDeliveredMail;
-use App\Domains\Order\Ordering\Infrastructure\Mail\OrderShippedMail;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
 use App\Domains\Seller\Finance\Application\Services\AutoOrderIncomeService;
 use DomainException;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class UpdateOrderStatusUseCase
 {
@@ -29,7 +23,8 @@ class UpdateOrderStatusUseCase
     public function __construct(
         private OrderRepositoryInterface $orderRepository,
         private MissionService $missionService,
-        private AutoOrderIncomeService $autoOrderIncome
+        private AutoOrderIncomeService $autoOrderIncome,
+        private OrderStatusNotifier $statusNotifier
     ) {}
 
     public function execute(int $orderId, string $status, ?string $reason = null): void
@@ -62,7 +57,7 @@ class UpdateOrderStatusUseCase
 
         $this->orderRepository->update($order);
 
-        $this->sendOrderEmail($order, $status, $reason);
+        $this->statusNotifier->notifyStatus($orderId, $status, $reason);
 
         if ($status === 'completed') {
             $this->missionService->recordEvent($order->userId, 'order_completed', 1, [
@@ -78,33 +73,6 @@ class UpdateOrderStatusUseCase
                     (int) $subOrder->id,
                     $order->userId
                 ));
-        }
-    }
-
-    private function sendOrderEmail(object $order, string $status, ?string $reason): void
-    {
-        try {
-            $buyer = User::find($order->userId);
-
-            if (! $buyer || empty($buyer->email)) {
-                return;
-            }
-
-            $buyerName = $buyer->name ?? 'Pelanggan';
-
-            match ($status) {
-                'pending' => Mail::to($buyer->email)->send(new OrderConfirmedMail($order, $buyerName)),
-                'shipped' => Mail::to($buyer->email)->send(new OrderShippedMail($order, $buyerName, 'TRX-'.strtoupper(substr(md5((string) $order->id), 0, 8)), 'Standard')),
-                'received' => Mail::to($buyer->email)->send(new OrderDeliveredMail($order, $buyerName)),
-                'cancelled' => Mail::to($buyer->email)->send(new OrderCancelledMail($order, $buyerName, $reason ?? 'Dibatalkan oleh sistem')),
-                default => null,
-            };
-        } catch (\Throwable $e) {
-            Log::warning('Gagal mengirim email order', [
-                'order_id' => $order->id,
-                'status' => $status,
-                'error' => $e->getMessage(),
-            ]);
         }
     }
 }

@@ -6,6 +6,7 @@ namespace App\Domains\Order\Ordering\Presentation\Http\Controllers;
 
 use App\Domains\Engagement\Mission\Application\Services\MissionService;
 use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
+use App\Domains\Order\Ordering\Application\Services\OrderStatusNotifier;
 use App\Domains\Order\Ordering\Application\UseCases\CancelOrderUseCase;
 use App\Domains\Order\Ordering\Application\UseCases\CreateOrderUseCase;
 use App\Domains\Order\Ordering\Application\UseCases\GetOrdersUseCase;
@@ -38,7 +39,8 @@ class OrderingController extends Controller
         private UserRepositoryInterface $userRepository,
         private StockMovementService $stockMovementService,
         private AutoOrderIncomeService $autoOrderIncome,
-        private MissionService $missionService
+        private MissionService $missionService,
+        private OrderStatusNotifier $statusNotifier
     ) {}
 
     public function shippingOptions(Request $request): JsonResponse
@@ -303,8 +305,14 @@ class OrderingController extends Controller
                     'user_id' => (string) $parent->user_id,
                     'order_type' => (string) ($parent->order_type ?? 'normal'),
                     'parent_completed' => $previousParentStatus !== 'completed' && $parentStatus === 'completed',
+                    'parent_changed' => $previousParentStatus !== $parentStatus,
+                    'parent_status' => $parentStatus,
                 ];
             });
+
+            if ($result['parent_changed'] && in_array($result['parent_status'], ['processing', 'completed'], true)) {
+                $this->statusNotifier->notifyStatus($result['order_id'], $result['parent_status']);
+            }
 
             if ($result['parent_completed']) {
                 $this->missionService->recordEvent($result['user_id'], 'order_completed', 1, [
@@ -319,6 +327,52 @@ class OrderingController extends Controller
         $this->updateOrderStatusUseCase->execute($id, $validated['status'], $validated['reason'] ?? null);
 
         return response()->json(['success' => true, 'message' => 'Status order berhasil diperbarui.']);
+    }
+
+    /**
+     * Kirim notifikasi (chat + email) ke buyer untuk status order saat ini,
+     * atau status yang ditentukan. Endpoint ini dipakai engine.js saat order
+     * disetujui/diproses atau selesai; dipanggil ulang tidak mengirim chat
+     * ganda (idempotent per status).
+     */
+    public function notifyStatus(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['nullable', 'string', 'in:pending,processing,shipped,received,completed,cancelled'],
+        ]);
+
+        $order = $this->orderRepository->findById($id);
+        if (! $order) {
+            return response()->json(['success' => false, 'message' => 'Order tidak ditemukan.'], 404);
+        }
+
+        $role = $this->activeRole($request);
+
+        if ($role === 'buyer' && $order->userId !== (string) $request->user()->id) {
+            throw new AccessDeniedHttpException('Anda tidak dapat mengirim notifikasi order ini.');
+        }
+
+        if ($role === 'seller') {
+            $storeId = $this->sellerStoreId($request);
+            if (! collect($order->subOrders)->contains(fn ($subOrder) => $subOrder->storeId === $storeId)) {
+                throw new AccessDeniedHttpException('Pesanan ini bukan milik toko Anda.');
+            }
+        }
+
+        $status = strtolower(trim((string) ($validated['status'] ?? $order->status)));
+
+        $result = $this->statusNotifier->notifyStatus($id, $status);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Notifikasi status order berhasil dikirim.',
+            'data' => [
+                'order_id' => $id,
+                'status' => $status,
+                'notified_chat' => $result['chat'],
+                'notified_email' => $result['email'],
+            ],
+        ]);
     }
 
     private function activeRole(Request $request): string

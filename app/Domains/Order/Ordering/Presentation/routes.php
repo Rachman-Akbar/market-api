@@ -15,4 +15,5 @@ Route::middleware(['auth:sanctum', 'active.user', 'verified.email'])
         Route::get('{id}', [OrderingController::class, 'show']);
         Route::post('{id}/cancel', [OrderingController::class, 'cancel']);
         Route::patch('{id}/status', [OrderingController::class, 'updateStatus']);
+        Route::post('{id}/notify-status', [OrderingController::class, 'notifyStatus']);
     });

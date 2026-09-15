@@ -38,7 +38,7 @@ class PlannerKanbanTest extends TestCase
         $ids = collect($board['columns']['todo'])->pluck('id')->all();
         $this->assertContains($created['id'], $ids);
         $this->assertSame($store->id, $board['columns']['todo'][0]['store_id'] ?? null);
-        $this->assertSame('Selesai', $board['columns']['done'] ?? 'tidak-ada');
+        $this->assertSame([], $board['columns']['done'] ?? null, 'done column should start empty');
         $this->assertTrue(isset($board['totals']['todo']));
     }
 

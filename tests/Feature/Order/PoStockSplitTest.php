@@ -8,6 +8,7 @@ use App\Domains\Catalog\Product\Application\UseCases\Product\CreateProductUseCas
 use App\Domains\Order\Cart\Infrastructure\Persistence\Models\CartModel;
 use App\Domains\Order\Ordering\Application\UseCases\CancelOrderUseCase;
 use App\Domains\Order\Ordering\Application\UseCases\CreateOrderUseCase;
+use App\Domains\Order\Ordering\Application\UseCases\UpdateOrderStatusUseCase;
 use App\Domains\Seller\Stock\Application\Services\StockMovementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,12 @@ use RuntimeException;
 use Tests\Support\InteractsAsUser;
 use Tests\TestCase;
 
+/**
+ * Stok-ledger modern: pesanan men-sewa stok (stock_reserved / stock_preorder)
+ * saat checkout, dikomit saat order diproses (stock berkurang), dan dilepas
+ * kembali saat order dibatalkan. po_stock adalah nilai legacy dan tidak lagi
+ * dikurangi oleh alur pesanan (preorder kini otomatis tanpa kuota).
+ */
 class PoStockSplitTest extends TestCase
 {
     use InteractsAsUser;
@@ -79,7 +86,7 @@ class PoStockSplitTest extends TestCase
             voucherCode: null,
             orderType: $orderType,
             preorderReleaseAt: $orderType === 'preorder' ? now()->addDays(7)->toDateTimeString() : null,
-            bookingExpiresAt: null
+            scheduledAt: null
         );
 
         return (int) $order->id;
@@ -90,63 +97,144 @@ class PoStockSplitTest extends TestCase
         return DB::table('product_variants')->where('id', $this->variantId)->first();
     }
 
-    public function test_normal_order_decrements_only_regular_stock(): void
+    private function process(int $orderId): void
+    {
+        $this->app->make(UpdateOrderStatusUseCase::class)->execute($orderId, 'processing');
+    }
+
+    private function cancel(int $orderId): void
+    {
+        $this->app->make(UpdateOrderStatusUseCase::class)->execute($orderId, 'cancelled');
+    }
+
+    public function test_placing_normal_order_reserves_regular_stock_without_touching_po_stock(): void
     {
         $buyerId = $this->buyerWithCartItem(5, 1);
         $orderId = $this->placeOrder($buyerId, 5, 'normal');
 
         $row = $this->variantRow();
-        $this->assertSame(15, (int) $row->stock);
+        $this->assertSame(20, (int) $row->stock);
+        $this->assertSame(5, (int) $row->stock_reserved);
         $this->assertSame(30, (int) $row->po_stock);
-        $this->assertSame(45, (int) $row->stock + (int) $row->po_stock);
         $this->assertGreaterThan(0, $orderId);
     }
 
-    public function test_preorder_order_decrements_only_po_stock(): void
+    public function test_processing_order_commits_regular_stock(): void
     {
-        $buyerId = $this->buyerWithCartItem(10, 2);
+        $buyerId = $this->buyerWithCartItem(5, 2);
+        $orderId = $this->placeOrder($buyerId, 5, 'normal');
+
+        $this->process($orderId);
+
+        $row = $this->variantRow();
+        $this->assertSame(15, (int) $row->stock);
+        $this->assertSame(0, (int) $row->stock_reserved);
+        $this->assertSame(30, (int) $row->po_stock);
+        $this->assertSame(45, (int) $row->stock + (int) $row->po_stock);
+    }
+
+    public function test_preorder_order_reserves_regular_stock_when_available(): void
+    {
+        $buyerId = $this->buyerWithCartItem(10, 3);
         $orderId = $this->placeOrder($buyerId, 10, 'preorder');
 
         $row = $this->variantRow();
         $this->assertSame(20, (int) $row->stock);
-        $this->assertSame(20, (int) $row->po_stock);
-        $this->assertSame(40, (int) $row->stock + (int) $row->po_stock);
+        $this->assertSame(10, (int) $row->stock_reserved);
+        $this->assertSame(30, (int) $row->po_stock);
+        $this->assertSame(0, (int) $row->stock_preorder);
         $this->assertGreaterThan(0, $orderId);
     }
 
-    public function test_preorder_overflows_regular_stock_is_rejected(): void
+    public function test_preorder_exceeding_available_stock_is_rejected(): void
     {
-        $buyerId = $this->buyerWithCartItem(999, 3);
+        $buyerId = $this->buyerWithCartItem(999, 4);
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('stok pre-order (PO)');
+        $this->expectExceptionMessage('Stok Produk Stok PO tidak mencukupi. Tersedia 20 unit. Kurangi jumlah pesanan.');
 
         $this->placeOrder($buyerId, 999, 'preorder');
     }
 
-    public function test_cancelling_preorder_restores_po_stock_but_keeps_regular_stock(): void
+    public function test_auto_preorder_when_stock_empty_uses_preorder_dimension(): void
     {
-        $buyerId = $this->buyerWithCartItem(10, 4);
-        $orderId = $this->placeOrder($buyerId, 10, 'preorder');
+        $this->app->make(StockMovementService::class)->adjust([
+            'variant_id' => $this->variantId,
+            'quantity_delta' => -20,
+            'movement_type' => 'adjustment',
+            'notes' => 'Stok dikosongkan untuk tes preorder otomatis',
+        ], $this->storeId);
 
-        $this->app->make(CancelOrderUseCase::class)->execute($orderId);
+        $buyerId = $this->buyerWithCartItem(5, 5);
+        $orderId = $this->placeOrder($buyerId, 5, 'normal');
+
+        $row = $this->variantRow();
+        $this->assertSame(0, (int) $row->stock);
+        $this->assertSame(0, (int) $row->stock_reserved);
+        $this->assertSame(5, (int) $row->stock_preorder);
+        $this->assertSame(30, (int) $row->po_stock);
+
+        $orderType = DB::table('orders')->where('id', $orderId)->value('order_type');
+        $this->assertSame('preorder', (string) $orderType);
+    }
+
+    public function test_cancelling_pending_order_releases_the_reservation(): void
+    {
+        $buyerId = $this->buyerWithCartItem(5, 6);
+        $orderId = $this->placeOrder($buyerId, 5, 'normal');
+
+        $this->cancel($orderId);
 
         $row = $this->variantRow();
         $this->assertSame(20, (int) $row->stock);
+        $this->assertSame(0, (int) $row->stock_reserved);
         $this->assertSame(30, (int) $row->po_stock);
-        $this->assertSame(50, (int) $row->stock + (int) $row->po_stock);
     }
 
-    public function test_cancelling_normal_order_restores_regular_stock(): void
+    public function test_cancelling_committed_order_restores_regular_stock(): void
     {
-        $buyerId = $this->buyerWithCartItem(5, 5);
+        $buyerId = $this->buyerWithCartItem(5, 7);
+        $orderId = $this->placeOrder($buyerId, 5, 'normal');
+
+        $this->process($orderId);
+        $this->cancel($orderId);
+
+        $row = $this->variantRow();
+        $this->assertSame(20, (int) $row->stock);
+        $this->assertSame(0, (int) $row->stock_reserved);
+        $this->assertSame(30, (int) $row->po_stock);
+    }
+
+    public function test_cancelling_preorder_releases_auto_preorder_commitment(): void
+    {
+        $this->app->make(StockMovementService::class)->adjust([
+            'variant_id' => $this->variantId,
+            'quantity_delta' => -20,
+            'movement_type' => 'adjustment',
+            'notes' => 'Stok dikosongkan untuk tes pembatalan preorder',
+        ], $this->storeId);
+
+        $buyerId = $this->buyerWithCartItem(5, 8);
+        $orderId = $this->placeOrder($buyerId, 5, 'normal');
+        $this->assertSame(5, (int) $this->variantRow()->stock_preorder);
+
+        $this->cancel($orderId);
+
+        $row = $this->variantRow();
+        $this->assertSame(0, (int) $row->stock_preorder);
+        $this->assertSame(0, (int) $row->stock);
+    }
+
+    public function test_legacy_cancel_order_use_case_is_consistent(): void
+    {
+        $buyerId = $this->buyerWithCartItem(5, 9);
         $orderId = $this->placeOrder($buyerId, 5, 'normal');
 
         $this->app->make(CancelOrderUseCase::class)->execute($orderId);
 
         $row = $this->variantRow();
         $this->assertSame(20, (int) $row->stock);
+        $this->assertSame(0, (int) $row->stock_reserved);
         $this->assertSame(30, (int) $row->po_stock);
-        $this->assertSame(50, (int) $row->stock + (int) $row->po_stock);
     }
 }

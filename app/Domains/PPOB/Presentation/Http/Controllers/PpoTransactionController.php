@@ -6,6 +6,7 @@ namespace App\Domains\PPOB\Presentation\Http\Controllers;
 
 use App\Domains\PPOB\Application\Services\IakProviderService;
 use App\Domains\PPOB\Application\Services\PpoFinanceService;
+use App\Domains\PPOB\Application\Services\PpobStatusNotifier;
 use App\Domains\PPOB\Application\Services\ReceiptService;
 use App\Domains\PPOB\Application\UseCases\PlacePpoOrderUseCase;
 use App\Domains\PPOB\Domain\Repositories\PpoTransactionRepositoryInterface;
@@ -23,6 +24,7 @@ class PpoTransactionController extends Controller
         private IakProviderService $provider,
         private PpoFinanceService $finance,
         private ReceiptService $receipts,
+        private PpobStatusNotifier $notifier,
     ) {}
 
     public function store(Request $request): JsonResponse
@@ -151,6 +153,7 @@ class PpoTransactionController extends Controller
                 $this->finance->postForSuccess($tx);
                 $this->receipts->generateForTransaction($tx->fresh());
                 $this->receipts->sendForTransaction($tx->fresh());
+                $this->notifier->notifySuccess($tx->fresh());
             });
         } elseif ($result['status'] === 'failed') {
             $tx->status = 'failed';
@@ -169,6 +172,54 @@ class PpoTransactionController extends Controller
             'success' => true,
             'message' => $result['message'],
             'data' => $this->terminalArray($tx->fresh()),
+        ]);
+    }
+
+    /**
+     * Kirim notifikasi (chat) ke buyer saat transaksi digital sudah selesai.
+     * Email bukti pembayaran dikirim lewat ReceiptService (idempotent).
+     * Endpoint dipakai engine.js; bisa menerima id transaksi atau reference_id.
+     */
+    public function notifyStatus(Request $request, string $referenceOrId): JsonResponse
+    {
+        $tx = PpoTransactionModel::where('user_id', $request->user()->id)
+            ->where(function ($query) use ($referenceOrId): void {
+                $query->where('id', $referenceOrId)->orWhere('reference_id', $referenceOrId);
+            })
+            ->first();
+
+        if (! $tx) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaksi tidak ditemukan.',
+            ], 404);
+        }
+
+        if ($tx->status !== 'success') {
+            return response()->json([
+                'success' => true,
+                'message' => 'Transaksi belum selesai, belum ada notifikasi yang dikirim.',
+                'data' => [
+                    'id' => $tx->id,
+                    'status' => $tx->status,
+                    'notified_chat' => false,
+                ],
+            ]);
+        }
+
+        $this->receipts->generateForTransaction($tx->fresh());
+        $this->receipts->sendForTransaction($tx->fresh());
+
+        $notifiedChat = $this->notifier->notifySuccess($tx->fresh());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Notifikasi transaksi digital berhasil dikirim.',
+            'data' => [
+                'id' => $tx->id,
+                'status' => $tx->status,
+                'notified_chat' => $notifiedChat,
+            ],
         ]);
     }
 

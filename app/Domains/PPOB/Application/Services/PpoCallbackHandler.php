@@ -23,6 +23,7 @@ class PpoCallbackHandler
         private IakProviderClient $client,
         private PpoFinanceService $finance,
         private ReceiptService $receipts,
+        private PpobStatusNotifier $notifier,
     ) {}
 
     public function handle(array $data, ?string $ip = null): bool
@@ -89,6 +90,9 @@ class PpoCallbackHandler
 
         // Send the receipt email (idempotent, one send per receipt).
         $this->receipts->sendForTransaction($tx->fresh());
+
+        // Notify the buyer in chat that the digital product is complete.
+        $this->notifier->notifySuccess($tx->fresh());
     }
 
     private function applyFailure(PpoTransactionModel $tx, array $data): void

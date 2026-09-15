@@ -101,7 +101,7 @@ final class StockMovementService
 
     public function reserveCheckout(int $orderId): void
     {
-        foreach ($this->loadOrderItems(orderId: $orderId) as $item) {
+        foreach ($this->loadOrderItems($orderId, null) as $item) {
             foreach ($this->resolveReservationDimensions($item) as $dimension) {
                 $movementKey = 'checkout-reserved.'.$dimension;
 

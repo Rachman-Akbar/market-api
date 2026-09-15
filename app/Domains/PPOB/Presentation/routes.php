@@ -24,6 +24,7 @@ Route::middleware(['auth:sanctum', 'active.user'])->prefix('ppob')->group(functi
         Route::get('/', [PpoTransactionController::class, 'index']);
         Route::get('/{id}', [PpoTransactionController::class, 'show'])->whereNumber('id');
         Route::post('/{id}/check-status', [PpoTransactionController::class, 'checkStatus'])->whereNumber('id');
+        Route::post('{referenceOrId}/notify-status', [PpoTransactionController::class, 'notifyStatus']);
     });
 
     // Receipts (bukti pembayaran, scoped to the current user)
