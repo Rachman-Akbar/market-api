@@ -37,6 +37,7 @@ final class ProductMapper
                 'province' => $model->store->province,
                 'status' => (string) $model->store->status,
                 'is_active' => (bool) $model->store->is_active,
+                'store_type' => (string) ($model->store->store_type ?? 'regular'),
             ]
             : [];
 

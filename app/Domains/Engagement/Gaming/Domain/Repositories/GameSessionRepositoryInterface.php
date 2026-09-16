@@ -20,4 +20,9 @@ interface GameSessionRepositoryInterface
     public function leaderboard(string $gameType, int $limit = 20): array;
 
     public function stats(string $userId, string $gameType): array;
+
+    /**
+     * @return array{games_played: int, correct_answers: int, total_questions: int, coins_earned: int}
+     */
+    public function summary(string $userId): array;
 }

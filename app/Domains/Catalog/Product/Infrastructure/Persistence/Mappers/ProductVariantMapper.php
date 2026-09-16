@@ -31,6 +31,8 @@ final class ProductVariantMapper
             minStock: (int) $model->min_stock,
             allowsPreorder: $model->product ? (bool) $model->product->allows_preorder : null,
             isDefault: (bool) $model->is_default,
+            priceOriginal: isset($model->price_original) ? (float) $model->price_original : null,
+            priceSale: isset($model->price_sale) ? (float) $model->price_sale : null,
             values: $values,
             createdAt: $model->created_at?->toDateTimeString(),
             updatedAt: $model->updated_at?->toDateTimeString()

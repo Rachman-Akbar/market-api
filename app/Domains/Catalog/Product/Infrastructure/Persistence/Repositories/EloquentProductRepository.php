@@ -65,6 +65,70 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         return $paginator;
     }
 
+    public function facets(array $filters = []): array
+    {
+        $filters['status'] = $filters['status'] ?? 'published';
+        $filters['is_active'] = true;
+
+        $facets = [
+            'locations' => [],
+            'store_types' => ['regular', 'official', 'power_merchant'],
+            'price_range' => null,
+        ];
+
+        $facets['locations'] = $this->facetLocations($filters);
+        $facets['price_range'] = $this->facetPriceRange($filters);
+
+        return $facets;
+    }
+
+    private function facetLocations(array $filters): array
+    {
+        $query = ProductModel::query()
+            ->join('stores', 'stores.id', '=', 'products.store_id')
+            ->select('stores.city', 'stores.province')
+            ->whereNotNull('stores.city')
+            ->distinct();
+
+        $this->applyPublicStoreFilter($query);
+        $this->applyCommonFilters($query, $filters, false);
+
+        return $query
+            ->get()
+            ->map(static fn (ProductModel $model): array => array_values(array_filter([
+                $model->city,
+                $model->province,
+            ])))
+            ->flatten()
+            ->unique()
+            ->filter()
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    private function facetPriceRange(array $filters): ?array
+    {
+        $query = ProductModel::query()
+            ->join('product_variants', 'product_variants.product_id', '=', 'products.id')
+            ->where('product_variants.is_default', true);
+
+        $this->applyPublicStoreFilter($query);
+        $this->applyCommonFilters($query, $filters, false);
+
+        $minPrice = (clone $query)->min('product_variants.price');
+        $maxPrice = (clone $query)->max('product_variants.price');
+
+        if ($minPrice === null || $maxPrice === null) {
+            return null;
+        }
+
+        return [
+            'min' => (float) $minPrice,
+            'max' => (float) $maxPrice,
+        ];
+    }
+
     public function findById(int $id, bool $includeInactive = false): ?Product
     {
         $model = ProductModel::query()
@@ -327,7 +391,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
 
         if (array_key_exists('is_active', $filters)) {
             $query->where(
-                'is_active',
+                'products.is_active',
                 filter_var($filters['is_active'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
                     ?? (bool) $filters['is_active']
             );
@@ -335,17 +399,30 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             $query->active();
         }
 
-        if (! empty($filters['category_id'])) {
-            $categoryId = (int) $filters['category_id'];
+        if (! empty($filters['category_id']) || ! empty($filters['category_ids'])) {
+            $categoryIds = array_values(array_filter(array_map(
+                'intval',
+                (array) ($filters['category_ids'] ?? [$filters['category_id']])
+            )));
+            $categoryIds = array_values(array_unique($categoryIds));
+
             $includeDescendants = filter_var(
                 $filters['include_descendants'] ?? true,
                 FILTER_VALIDATE_BOOLEAN
             );
-            $categoryIds = $includeDescendants
-                ? $this->getCategoryAndDescendantIdsById($categoryId)
-                : [$categoryId];
+            $resolved = [];
 
-            $this->applyCategoryIdsFilter($query, $categoryIds);
+            foreach ($categoryIds as $categoryId) {
+                $resolved = array_merge(
+                    $resolved,
+                    $includeDescendants
+                        ? $this->getCategoryAndDescendantIdsById($categoryId)
+                        : [$categoryId]
+                );
+            }
+
+            $resolved = array_values(array_unique($resolved));
+            $this->applyCategoryIdsFilter($query, $resolved);
         } else {
             $categorySlug = trim((string) ($filters['category_slug'] ?? $filters['category'] ?? ''));
 
@@ -377,6 +454,38 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             $query->where('store_id', (int) $filters['store_id']);
         }
 
+        $storeType = Str::lower(trim((string) ($filters['store_type'] ?? '')));
+
+        if (in_array($storeType, ['regular', 'official', 'power_merchant'], true)) {
+            $query->whereHas('store', fn (Builder $storeQuery) => $storeQuery->where('stores.store_type', $storeType));
+        }
+
+        $locations = $this->normalizeListFilter($filters['locations'] ?? null);
+
+        if ($locations !== []) {
+            $query->whereHas('store', function (Builder $storeQuery) use ($locations): void {
+                $storeQuery->where(function (Builder $query) use ($locations): void {
+                    foreach ($locations as $index => $location) {
+                        $wrapped = trim((string) $location);
+                        $query->when($index === 0, static fn (Builder $query) => $query->where(function (Builder $query) use ($wrapped): void {
+                            $query->where('city', 'like', "%{$wrapped}%")
+                                ->orWhere('province', 'like', "%{$wrapped}%");
+                        }), static fn (Builder $query) => $query->orWhere(function (Builder $query) use ($wrapped): void {
+                            $query->where('city', 'like', "%{$wrapped}%")
+                                ->orWhere('province', 'like', "%{$wrapped}%");
+                        }));
+                    }
+                });
+            });
+        }
+
+        if (filter_var($filters['has_discount'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $query->whereHas('variants', function (Builder $variantQuery): void {
+                $variantQuery->whereNotNull('price_original')
+                    ->whereColumn('price_original', '>', 'price');
+            });
+        }
+
         $name = trim((string) ($filters['name'] ?? ''));
 
         if ($name !== '') {
@@ -391,7 +500,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             $query->has('variants', '<=', 1);
         }
 
-        $this->applyVariantRangeFilter($query, 'price', $filters['price_min'] ?? null, $filters['price_max'] ?? null);
+        $this->applyVariantRangeFilter($query, 'price', $filters['price_min'] ?? $filters['min_price'] ?? null, $filters['price_max'] ?? $filters['max_price'] ?? null);
         $this->applyVariantRangeFilter($query, 'stock', $filters['stock_min'] ?? null, $filters['stock_max'] ?? null);
 
         if (filter_var($filters['low_stock'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
@@ -418,10 +527,10 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         if ($search !== '') {
             $query->where(function (Builder $query) use ($search): void {
                 $query
-                    ->where('name', 'like', '%'.$search.'%')
-                    ->orWhere('slug', 'like', '%'.$search.'%')
-                    ->orWhere('description', 'like', '%'.$search.'%')
-                    ->orWhere('brand', 'like', '%'.$search.'%')
+                    ->where('products.name', 'like', '%'.$search.'%')
+                    ->orWhere('products.slug', 'like', '%'.$search.'%')
+                    ->orWhere('products.description', 'like', '%'.$search.'%')
+                    ->orWhere('products.brand', 'like', '%'.$search.'%')
                     ->orWhereHas('variants', fn (Builder $query) => $query->where('sku', 'like', '%'.$search.'%'));
             });
         }
@@ -455,10 +564,60 @@ final class EloquentProductRepository implements ProductRepositoryInterface
 
     private function applySorting(Builder $query, array $filters): void
     {
-        $sortBy = Str::lower(trim((string) ($filters['sort_by'] ?? 'created_at')));
+        $sortBy = Str::lower(trim((string) ($filters['sort_by'] ?? $filters['sort'] ?? '')));
         $direction = Str::lower(trim((string) ($filters['sort_direction'] ?? 'desc'))) === 'asc'
             ? 'asc'
             : 'desc';
+
+        if ($sortBy === '' || $sortBy === 'relevance') {
+            $query->orderByDesc('products.is_active')
+                ->orderByDesc('products.created_at')
+                ->orderByDesc('products.id');
+
+            return;
+        }
+
+        if ($sortBy === 'rating_desc' || $sortBy === 'most_reviewed') {
+            $query->withAvg('reviews as products_rating_avg', 'rating')
+                ->orderByDesc('products_rating_avg')
+                ->orderByDesc('products.id');
+
+            return;
+        }
+
+        if ($sortBy === 'price_asc') {
+            $query->orderBy(
+                ProductVariantModel::query()
+                    ->select('price')
+                    ->whereColumn('product_id', 'products.id')
+                    ->orderByDesc('is_default')
+                    ->orderBy('id')
+                    ->limit(1),
+                'asc'
+            )->orderBy('products.id', 'asc');
+
+            return;
+        }
+
+        if ($sortBy === 'price_desc') {
+            $query->orderBy(
+                ProductVariantModel::query()
+                    ->select('price')
+                    ->whereColumn('product_id', 'products.id')
+                    ->orderByDesc('is_default')
+                    ->orderBy('id')
+                    ->limit(1),
+                'desc'
+            )->orderByDesc('products.id');
+
+            return;
+        }
+
+        if ($sortBy === 'latest') {
+            $query->orderByDesc('products.created_at')->orderByDesc('products.id');
+
+            return;
+        }
 
         if ($sortBy === 'store_name') {
             $query->orderBy(
@@ -489,6 +648,20 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         if ($sortBy !== 'id') {
             $query->orderBy('products.id', $direction);
         }
+    }
+
+    private function normalizeListFilter(mixed $value): array
+    {
+        if (is_array($value)) {
+            $items = array_values($value);
+        } else {
+            $items = preg_split('/[\s,]+/', trim((string) ($value ?? '')), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        }
+
+        return array_values(array_filter(array_unique(array_map(
+            static fn (mixed $item): string => trim((string) $item),
+            $items
+        )), static fn (string $item): bool => $item !== ''));
     }
 
     private function applyCategoryIdsFilter(Builder $query, array $categoryIds): void

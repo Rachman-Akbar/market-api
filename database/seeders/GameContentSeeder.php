@@ -78,8 +78,6 @@ final class GameContentSeeder extends Seeder
     /** @return array<int, array<string, mixed>> */
     private function mythFactStatements(): array
     {
-        $defaultImage = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCz_4TXD7jRsuq4r5m1U4h2yq7s_GG_xrTQ0Z7k8kL-0V1c8B9it8e9rjWfVh0tL4xU1mQAEf1B7D0gK_5oKrgyHulWzTqWvVx9NfJm1k8Y9';
-
         $data = [
             ['statement' => 'Plastik bisa membutuhkan hingga 500 tahun untuk terurai di laut.', 'is_fact' => true],
             ['statement' => 'Semua plastik dapat terurai dalam waktu satu tahun.', 'is_fact' => false],
@@ -95,7 +93,7 @@ final class GameContentSeeder extends Seeder
                 'game_type' => 'myth_fact',
                 'title' => $item['statement'],
                 'difficulty' => null,
-                'payload' => $item + ['image_url' => $defaultImage],
+                'payload' => $item,
             ],
             $data,
         );

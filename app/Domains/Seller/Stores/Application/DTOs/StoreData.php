@@ -29,6 +29,7 @@ final class StoreData
         public ?StoreDetailData $detail = null,
         public ?string $ownerName = null,
         public ?string $ownerEmail = null,
+        public string $storeType = 'regular',
     ) {}
 
     public static function fromEntity(Store $entity): self
@@ -54,6 +55,7 @@ final class StoreData
             detail: $entity->detail() ? StoreDetailData::fromEntity($entity->detail()) : null,
             ownerName: $entity->ownerName(),
             ownerEmail: $entity->ownerEmail(),
+            storeType: $entity->storeType(),
         );
     }
 }

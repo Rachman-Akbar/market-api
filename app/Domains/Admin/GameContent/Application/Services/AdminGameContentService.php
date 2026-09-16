@@ -6,7 +6,6 @@ namespace App\Domains\Admin\GameContent\Application\Services;
 
 use App\Domains\Engagement\Gaming\Infrastructure\Persistence\Models\GameContentModel;
 use App\Domains\Engagement\Gaming\Infrastructure\Persistence\Repositories\EloquentGameContentRepository;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -39,6 +38,11 @@ final class AdminGameContentService
         return $query->orderByDesc('id')->paginate($perPage);
     }
 
+    public function find(int $id): GameContentModel
+    {
+        return GameContentModel::findOrFail($id);
+    }
+
     public function create(array $data, ?string $userId): GameContentModel
     {
         $this->validatePayloadForType($data['game_type'], $data['payload']);
@@ -56,7 +60,7 @@ final class AdminGameContentService
 
     public function update(int $id, array $data, ?string $userId): GameContentModel
     {
-        $row = GameContentModel::findOrFail($id);
+        $row = $this->find($id);
         $this->validatePayloadForType($data['game_type'], $data['payload']);
 
         $row->forceFill([
@@ -73,7 +77,7 @@ final class AdminGameContentService
 
     public function delete(int $id, ?string $userId): void
     {
-        $row = GameContentModel::findOrFail($id);
+        $row = $this->find($id);
         $row->updated_by = $userId;
         $row->save();
         $row->delete();

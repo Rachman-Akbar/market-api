@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -254,6 +255,9 @@ final class DemoProductsAndInventorySeeder extends Seeder
             $isDefault = true;
             $vi = 1;
             foreach ($variants as $vName => [$price, $stock, $minStock]) {
+                $isDiscounted = $pRef % 4 === 0;
+                $priceOriginal = $isDiscounted ? round($price * 1.25, -2) : null;
+                $priceSale = $isDiscounted ? $price : null;
                 $code = substr(preg_replace('/[^A-Za-z0-9]/', '', $vName), 0, 6);
                 $sku = strtoupper(substr($storeSlug, 0, 3)).'-'.sprintf('%04d', $pRef).'-'.$code.'-'.$vi;
                 $variantId = DB::table('product_variants')->insertGetId([
@@ -262,6 +266,8 @@ final class DemoProductsAndInventorySeeder extends Seeder
                     'sku' => $sku,
                     'name' => $vName,
                     'price' => $price,
+                    'price_original' => $priceOriginal,
+                    'price_sale' => $priceSale,
                     'stock' => $stock,
                     'po_stock' => 0,
                     'stock_reserved' => 0,
@@ -480,7 +486,7 @@ final class DemoProductsAndInventorySeeder extends Seeder
         }
     }
 
-    private function insertMaterialMovement(int $storeId, int $materialId, string $type, float $delta, float $balanceAfter, float $unitCost, float $totalCost, \Illuminate\Support\Carbon $occurredAt, string $now, string $notes): int
+    private function insertMaterialMovement(int $storeId, int $materialId, string $type, float $delta, float $balanceAfter, float $unitCost, float $totalCost, Carbon $occurredAt, string $now, string $notes): int
     {
         return DB::table('raw_material_stock_movements')->insertGetId([
             'store_id' => $storeId,

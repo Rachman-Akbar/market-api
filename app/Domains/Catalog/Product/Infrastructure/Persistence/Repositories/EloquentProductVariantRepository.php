@@ -47,6 +47,8 @@ final class EloquentProductVariantRepository implements ProductVariantRepository
         $model->sku = $variant->sku();
         $model->name = $variant->name();
         $model->price = $variant->price();
+        $model->price_original = $variant->priceOriginal();
+        $model->price_sale = $variant->priceSale();
         $model->stock = $variant->stock();
         $model->po_stock = $variant->poStock();
         $model->stock_reserved = $variant->stockReserved();

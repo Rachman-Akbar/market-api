@@ -39,6 +39,8 @@ final class CreateProductVariantUseCase
                 sku: $sku,   // AMAN: Menggunakan variabel hasil kalkulasi, bukan $data['sku'] langsung
                 name: $name, // AMAN: Menggunakan variabel hasil kalkulasi, bukan $data['name'] langsung
                 price: (float) ($data['price'] ?? 0),
+                priceOriginal: isset($data['price_original']) ? (float) $data['price_original'] : null,
+                priceSale: isset($data['price_sale']) ? (float) $data['price_sale'] : null,
                 stock: 0,
                 poStock: max(0, (int) ($data['po_stock'] ?? 0)),
                 stockReserved: 0,

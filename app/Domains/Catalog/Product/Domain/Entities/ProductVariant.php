@@ -22,6 +22,8 @@ final class ProductVariant
         private readonly ?int $minStock = 0,
         private readonly ?bool $allowsPreorder = null,
         private readonly bool $isDefault = false,
+        private readonly ?float $priceOriginal = null,
+        private readonly ?float $priceSale = null,
         private readonly array $values = [],
         private readonly ?string $createdAt = null,
         private readonly ?string $updatedAt = null
@@ -110,6 +112,16 @@ final class ProductVariant
     public function isDefault(): bool
     {
         return $this->isDefault;
+    }
+
+    public function priceOriginal(): ?float
+    {
+        return $this->priceOriginal;
+    }
+
+    public function priceSale(): ?float
+    {
+        return $this->priceSale;
     }
 
     public function values(): array

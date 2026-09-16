@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Engagement\Mission\Presentation\Http\Requests;
 
+use App\Domains\Engagement\Mission\Application\Services\MissionService;
 use App\Domains\Shared\Presentation\Http\Concerns\ResolvesActiveRole;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,7 +25,7 @@ final class MissionRequest extends FormRequest
             'name' => ['required', 'string', 'max:160'],
             'code' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'event_type' => ['required', Rule::in(['order_completed', 'review_submitted', 'login', 'purchase_amount', 'product_purchased', 'quiz_completed', 'trash_sort_completed', 'myth_fact_completed', 'match_card_completed', 'clean_river_completed'])],
+            'event_type' => ['required', 'string', Rule::in(MissionService::EVENT_TYPES)],
             'target_value' => ['required', 'integer', 'min:1'],
             'conditions' => ['nullable', 'array'],
             'starts_at' => ['required', 'date'],

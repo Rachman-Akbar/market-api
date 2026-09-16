@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -62,6 +63,7 @@ final class DemoCommerceSeeder extends Seeder
             if (empty($items)) {
                 $o--;
                 $totalOrders--;
+
                 continue;
             }
 
@@ -89,7 +91,7 @@ final class DemoCommerceSeeder extends Seeder
                 'scheduled_at' => null,
                 'received_at' => $status === 'completed' ? $createdAt->copy()->addDays(random_int(2, 5))->toDateTimeString() : null,
                 'user_id' => $buyerId,
-                'voucher_id' => $useVoucher ? $this->randomVoucher(): null,
+                'voucher_id' => $useVoucher ? $this->randomVoucher() : null,
                 'total_amount' => max(0, $total),
                 'discount_amount' => $discount,
                 'shipping_discount_amount' => 0,
@@ -217,10 +219,11 @@ final class DemoCommerceSeeder extends Seeder
         foreach ($variantList as $v) {
             $map[$v['store_slug']][] = $v;
         }
+
         return $map;
     }
 
-    private function pickItems(array $variants, array &$sold, \Illuminate\Support\Carbon $createdAt): array
+    private function pickItems(array $variants, array &$sold, Carbon $createdAt): array
     {
         if (empty($variants)) {
             return [];
@@ -260,12 +263,14 @@ final class DemoCommerceSeeder extends Seeder
         }
         $rates = ['sari-nusantara' => 12000, 'raka-teknologi' => 15000, 'kopi-nusantara' => 10000,
             'purnama-batik' => 13000, 'ananda-stationery' => 11000, 'sentra-operasional' => 14000];
+
         return (float) ($rates[$storeSlug] ?? 12000);
     }
 
     private function randomVoucher(): ?int
     {
         $codes = ['WELCOME20', 'HEMAT5RB', 'GRATISONGKIR', 'SETIA10', 'SARINUS12', 'KOPIPAGI'];
+
         return DB::table('vouchers')->where('code', $codes[array_rand($codes)])->value('id');
     }
 
@@ -283,12 +288,14 @@ final class DemoCommerceSeeder extends Seeder
         $addr = $addresses->get($buyerId);
         $recipient = $addr->recipient_name ?? 'Penerima Demo';
         $full = $addr ? ($addr->full_address.', '.$addr->district.', '.$addr->city_or_regency.', '.$addr->postal_code) : 'Jl. Demo No. 1';
+
         return json_encode(['recipient' => $recipient, 'address' => $full]);
     }
 
     private function destinationFor(string $buyerId, $addresses): string
     {
         $addr = $addresses->get($buyerId);
+
         return $addr->komerce_destination_id ?? 'KMB-1011';
     }
 
@@ -826,7 +833,7 @@ final class DemoCommerceSeeder extends Seeder
         }
     }
 
-    private function scheduleDate(string $label): \Illuminate\Support\Carbon
+    private function scheduleDate(string $label): Carbon
     {
         return match ($label) {
             'Senin pagi' => now()->next('Monday')->setTime(8, 0),

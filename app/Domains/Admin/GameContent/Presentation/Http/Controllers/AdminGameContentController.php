@@ -48,7 +48,7 @@ final class AdminGameContentController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        $row = \App\Domains\Engagement\Gaming\Infrastructure\Persistence\Models\GameContentModel::findOrFail($id);
+        $row = $this->service->find($id);
 
         return response()->json([
             'success' => true,

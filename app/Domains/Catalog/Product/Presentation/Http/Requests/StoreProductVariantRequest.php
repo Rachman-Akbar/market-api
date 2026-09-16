@@ -42,6 +42,8 @@ final class StoreProductVariantRequest extends FormRequest
                 Rule::unique('product_variants', 'name')->where(fn ($query) => $query->where('product_id', $productId)),
             ],
             'price' => ['nullable', 'numeric', 'min:0'],
+            'price_original' => ['nullable', 'numeric', 'min:0'],
+            'price_sale' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['nullable', 'integer', 'min:0'],
             'po_stock' => ['nullable', 'integer', 'min:0'],
             'max_order_qty' => ['nullable', 'integer', 'min:1'],

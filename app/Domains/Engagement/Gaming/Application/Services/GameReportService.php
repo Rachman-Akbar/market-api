@@ -56,14 +56,12 @@ final class GameReportService
                 is_array($payload['questions'] ?? null) ? $payload['questions'] : [],
                 $duration,
             );
-        } elseif ($gameType === 'sudoku') {
+        } else {
             $validation = $this->validation->validateSudoku(
                 is_array($payload['grid'] ?? null) ? $payload['grid'] : [],
                 $duration,
                 $difficulty,
             );
-        } else {
-            return ['status' => 'rejected', 'reason' => 'Jenis permainan tidak dikenali.', 'session' => null];
         }
 
         $session = DB::transaction(function () use ($userId, $gameType, $sessionId, $difficulty, $payload, $validation, $duration) {

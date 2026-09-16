@@ -8,6 +8,7 @@ use App\Domains\Finance\Commission\Application\Services\AdminFeeConfigService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AdminFeeConfigController extends Controller
 {
@@ -19,7 +20,7 @@ class AdminFeeConfigController extends Controller
     {
         $configs = $this->service->getAll();
 
-        $categories = \Illuminate\Support\Facades\DB::table('categories')
+        $categories = DB::table('categories')
             ->whereIn('id', collect($configs)->pluck('categoryId')->filter()->unique()->all())
             ->pluck('name', 'id');
 

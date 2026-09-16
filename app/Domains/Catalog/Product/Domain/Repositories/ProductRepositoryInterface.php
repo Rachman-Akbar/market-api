@@ -17,6 +17,8 @@ interface ProductRepositoryInterface
 
     public function paginate(array $filters = [], int $perPage = 20, int $page = 1): LengthAwarePaginator;
 
+    public function facets(array $filters = []): array;
+
     public function findById(int $id, bool $includeInactive = false): ?Product;
 
     public function findBySlug(string $slug, bool $includeInactive = false): ?Product;

@@ -48,6 +48,7 @@ final class StoreMapper
             address: $model->address,
             status: (string) ($model->status ?? 'pending'),
             isActive: (bool) $model->is_active,
+            storeType: (string) ($model->store_type ?? 'regular'),
             logo: $model->logo,
             bannerUrl: $model->banner_url,
             createdAt: $model->created_at?->toIso8601String(),
@@ -73,6 +74,7 @@ final class StoreMapper
             'address' => $store->address(),
             'status' => $store->status(),
             'is_active' => $store->isActive(),
+            'store_type' => $store->storeType(),
             'logo' => $store->logo(),
             'banner_url' => $store->bannerUrl(),
         ];

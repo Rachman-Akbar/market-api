@@ -27,6 +27,7 @@ final class StoreResource extends JsonResource
             'address' => $store->address,
             'status' => $store->status,
             'is_active' => $store->isActive,
+            'store_type' => $store->storeType,
             'logo' => $store->logo,
             'banner_url' => $store->bannerUrl,
             'detail' => $store->detail ? new StoreDetailResource($store->detail) : null,

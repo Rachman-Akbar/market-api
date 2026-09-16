@@ -85,4 +85,24 @@ class EloquentGameSessionRepository implements GameSessionRepositoryInterface
             'avg_score' => (float) ($row->avg_score ?? 0),
         ];
     }
+
+    public function summary(string $userId): array
+    {
+        $row = GameSessionModel::where('user_id', $userId)
+            ->where('validation_status', 'accepted')
+            ->selectRaw('
+                COUNT(*) as games_played,
+                COALESCE(SUM(correct_count), 0) as correct_answers,
+                COALESCE(SUM(total_questions), 0) as total_questions,
+                COALESCE(SUM(coins_awarded), 0) as coins_earned
+            ')
+            ->first();
+
+        return [
+            'games_played' => (int) ($row->games_played ?? 0),
+            'correct_answers' => (int) ($row->correct_answers ?? 0),
+            'total_questions' => (int) ($row->total_questions ?? 0),
+            'coins_earned' => (int) ($row->coins_earned ?? 0),
+        ];
+    }
 }

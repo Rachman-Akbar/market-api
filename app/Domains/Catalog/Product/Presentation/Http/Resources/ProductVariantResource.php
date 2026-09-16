@@ -32,6 +32,8 @@ final class ProductVariantResource extends JsonResource
             'sku' => $variant->sku(),
             'name' => $variant->name(),
             'price' => $variant->price(),
+            'price_original' => $variant->priceOriginal(),
+            'price_sale' => $variant->priceSale(),
             'stock' => $internal ? $variant->stock() : $available,
             'available_stock' => $available,
             'allows_preorder' => (bool) $variant->allowsPreorder(),

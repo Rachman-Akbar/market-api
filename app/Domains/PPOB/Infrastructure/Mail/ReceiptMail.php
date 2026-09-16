@@ -46,7 +46,7 @@ final class ReceiptMail extends Mailable implements ShouldQueue
                 'total' => number_format((float) $this->receipt->total, 0, ',', '.'),
                 'paymentMethod' => $this->receipt->payment_method ?? '-',
                 'receiptUrl' => config('app.frontend_url')
-                    ."/ppob/receipt/".urlencode((string) $this->receipt->transaction_reference),
+                    .'/ppob/receipt/'.urlencode((string) $this->receipt->transaction_reference),
             ],
         );
     }

@@ -60,7 +60,7 @@ final class PaymentReceiptMail extends Mailable
                 'paymentMethod' => $tx->payment_method ?? 'midtrans',
                 'paidAt' => ($tx->paid_at ?? now())->format('d/m/Y H:i'),
                 'receiptUrl' => config('app.frontend_url')
-                    ."/ppob/receipt/".urlencode((string) $tx->reference_id),
+                    .'/ppob/receipt/'.urlencode((string) $tx->reference_id),
             ],
         );
     }

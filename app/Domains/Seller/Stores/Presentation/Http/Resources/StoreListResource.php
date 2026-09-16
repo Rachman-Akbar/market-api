@@ -27,6 +27,7 @@ final class StoreListResource extends JsonResource
             'address' => $store->address(),
             'status' => $store->status(),
             'is_active' => $store->isActive(),
+            'store_type' => $store->storeType(),
             'logo' => $store->logo(),
             'banner_url' => $store->bannerUrl(),
             'created_at' => $store->createdAt(),

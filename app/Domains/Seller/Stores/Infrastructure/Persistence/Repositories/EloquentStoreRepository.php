@@ -12,6 +12,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class EloquentStoreRepository implements StoreRepositoryInterface
 {
@@ -26,10 +27,9 @@ final class EloquentStoreRepository implements StoreRepositoryInterface
             ->select($this->storeListColumns());
 
         $this->applyStoreFilters($query, $filters);
+        $this->applyStoreSorting($query, $filters);
 
         $paginator = $query
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
             ->paginate($this->resolvePerPage($filters, $perPage));
 
         $paginator->setCollection(
@@ -154,15 +154,41 @@ final class EloquentStoreRepository implements StoreRepositoryInterface
 
     private function applyStoreFilters(Builder $query, array $filters): void
     {
-        $search = trim((string) ($filters['search'] ?? ''));
+        $search = trim((string) ($filters['search'] ?? $filters['q'] ?? ''));
 
         if ($search !== '') {
             $query->where(function (Builder $query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('short_description', 'like', "%{$search}%")
                     ->orWhere('city', 'like', "%{$search}%")
                     ->orWhere('province', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $storeType = Str::lower(trim((string) ($filters['store_type'] ?? '')));
+
+        if (in_array($storeType, ['regular', 'official', 'power_merchant'], true)) {
+            $query->where('store_type', $storeType);
+        }
+
+        $locations = $this->normalizeListFilter($filters['locations'] ?? null);
+
+        if ($locations !== []) {
+            $query->where(function (Builder $query) use ($locations): void {
+                foreach ($locations as $i => $location) {
+                    $query->orWhere(function (Builder $query) use ($location): void {
+                        $query->where('city', 'like', "%{$location}%")
+                            ->orWhere('province', 'like', "%{$location}%");
+                    });
+                }
+            });
+        } elseif (($single = trim((string) ($filters['location'] ?? $filters['city'] ?? ''))) !== '') {
+            $query->where(function (Builder $query) use ($single): void {
+                $query->where('city', 'like', "%{$single}%")
+                    ->orWhere('province', 'like', "%{$single}%");
             });
         }
 
@@ -179,11 +205,62 @@ final class EloquentStoreRepository implements StoreRepositoryInterface
         }
     }
 
+    private function applyStoreSorting(Builder $query, array $filters): void
+    {
+        $direction = Str::lower(trim((string) ($filters['sort_direction'] ?? 'desc'))) === 'asc'
+            ? 'asc'
+            : 'desc';
+
+        if (! in_array($direction, ['asc', 'desc'], true)) {
+            $direction = 'desc';
+        }
+
+        $sort = Str::lower(trim((string) ($filters['sort'] ?? '')));
+
+        if ($sort === 'latest') {
+            $query->orderByDesc('created_at')->orderByDesc('id');
+
+            return;
+        }
+
+        $sortBy = $sort !== '' ? $sort : Str::lower(trim((string) ($filters['sort_by'] ?? 'created_at')));
+
+        if ($sortBy === 'name') {
+            $query->orderBy('name', $direction);
+        } elseif ($sortBy === 'city') {
+            $query->orderBy('city', $direction);
+        } elseif ($sortBy === 'is_active') {
+            $query->orderBy('is_active', $direction);
+        } else {
+            $query->orderBy('created_at', $direction);
+        }
+
+        if ($sortBy !== 'created_at') {
+            $query->orderByDesc('id');
+        }
+    }
+
     private function resolvePerPage(array $filters, int $fallback): int
     {
         $perPage = (int) ($filters['per_page'] ?? $fallback);
 
         return min(max($perPage, 1), self::MAX_PER_PAGE);
+    }
+
+    private function normalizeListFilter(mixed $value): array
+    {
+        if (is_string($value)) {
+            $value = [$value];
+        }
+
+        if (! is_array($value)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(array_map(
+            fn (mixed $item): string => trim((string) $item),
+            $value
+        ))));
     }
 
     private function storeListColumns(): array
@@ -202,6 +279,7 @@ final class EloquentStoreRepository implements StoreRepositoryInterface
             'address',
             'status',
             'is_active',
+            'store_type',
             'logo',
             'banner_url',
             'created_at',

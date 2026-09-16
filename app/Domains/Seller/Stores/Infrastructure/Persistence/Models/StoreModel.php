@@ -36,6 +36,7 @@ final class StoreModel extends Model
         'address',
         'status',
         'is_active',
+        'store_type',
         'logo',
         'banner_url',
         'created_by',

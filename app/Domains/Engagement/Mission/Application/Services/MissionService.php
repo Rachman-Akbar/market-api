@@ -15,6 +15,27 @@ use InvalidArgumentException;
 final class MissionService
 {
     /**
+     * Sumber tunggal event_type yang sah untuk sebuah misi.
+     * Dipakai oleh MissionRequest (validasi admin), supportedEventTypes()
+     * (pilihan di panel admin), dan GAME_COMPLETION_EVENTS (pencocokan progres).
+     */
+    public const EVENT_TYPES = [
+        'game_completed',
+        'game.*',
+        'quiz_completed',
+        'trash_sort_completed',
+        'myth_fact_completed',
+        'match_card_completed',
+        'clean_river_completed',
+        'order_completed',
+        'review_submitted',
+        'wishlist_added',
+        'login',
+        'product_purchased',
+        'purchase_amount',
+    ];
+
+    /**
      * Event types emitted when a user finishes an Android mini-game.
      * Binds them to missions whose event_type is "game_completed" or "any_game"
      * (mis harian: "Main game 3x" dll).

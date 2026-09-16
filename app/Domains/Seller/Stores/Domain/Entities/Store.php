@@ -26,7 +26,8 @@ final class Store
         private ?string $updatedAt,
         private ?StoreDetail $detail = null,
         private ?string $ownerName = null,
-        private ?string $ownerEmail = null
+        private ?string $ownerEmail = null,
+        private string $storeType = 'regular'
     ) {}
 
     public function id(): int
@@ -132,6 +133,11 @@ final class Store
     public function ownerEmail(): ?string
     {
         return $this->ownerEmail;
+    }
+
+    public function storeType(): string
+    {
+        return $this->storeType;
     }
 
     public function updateDetails(

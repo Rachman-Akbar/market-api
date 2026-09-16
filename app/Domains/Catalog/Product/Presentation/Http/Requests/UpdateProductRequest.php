@@ -99,6 +99,8 @@ final class UpdateProductRequest extends FormRequest
             ],
             'variants.*.name' => ['nullable', 'string', 'max:255', 'distinct'],
             'variants.*.price' => ['nullable', 'numeric', 'min:0'],
+            'variants.*.price_original' => ['nullable', 'numeric', 'min:0'],
+            'variants.*.price_sale' => ['nullable', 'numeric', 'min:0'],
             'variants.*.stock' => ['nullable', 'integer', 'min:0'],
             'variants.*.po_stock' => ['nullable', 'integer', 'min:0'],
             'variants.*.min_stock' => ['nullable', 'integer', 'min:0'],

@@ -93,6 +93,12 @@ final class UpdateProductUseCase
                         sku: $computedSku,
                         name: trim((string) preg_replace('/\s+/u', ' ', (string) ($variantData['name'] ?? ($oldVariant?->name() ?? $product->name())))),
                         price: (float) ($variantData['price'] ?? ($oldVariant?->price() ?? 0.0)),
+                        priceOriginal: array_key_exists('price_original', $variantData)
+                            ? (isset($variantData['price_original']) ? (float) $variantData['price_original'] : null)
+                            : ($oldVariant?->priceOriginal() ?? null),
+                        priceSale: array_key_exists('price_sale', $variantData)
+                            ? (isset($variantData['price_sale']) ? (float) $variantData['price_sale'] : null)
+                            : ($oldVariant?->priceSale() ?? null),
                         stock: (int) ($oldVariant?->stock() ?? 0),
                         poStock: array_key_exists('po_stock', $variantData)
                             ? max(0, (int) $variantData['po_stock'])

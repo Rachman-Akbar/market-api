@@ -35,9 +35,12 @@ final class ProductController extends Controller
         return $storeId ? (int) $storeId : null;
     }
 
-    public function index(Request $request, ListProductsQuery $query)
+    public function index(Request $request, ListProductsQuery $query, ProductRepositoryInterface $products)
     {
-        return ProductResource::collection($query->execute($request->all()));
+        $filters = $request->all();
+
+        return ProductResource::collection($query->execute($filters))
+            ->additional(['facets' => $products->facets($filters)]);
     }
 
     public function showBySlug(string $slug, GetProductBySlugQuery $query)

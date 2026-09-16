@@ -42,6 +42,12 @@ final class UpdateProductVariantUseCase
                 sku: $computedSku,
                 name: $computedName,
                 price: (float) ($data['price'] ?? $current->price()),
+                priceOriginal: array_key_exists('price_original', $data)
+                    ? (isset($data['price_original']) ? (float) $data['price_original'] : null)
+                    : $current->priceOriginal(),
+                priceSale: array_key_exists('price_sale', $data)
+                    ? (isset($data['price_sale']) ? (float) $data['price_sale'] : null)
+                    : $current->priceSale(),
                 stock: (int) $current->stock(),
                 poStock: array_key_exists('po_stock', $data)
                     ? max(0, (int) $data['po_stock'])
