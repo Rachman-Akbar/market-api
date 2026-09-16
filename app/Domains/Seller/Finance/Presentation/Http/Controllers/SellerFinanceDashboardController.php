@@ -26,9 +26,20 @@ class SellerFinanceDashboardController extends Controller
             ], 404);
         }
 
+        $validated = $request->validate([
+            'period' => ['nullable', 'in:daily,weekly,monthly,yearly'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+        ]);
+
         $period = $request->query('period', 'monthly');
 
-        $dashboard = $this->service->getDashboard($storeId, $period);
+        $dashboard = $this->service->getDashboard(
+            $storeId,
+            $period,
+            $validated['date_from'] ?? null,
+            $validated['date_to'] ?? null
+        );
 
         return response()->json([
             'success' => true,
@@ -47,11 +58,22 @@ class SellerFinanceDashboardController extends Controller
             ], 404);
         }
 
+        $validated = $request->validate([
+            'period' => ['nullable', 'in:daily,weekly,monthly,yearly'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+        ]);
+
         $period = $request->query('period', 'monthly');
 
         return response()->json([
             'success' => true,
-            'data' => $this->service->getOrderTrend($storeId, $period),
+            'data' => $this->service->getOrderTrend(
+                $storeId,
+                $period,
+                $validated['date_from'] ?? null,
+                $validated['date_to'] ?? null
+            ),
         ]);
     }
 

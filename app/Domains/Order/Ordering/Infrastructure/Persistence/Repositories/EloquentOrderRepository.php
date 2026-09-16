@@ -166,6 +166,14 @@ class EloquentOrderRepository implements OrderRepositoryInterface
                 $query->where('order_type', $filters['order_type']);
             }
 
+            if (! empty($filters['date_from'])) {
+                $query->whereDate('created_at', '>=', $filters['date_from']);
+            }
+
+            if (! empty($filters['date_to'])) {
+                $query->whereDate('created_at', '<=', $filters['date_to']);
+            }
+
             if (! empty($filters['search'])) {
                 $search = trim((string) $filters['search']);
                 $query->where('order_number', 'like', "%{$search}%");

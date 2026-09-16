@@ -61,11 +61,11 @@ class EloquentSellerSettlementRepository implements SellerSettlementRepositoryIn
         }
 
         if (! empty($filters['from_date'])) {
-            $query->where('created_at', '>=', $filters['from_date']);
+            $query->whereDate('created_at', '>=', $filters['from_date']);
         }
 
         if (! empty($filters['to_date'])) {
-            $query->where('created_at', '<=', $filters['to_date']);
+            $query->whereDate('created_at', '<=', $filters['to_date']);
         }
 
         return $query->orderByDesc('created_at')->paginate($perPage);

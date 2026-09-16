@@ -162,4 +162,41 @@ Tidak ditemukan endpoint yang di-stub, route yang di-comment-out, atau marker "n
 
 ---
 
-*Dokumen diagnosis dibuat otomatis dari analisis kode; tidak ada file proyek yang diubah selain file ini.*
+## 5. Addendum — 16 September 2026
+
+Perubahan signifikan sejak analisis awal (12 Sep) yang memperbarui sebagian temuan di atas:
+
+### Fitur & perbaikan baru
+- **Komisi/settlement seller ter-wire otomatis** saat sub-order selesai (jalur seller & admin)
+  — idempotent, sinkron `admin_fee`/`seller_net` ke `sub_orders` dan `orders`,
+  pemasukan memakai `seller_net`. Detail: [`KOMISI-SETTLEMENT.md`](./KOMISI-SETTLEMENT.md).
+  → Menutup celah "Belum ada test untuk Commission/settlement".
+- **Filter tanggal** pada riwayat order (buyer/admin) + dashboard penjualan (custom range),
+  cashflow, order trend; perbaikan boundary `to_date` di settlement, cashflow, dan export
+  hutang-piutang (baris akhir hari kini tercakup). Detail: [`FILTER-TANGGAL.md`](./FILTER-TANGGAL.md).
+- Perbaikan bug: notifier status dipindah keluar dari `DB::transaction` di
+  `UpdateOrderStatusUseCase`; `EloquentSellerSettlementRepository::getByStore` memakai
+  `whereDate`; cashflow/export pakai `startOfDay()`/`endOfDay()`.
+
+### Pengujian
+- Backend: **82 passed / 319 assertions** (sebelumnya ±50 kasus / 11 file).
+  File baru: `OrderCommissionTest`, `DateFilterTest`, `DateBoundaryFixTest`.
+- Frontend: **133 vitest pass**, `vite build` OK, eslint 0 error.
+- Game: `compileDebugKotlin` + `testDebugUnitTest` BUILD SUCCESSFUL (JDK 17 Temurin;
+  JDK 25 gagal — kebutuhan akan JDK 17 untuk AGP 8.13).
+- Endpoint: ±303 route API (`php artisan route:list`) — sebelumnya estimasi ±245.
+
+### Ketergantungan / keamanan
+- `composer audit`: 36 advisories → **0** (laravel 13.32, symfony fix, `jmespath 2.9.1`
+  menutup **CVE-2026-54133 critical**).
+- `npm audit`: 4 → **0** (postcss 8.5.28; `react-router-dom` 6.30.4 → **7.18.4** major).
+- Game: `androidx.security:security-crypto` (deprecated) diganti **Android Keystore AES-256-GCM**
+  di `SecurePrefs`.
+
+### Status placeholder / TODO yang TIDAK berubah
+- 4 halaman sidebar seller placeholder (categories/catalog-groups/users/store-management), laporan HPP visual, Clean River card di game hub, SFX/haptic, leaderboard UI Android, test Android — status tetap seperti §2/§4.
+
+### Catatan dokumentasi
+- `RINCIAN FITUR.MD` yang menjadi acuan materi **telah diisi ulang** (sebelumnya kosong 0 byte).
+
+*Dokumen ini sebelumnya dibuat otomatis dari analisis kode tanpa mengubah file proyek; addendum ini ditulis manual sesuai hasil kerja sesi.*

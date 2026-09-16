@@ -30,9 +30,18 @@ final class FinancialTransactionService
     public function save(array $data, ?int $id, ?int $sellerStoreId): FinancialTransactionModel
     {
         return DB::transaction(function () use ($data, $id, $sellerStoreId): FinancialTransactionModel {
-            $model = $id ? $this->find($id, $sellerStoreId) : new FinancialTransactionModel;
             $storeId = $sellerStoreId ?? ($data['store_id'] ?? null);
             $orderId = isset($data['order_id']) ? (int) $data['order_id'] : null;
+
+            if (! $id && $storeId !== null && $orderId !== null && (string) $data['type'] === 'income') {
+                $id = FinancialTransactionModel::query()
+                    ->where('store_id', (int) $storeId)
+                    ->where('order_id', $orderId)
+                    ->where('type', 'income')
+                    ->value('id');
+            }
+
+            $model = $id ? $this->find($id, $sellerStoreId) : new FinancialTransactionModel;
 
             if ($orderId !== null && $storeId !== null && ! DB::table('sub_orders')
                 ->where('order_id', $orderId)

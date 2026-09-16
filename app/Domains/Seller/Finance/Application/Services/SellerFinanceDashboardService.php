@@ -17,13 +17,14 @@ class SellerFinanceDashboardService
         private SellerWithdrawalService $withdrawalService
     ) {}
 
-    public function getDashboard(int $storeId, ?string $period = null): array
+    public function getDashboard(int $storeId, ?string $period = null, ?string $dateFrom = null, ?string $dateTo = null): array
     {
         $period = $period ?? 'monthly';
-        $startDate = $this->getStartDate($period);
+        [$startDate, $endDate] = $this->resolveRange($period, $dateFrom, $dateTo);
 
         $transactions = FinancialTransactionModel::where('store_id', $storeId)
             ->where('occurred_at', '>=', $startDate)
+            ->where('occurred_at', '<=', $endDate)
             ->where('is_active', true)
             ->get();
 
@@ -35,8 +36,9 @@ class SellerFinanceDashboardService
         $receivablePaid = $transactions->where('type', 'receivable')->sum('paid_amount');
 
         return [
-            'period' => $period,
+            'period' => $dateFrom ? 'custom' : $period,
             'start_date' => $startDate->toDateString(),
+            'end_date' => $endDate->toDateString(),
             'summary' => [
                 'income' => round($income, 2),
                 'expense' => round($expense, 2),
@@ -61,15 +63,14 @@ class SellerFinanceDashboardService
                 'status' => $t->status,
                 'occurred_at' => $t->occurred_at,
             ])->values()->all(),
-            'daily_cashflow' => $this->getDailyCashflow($storeId, $startDate),
+            'daily_cashflow' => $this->getDailyCashflow($storeId, $startDate, $endDate),
         ];
     }
 
-    public function getOrderTrend(int $storeId, ?string $period = null): array
+    public function getOrderTrend(int $storeId, ?string $period = null, ?string $dateFrom = null, ?string $dateTo = null): array
     {
         $period = $period ?? 'monthly';
-        $startDate = $this->getStartDate($period);
-        $endDate = now();
+        [$startDate, $endDate] = $this->resolveRange($period, $dateFrom, $dateTo);
 
         $rows = SubOrderModel::where('store_id', $storeId)
             ->where('created_at', '>=', $startDate)
@@ -82,7 +83,7 @@ class SellerFinanceDashboardService
             ->keyBy('day');
 
         $trend = [];
-        $current = Carbon::parse($startDate);
+        $current = $startDate->copy();
 
         while ($current->lte($endDate)) {
             $dayStr = $current->toDateString();
@@ -99,7 +100,7 @@ class SellerFinanceDashboardService
         }
 
         return [
-            'period' => $period,
+            'period' => $dateFrom ? 'custom' : $period,
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
             'points' => $trend,
@@ -108,15 +109,18 @@ class SellerFinanceDashboardService
 
     public function getCashflow(int $storeId, string $fromDate, string $toDate): array
     {
+        $from = Carbon::parse($fromDate)->startOfDay();
+        $to = Carbon::parse($toDate)->endOfDay();
+
         $transactions = FinancialTransactionModel::where('store_id', $storeId)
-            ->where('occurred_at', '>=', $fromDate)
-            ->where('occurred_at', '<=', $toDate)
+            ->where('occurred_at', '>=', $from)
+            ->where('occurred_at', '<=', $to)
             ->where('is_active', true)
             ->orderBy('occurred_at')
             ->get();
 
         $dailyData = [];
-        $current = Carbon::parse($fromDate);
+        $current = $from->copy();
         $end = Carbon::parse($toDate);
 
         while ($current->lte($end)) {
@@ -147,6 +151,21 @@ class SellerFinanceDashboardService
         ];
     }
 
+    private function resolveRange(string $period, ?string $dateFrom, ?string $dateTo): array
+    {
+        if ($dateFrom) {
+            return [
+                Carbon::parse($dateFrom)->startOfDay(),
+                $dateTo ? Carbon::parse($dateTo)->endOfDay() : now(),
+            ];
+        }
+
+        return [
+            $this->getStartDate($period),
+            now(),
+        ];
+    }
+
     private function getStartDate(string $period): Carbon
     {
         return match ($period) {
@@ -158,10 +177,11 @@ class SellerFinanceDashboardService
         };
     }
 
-    private function getDailyCashflow(int $storeId, Carbon $startDate): array
+    private function getDailyCashflow(int $storeId, Carbon $startDate, Carbon $endDate): array
     {
         $transactions = FinancialTransactionModel::where('store_id', $storeId)
             ->where('occurred_at', '>=', $startDate)
+            ->where('occurred_at', '<=', $endDate)
             ->where('is_active', true)
             ->get();
 

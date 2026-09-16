@@ -17,7 +17,7 @@ final class MyVoucherResource extends JsonResource
             'claimedAt' => $this->claimed_at?->toDateTimeString(),
             'usedAt' => $this->used_at?->toDateTimeString(),
             'sourceType' => $this->source_type,
-            'sourceId' => $this->source_id,
+            'sourceId' => $this->source_id !== null ? (int) $this->source_id : null,
             'voucher' => $this->voucher ? new VoucherResource($this->voucher) : null,
         ];
     }

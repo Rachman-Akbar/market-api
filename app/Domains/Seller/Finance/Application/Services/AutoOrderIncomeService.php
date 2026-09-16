@@ -4,16 +4,23 @@ declare(strict_types=1);
 
 namespace App\Domains\Seller\Finance\Application\Services;
 
+use App\Domains\Finance\Commission\Application\Services\OrderCommissionService;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
 use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialTransactionModel;
 use Illuminate\Support\Str;
 
 final class AutoOrderIncomeService
 {
+    public function __construct(
+        private OrderCommissionService $orderCommission
+    ) {}
+
     /**
      * Mencatat pemasukan otomatis saat sub-order milik seller selesai (completed).
      *
      * Idempotent: jika sudah ada transaksi income untuk (store, order) maka dilewati.
+     * Komisi/settlement dihitung lebih dulu agar pemasukan memakai seller_net
+     * (gross - admin fee) bila tersedia.
      *
      * @return bool true bila pemasukan berhasil dicatat
      */
@@ -26,6 +33,9 @@ final class AutoOrderIncomeService
         if (! $subOrder || (string) $subOrder->status !== 'completed') {
             return false;
         }
+
+        $this->orderCommission->recordForSubOrder($subOrderId, $buyerUserId);
+        $subOrder->refresh();
 
         $alreadyRecorded = FinancialTransactionModel::query()
             ->where('store_id', $subOrder->store_id)
@@ -56,6 +66,7 @@ final class AutoOrderIncomeService
         }
 
         $totalQuantity = $subOrder->items->sum(fn ($item): int => (int) $item->quantity);
+        $title = "Pemasukan sesuai dengan no order {$orderNumber}";
         $titleBody = "Order product {$productLines} dengan jumlah {$totalQuantity} nomor order {$orderNumber}";
 
         $model = new FinancialTransactionModel;
@@ -65,7 +76,7 @@ final class AutoOrderIncomeService
             'user_id' => $buyerUserId,
             'reference_number' => $this->referenceNumber(),
             'type' => 'income',
-            'title' => Str::limit($titleBody, 160),
+            'title' => Str::limit($title, 160),
             'description' => $titleBody,
             'amount' => round($amount, 2),
             'paid_amount' => 0,

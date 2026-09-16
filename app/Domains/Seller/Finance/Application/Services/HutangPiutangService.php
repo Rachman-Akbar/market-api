@@ -113,10 +113,10 @@ class HutangPiutangService
             ->where('is_active', true);
 
         if ($fromDate) {
-            $query->where('occurred_at', '>=', $fromDate);
+            $query->where('occurred_at', '>=', Carbon::parse($fromDate)->startOfDay());
         }
         if ($toDate) {
-            $query->where('occurred_at', '<=', $toDate);
+            $query->where('occurred_at', '<=', Carbon::parse($toDate)->endOfDay());
         }
 
         $transactions = $query->orderBy('occurred_at')->get();

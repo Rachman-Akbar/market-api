@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Finance\Commission;
 
 use App\Domains\Finance\Commission\Application\Services\AdminFeeConfigService;
+use App\Domains\Finance\Commission\Application\Services\OrderCommissionService;
 use App\Domains\Finance\Commission\Application\Services\SellerSettlementService;
 use App\Domains\Finance\Commission\Application\Services\SellerWithdrawalService;
 use App\Domains\Finance\Commission\Application\UseCases\CalculateCommissionUseCase;
@@ -27,6 +28,7 @@ class CommissionServiceProvider extends ServiceProvider
         $this->app->singleton(AdminFeeConfigService::class);
         $this->app->singleton(SellerSettlementService::class);
         $this->app->singleton(SellerWithdrawalService::class);
+        $this->app->singleton(OrderCommissionService::class);
         $this->app->singleton(CalculateCommissionUseCase::class);
     }
 

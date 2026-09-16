@@ -8,6 +8,7 @@ use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
 use App\Domains\Seller\Finance\Application\Services\AutoOrderIncomeService;
 use DomainException;
+use Illuminate\Support\Facades\DB;
 
 class UpdateOrderStatusUseCase
 {
@@ -29,50 +30,56 @@ class UpdateOrderStatusUseCase
 
     public function execute(int $orderId, string $status, ?string $reason = null): void
     {
-        $order = $this->orderRepository->findById($orderId);
+        $result = DB::transaction(function () use ($orderId, $status): array {
+            $order = $this->orderRepository->findById($orderId);
 
-        if (! $order) {
-            throw new DomainException('Order tidak ditemukan.');
-        }
+            if (! $order) {
+                throw new DomainException('Order tidak ditemukan.');
+            }
 
-        if ($order->status === $status) {
-            return;
-        }
+            if ($order->status === $status) {
+                return ['notify' => false];
+            }
 
-        $allowed = self::TRANSITIONS[$order->status] ?? [];
+            $allowed = self::TRANSITIONS[$order->status] ?? [];
 
-        if (! in_array($status, $allowed, true)) {
-            throw new DomainException("Perubahan status dari {$order->status} ke {$status} tidak diizinkan.");
-        }
+            if (! in_array($status, $allowed, true)) {
+                throw new DomainException("Perubahan status dari {$order->status} ke {$status} tidak diizinkan.");
+            }
 
-        if ($status === 'processing' && $order->paymentMethod === 'midtrans' && $order->paymentStatus !== 'paid') {
-            throw new DomainException('Order Midtrans belum memiliki pembayaran yang berhasil.');
-        }
+            if ($status === 'processing' && $order->paymentMethod === 'midtrans' && $order->paymentStatus !== 'paid') {
+                throw new DomainException('Order Midtrans belum memiliki pembayaran yang berhasil.');
+            }
 
-        $order->status = $status;
+            $order->status = $status;
 
-        if ($status === 'received') {
-            $order->receivedAt = now()->toDateTimeString();
-        }
+            if ($status === 'received') {
+                $order->receivedAt = now()->toDateTimeString();
+            }
 
-        $this->orderRepository->update($order);
+            $this->orderRepository->update($order);
 
-        $this->statusNotifier->notifyStatus($orderId, $status, $reason);
+            if ($status === 'completed') {
+                $this->missionService->recordEvent($order->userId, 'order_completed', 1, [
+                    'order_id' => $orderId,
+                    'order_type' => $order->orderType,
+                ]);
 
-        if ($status === 'completed') {
-            $this->missionService->recordEvent($order->userId, 'order_completed', 1, [
-                'order_id' => $orderId,
-                'order_type' => $order->orderType,
-            ]);
+                SubOrderModel::query()
+                    ->where('order_id', $orderId)
+                    ->where('status', 'completed')
+                    ->get()
+                    ->each(fn (SubOrderModel $subOrder) => $this->autoOrderIncome->recordForSubOrder(
+                        (int) $subOrder->id,
+                        $order->userId
+                    ));
+            }
 
-            SubOrderModel::query()
-                ->where('order_id', $orderId)
-                ->where('status', 'completed')
-                ->get()
-                ->each(fn (SubOrderModel $subOrder) => $this->autoOrderIncome->recordForSubOrder(
-                    (int) $subOrder->id,
-                    $order->userId
-                ));
+            return ['notify' => true];
+        });
+
+        if ($result['notify']) {
+            $this->statusNotifier->notifyStatus($orderId, $status, $reason);
         }
     }
 }

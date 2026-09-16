@@ -18,6 +18,11 @@ class SellerSettlementService
         return $this->repository->create($data);
     }
 
+    public function findByOrderAndSubOrder(int $orderId, ?int $subOrderId): ?SellerSettlement
+    {
+        return $this->repository->findByOrderAndSubOrder($orderId, $subOrderId);
+    }
+
     public function getStoreSettlements(int $storeId, array $filters = [], int $perPage = 20): mixed
     {
         return $this->repository->getByStore($storeId, $filters, $perPage);

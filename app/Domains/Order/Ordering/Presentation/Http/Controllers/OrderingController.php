@@ -99,7 +99,7 @@ class OrderingController extends Controller
         $orders = $this->getOrdersUseCase->execute(
             authenticatedUserId: (string) $request->user()->id,
             canViewAllOrders: true,
-            filters: $request->only(['user_id', 'status', 'payment_status', 'order_type', 'search']),
+            filters: $request->only(['user_id', 'status', 'payment_status', 'order_type', 'date_from', 'date_to', 'search']),
             perPage: min(100, max(1, (int) $request->query('per_page', 15)))
         );
 
@@ -117,7 +117,7 @@ class OrderingController extends Controller
         $orders = $this->getOrdersUseCase->execute(
             authenticatedUserId: $role === 'admin' ? $userId : $authenticatedId,
             canViewAllOrders: false,
-            filters: $request->only(['status', 'payment_status', 'order_type', 'search']),
+            filters: $request->only(['status', 'payment_status', 'order_type', 'date_from', 'date_to', 'search']),
             perPage: min(100, max(1, (int) $request->query('per_page', 15)))
         );
 

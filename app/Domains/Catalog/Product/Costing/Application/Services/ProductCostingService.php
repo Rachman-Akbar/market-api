@@ -101,7 +101,18 @@ final class ProductCostingService
             );
 
             if (($data['apply_to_variants'] ?? false) && $selling > 0) {
-                DB::table('product_variants')->where('product_id', $productId)->update(['price' => $selling, 'updated_at' => now()]);
+                $variants = DB::table('product_variants')->where('product_id', $productId)->select('id', 'price_original')->get();
+
+                foreach ($variants as $variant) {
+                    $discount = $variant->price_original !== null && (float) $variant->price_original > $selling;
+
+                    DB::table('product_variants')->where('id', $variant->id)->update([
+                        'price' => $selling,
+                        'price_original' => $discount ? $variant->price_original : null,
+                        'price_sale' => $discount ? $selling : null,
+                        'updated_at' => now(),
+                    ]);
+                }
             }
 
             return $this->get($productId, (int) $product->store_id);

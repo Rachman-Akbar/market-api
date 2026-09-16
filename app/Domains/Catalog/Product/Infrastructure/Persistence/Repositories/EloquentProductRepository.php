@@ -10,6 +10,8 @@ use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Mappers\ProductMapper;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductModel;
 use App\Domains\Catalog\Product\Infrastructure\Persistence\Models\ProductVariantModel;
+use App\Domains\Order\Review\Infrastructure\Persistence\Models\ProductReviewModel;
+use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -578,37 +580,36 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         }
 
         if ($sortBy === 'rating_desc' || $sortBy === 'most_reviewed') {
-            $query->withAvg('reviews as products_rating_avg', 'rating')
-                ->orderByDesc('products_rating_avg')
+            $query->leftJoinSub(
+                ProductReviewModel::query()
+                    ->select('product_id as sort_product_id')
+                    ->selectRaw('AVG(rating) as avg_rating')
+                    ->selectRaw('COUNT(*) as review_count')
+                    ->where('is_active', 1)
+                    ->whereNull('deleted_at')
+                    ->groupBy('sort_product_id'),
+                'review_agg',
+                fn ($join) => $join->on('review_agg.sort_product_id', '=', 'products.id')
+            )->addSelect('review_agg.avg_rating as avg_rating')
+                ->orderByDesc('review_agg.avg_rating')
                 ->orderByDesc('products.id');
 
             return;
         }
 
-        if ($sortBy === 'price_asc') {
-            $query->orderBy(
-                ProductVariantModel::query()
-                    ->select('price')
-                    ->whereColumn('product_id', 'products.id')
-                    ->orderByDesc('is_default')
-                    ->orderBy('id')
-                    ->limit(1),
-                'asc'
-            )->orderBy('products.id', 'asc');
+        if ($sortBy === 'price_asc' || $sortBy === 'price_desc') {
+            $priceDirection = $sortBy === 'price_asc' ? 'asc' : 'desc';
 
-            return;
-        }
-
-        if ($sortBy === 'price_desc') {
-            $query->orderBy(
+            $query->leftJoinSub(
                 ProductVariantModel::query()
-                    ->select('price')
-                    ->whereColumn('product_id', 'products.id')
-                    ->orderByDesc('is_default')
-                    ->orderBy('id')
-                    ->limit(1),
-                'desc'
-            )->orderByDesc('products.id');
+                    ->select('product_id as sort_product_id')
+                    ->selectRaw('price')
+                    ->where('is_default', 1),
+                'price_variant',
+                fn ($join) => $join->on('price_variant.sort_product_id', '=', 'products.id')
+            )->addSelect('price_variant.price as price')
+                ->orderBy('price_variant.price', $priceDirection)
+                ->orderBy('products.id', $priceDirection);
 
             return;
         }
@@ -620,25 +621,37 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         }
 
         if ($sortBy === 'store_name') {
-            $query->orderBy(
-                DB::table('stores')
-                    ->select('name')
-                    ->whereColumn('stores.id', 'products.store_id')
-                    ->limit(1),
-                $direction
-            );
+            $query->leftJoinSub(
+                StoreModel::query()
+                    ->select('id as sort_store_id')
+                    ->addSelect('name as sort_store_name'),
+                'stores_sort',
+                fn ($join) => $join->on('stores_sort.sort_store_id', '=', 'products.store_id')
+            )->addSelect('stores_sort.sort_store_name as sort_store_name')
+                ->orderBy('stores_sort.sort_store_name', $direction)
+                ->orderBy('products.id', $direction);
         } elseif ($sortBy === 'price' || $sortBy === 'stock') {
-            $query->orderBy(
+            $query->leftJoinSub(
                 ProductVariantModel::query()
-                    ->select($sortBy)
-                    ->whereColumn('product_id', 'products.id')
-                    ->orderByDesc('is_default')
-                    ->orderBy('id')
-                    ->limit(1),
-                $direction
-            );
+                    ->select('product_id as sort_product_id')
+                    ->selectRaw($sortBy)
+                    ->where('is_default', 1),
+                'variant_sort',
+                fn ($join) => $join->on('variant_sort.sort_product_id', '=', 'products.id')
+            )->addSelect('variant_sort.'.$sortBy.' as '.$sortBy)
+                ->orderBy('variant_sort.'.$sortBy, $direction)
+                ->orderBy('products.id', $direction);
         } elseif ($sortBy === 'mode') {
-            $query->withCount('variants')->orderBy('variants_count', $direction);
+            $query->leftJoinSub(
+                ProductVariantModel::query()
+                    ->select('product_id as sort_product_id')
+                    ->selectRaw('COUNT(*) as variants_count')
+                    ->groupBy('sort_product_id'),
+                'variant_counts',
+                fn ($join) => $join->on('variant_counts.sort_product_id', '=', 'products.id')
+            )->addSelect('variant_counts.variants_count as variants_count')
+                ->orderBy('variant_counts.variants_count', $direction)
+                ->orderBy('products.id', $direction);
         } else {
             $allowed = ['id', 'name', 'status', 'is_active', 'created_at', 'updated_at'];
             $column = in_array($sortBy, $allowed, true) ? $sortBy : 'created_at';
