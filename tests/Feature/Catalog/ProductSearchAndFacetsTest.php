@@ -134,4 +134,27 @@ class ProductSearchAndFacetsTest extends TestCase
         $miss->assertOk();
         $this->assertNotContains('Keripik Bandung', collect($miss->json('data'))->pluck('name')->all());
     }
+
+    public function test_public_catalog_filters_by_store_id_keeps_facets(): void
+    {
+        [$seller, $store] = $this->actingAsSeller([], ['city' => 'Surabaya', 'province' => 'Jawa Timur']);
+
+        $this->postJson('/api/v1/catalog/seller/products', [
+            'name' => 'Produk Toko',
+            'price' => 175000,
+            'status' => 'published',
+            'variants' => [['name' => 'Standar', 'price' => 175000]],
+        ])->assertOk();
+
+        $response = $this->getJson('/api/v1/catalog/products?store_id='.$store->id)
+            ->assertOk();
+
+        $facets = $response->json('facets');
+        $this->assertIsArray($facets);
+        $this->assertArrayHasKey('price_range', $facets);
+        $this->assertSame(
+            ['Produk Toko'],
+            collect($response->json('data'))->pluck('name')->all(),
+        );
+    }
 }

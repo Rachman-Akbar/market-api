@@ -453,7 +453,7 @@ final class EloquentProductRepository implements ProductRepositoryInterface
     private function applyOptionalFilters(Builder $query, array $filters): void
     {
         if (! empty($filters['store_id'])) {
-            $query->where('store_id', (int) $filters['store_id']);
+            $query->where('products.store_id', (int) $filters['store_id']);
         }
 
         $storeType = Str::lower(trim((string) ($filters['store_type'] ?? '')));
