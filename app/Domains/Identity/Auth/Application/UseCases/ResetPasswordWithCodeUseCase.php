@@ -7,6 +7,7 @@ namespace App\Domains\Identity\Auth\Application\UseCases;
 use App\Domains\Identity\Auth\Application\Services\EmailVerificationEngine;
 use App\Domains\Identity\Auth\Infrastructure\Mail\PasswordChangedMail;
 use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
@@ -38,9 +39,12 @@ final class ResetPasswordWithCodeUseCase
         $user->tokens()->delete();
 
         try {
-            Mail::to($user->email)->queue(new PasswordChangedMail($user->name));
-        } catch (\Throwable) {
-            // Email sending failure should not block the response
+            Mail::to($user->email)->send(new PasswordChangedMail($user->name));
+        } catch (\Throwable $throwable) {
+            Log::error('Gagal mengirim notifikasi password berhasil di-reset.', [
+                'email' => $user->email,
+                'exception' => $throwable,
+            ]);
         }
     }
 }

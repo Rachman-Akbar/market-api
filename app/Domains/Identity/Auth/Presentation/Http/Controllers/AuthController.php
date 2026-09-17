@@ -25,6 +25,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Auth\Passwords\TokenRepositoryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
@@ -116,9 +117,12 @@ final class AuthController extends Controller
                 .'/auth/reset-password?token='.$rawToken.'&email='.urlencode($email);
 
             try {
-                Mail::to($user->email)->queue(new PasswordResetMail($resetUrl));
-            } catch (\Throwable) {
-                // Email sending failure should not block the response
+                Mail::to($user->email)->send(new PasswordResetMail($resetUrl));
+            } catch (\Throwable $throwable) {
+                Log::error('Gagal mengirim email reset password.', [
+                    'email' => $user->email,
+                    'exception' => $throwable,
+                ]);
             }
         }
 
@@ -149,9 +153,16 @@ final class AuthController extends Controller
         $code = $engine->issue($email);
 
         try {
-            Mail::to($email)->queue(new EmailVerificationMail($code, $engine->ttlMinutes()));
-        } catch (\Throwable) {
-            // Email sending failure should not block the response
+            Mail::to($email)->send(new EmailVerificationMail($code, $engine->ttlMinutes()));
+        } catch (\Throwable $throwable) {
+            Log::error('Gagal mengirim kode verifikasi email.', [
+                'email' => $email,
+                'exception' => $throwable,
+            ]);
+
+            return response()->json([
+                'message' => 'Kode verifikasi gagal dikirim. Periksa kembali konfigurasi email pada server.',
+            ], 500);
         }
 
         return response()->json([
@@ -175,9 +186,12 @@ final class AuthController extends Controller
             $code = $engine->issue($email);
 
             try {
-                Mail::to($email)->queue(new EmailVerificationMail($code, $engine->ttlMinutes()));
-            } catch (\Throwable) {
-                // Email sending failure should not block the response
+                Mail::to($email)->send(new EmailVerificationMail($code, $engine->ttlMinutes()));
+            } catch (\Throwable $throwable) {
+                Log::error('Gagal mengirim kode reset password.', [
+                    'email' => $email,
+                    'exception' => $throwable,
+                ]);
             }
         }
 
@@ -241,9 +255,12 @@ final class AuthController extends Controller
         );
 
         try {
-            Mail::to($request->user()->email)->queue(new PasswordChangedMail($request->user()->name));
-        } catch (\Throwable) {
-            // Email sending failure should not block the response
+            Mail::to($request->user()->email)->send(new PasswordChangedMail($request->user()->name));
+        } catch (\Throwable $throwable) {
+            Log::error('Gagal mengirim notifikasi password berubah.', [
+                'email' => $request->user()->email,
+                'exception' => $throwable,
+            ]);
         }
 
         return response()->json([
