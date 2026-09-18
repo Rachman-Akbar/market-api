@@ -10,6 +10,7 @@ use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
 use App\Domains\Seller\Stock\Application\Services\StockMovementService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\LengthAwarePaginator as LengthAwarePaginatorConcrete;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -139,50 +140,51 @@ class EloquentOrderRepository implements OrderRepositoryInterface
         $cacheKey = 'orders:'.$version.':'.md5(json_encode([
             'user_id' => $userId,
             'filters' => $filters,
-            'page' => $page,
-            'per_page' => $perPage,
         ]));
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($userId, $filters, $perPage): LengthAwarePaginator {
-            $query = OrderModel::with(['subOrders.items', 'subOrders.store']);
+        $query = OrderModel::with(['subOrders.items', 'subOrders.store']);
 
-            if ($userId) {
-                $query->where('user_id', $userId);
-            }
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
 
-            if (! empty($filters['user_id'])) {
-                $query->where('user_id', (string) $filters['user_id']);
-            }
+        if (! empty($filters['user_id'])) {
+            $query->where('user_id', (string) $filters['user_id']);
+        }
 
-            if (! empty($filters['status'])) {
-                $query->where('status', $filters['status']);
-            }
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
 
-            if (! empty($filters['payment_status'])) {
-                $query->where('payment_status', $filters['payment_status']);
-            }
+        if (! empty($filters['payment_status'])) {
+            $query->where('payment_status', $filters['payment_status']);
+        }
 
-            if (! empty($filters['order_type'])) {
-                $query->where('order_type', $filters['order_type']);
-            }
+        if (! empty($filters['order_type'])) {
+            $query->where('order_type', $filters['order_type']);
+        }
 
-            if (! empty($filters['date_from'])) {
-                $query->whereDate('created_at', '>=', $filters['date_from']);
-            }
+        if (! empty($filters['date_from'])) {
+            $query->whereDate('created_at', '>=', $filters['date_from']);
+        }
 
-            if (! empty($filters['date_to'])) {
-                $query->whereDate('created_at', '<=', $filters['date_to']);
-            }
+        if (! empty($filters['date_to'])) {
+            $query->whereDate('created_at', '<=', $filters['date_to']);
+        }
 
-            if (! empty($filters['search'])) {
-                $search = trim((string) $filters['search']);
-                $query->where('order_number', 'like', "%{$search}%");
-            }
+        if (! empty($filters['search'])) {
+            $search = trim((string) $filters['search']);
+            $query->where('order_number', 'like', "%{$search}%");
+        }
 
-            return $query->latest()->paginate($perPage)->through(
-                fn ($model) => $this->mapper->toDomain($model)
-            );
-        });
+        $total = Cache::remember("{$cacheKey}.total", now()->addMinutes(5), fn (): int => $query->count());
+        $models = $query->latest()->forPage($page, $perPage)->get();
+        $items = $models->map(fn ($model) => $this->mapper->toDomain($model))->values();
+
+        return new LengthAwarePaginatorConcrete($items, $total, $perPage, $page, [
+            'path' => LengthAwarePaginatorConcrete::resolveCurrentPath(),
+            'pageName' => 'page',
+        ]);
     }
 
     private function clearUserOrderCache(string $userId): void
