@@ -25,6 +25,7 @@ final class OrderItemResource extends JsonResource
             'variant_id' => $this->read($item, 'variantId') ?? $this->read($item, 'variant_id'),
             'product_name' => $this->read($item, 'productName') ?? $this->read($item, 'product_name'),
             'sku' => $this->read($item, 'sku'),
+            'thumbnail' => $this->read($item, 'thumbnail'),
             'quantity' => $quantity,
             'currency' => $this->read($item, 'currency') ?? 'IDR',
             'unit_price' => $this->readMoney($unitPrice),

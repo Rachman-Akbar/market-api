@@ -47,6 +47,7 @@ class EloquentOrderRepository implements OrderRepositoryInterface
                         'variant_id' => $item->variantId,
                         'product_name' => $item->productName,
                         'sku' => $item->sku,
+                        'thumbnail' => $item->thumbnail,
                         'price' => $item->price,
                         'quantity' => $item->quantity,
                     ]);

@@ -87,6 +87,7 @@ class CreateOrderUseCase
                 'product_name' => $details->getProductName(),
                 'variant_name' => $details->getName(),
                 'sku' => $details->getSku(),
+                'thumbnail' => $details->getThumbnail(),
                 'price' => $details->getPrice()->getAmount(),
                 'quantity' => (int) $cartItem->quantity,
             ];
@@ -223,6 +224,7 @@ class CreateOrderUseCase
                         storeId: (int) $storeId,
                         productName: $label,
                         sku: $item['sku'],
+                        thumbnail: $item['thumbnail'],
                         price: (float) $item['price'],
                         quantity: (int) $item['quantity']
                     );

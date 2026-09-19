@@ -93,3 +93,4 @@ Filter tanggal yang sudah ada dan tetap berfungsi: financial transactions
 - `RINCIAN FITUR.MD` diisi ulang (sebelumnya kosong) sesuai kondisi aktual 4 materi.
 - Tambahan dokumen fitur: `KOMISI-SETTLEMENT.md`, `FILTER-TANGGAL.md`.
 - `diagnosis.md` ditambah addendum kondisi 16 Sep 2026.
+

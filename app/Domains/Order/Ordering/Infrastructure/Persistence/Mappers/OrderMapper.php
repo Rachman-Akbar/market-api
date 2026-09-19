@@ -23,6 +23,7 @@ final class OrderMapper
                         storeId: (int) $subOrder->store_id,
                         productName: (string) $item->product_name,
                         sku: (string) $item->sku,
+                        thumbnail: $item->thumbnail ? (string) $item->thumbnail : null,
                         price: (float) $item->price,
                         quantity: (int) $item->quantity
                     ))->all()

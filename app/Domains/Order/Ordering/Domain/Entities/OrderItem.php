@@ -13,6 +13,7 @@ final class OrderItem
         public int $storeId,
         public string $productName,
         public string $sku,
+        public ?string $thumbnail,
         public float $price,
         public int $quantity
     ) {}
