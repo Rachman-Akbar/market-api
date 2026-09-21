@@ -8,12 +8,15 @@ use App\Domains\Engagement\Mission\Application\Services\MissionService;
 use App\Domains\Identity\User\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Order\Ordering\Application\Services\OrderStatusNotifier;
 use App\Domains\Order\Ordering\Application\UseCases\CancelOrderUseCase;
+use App\Domains\Order\Ordering\Application\UseCases\CreateManualOrderUseCase;
 use App\Domains\Order\Ordering\Application\UseCases\CreateOrderUseCase;
 use App\Domains\Order\Ordering\Application\UseCases\GetOrdersUseCase;
 use App\Domains\Order\Ordering\Application\UseCases\GetShippingOptionsUseCase;
 use App\Domains\Order\Ordering\Application\UseCases\UpdateOrderStatusUseCase;
 use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
+use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
+use App\Domains\Order\Ordering\Presentation\Http\Requests\CreateManualOrderRequest;
 use App\Domains\Order\Ordering\Presentation\Http\Requests\CreateOrderRequest;
 use App\Domains\Order\Ordering\Presentation\Http\Resources\OrderResource;
 use App\Domains\Seller\Finance\Application\Services\AutoOrderIncomeService;
@@ -31,6 +34,7 @@ class OrderingController extends Controller
 
     public function __construct(
         private CreateOrderUseCase $createOrderUseCase,
+        private CreateManualOrderUseCase $createManualOrderUseCase,
         private GetShippingOptionsUseCase $shippingOptionsUseCase,
         private CancelOrderUseCase $cancelOrderUseCase,
         private UpdateOrderStatusUseCase $updateOrderStatusUseCase,
@@ -79,6 +83,46 @@ class OrderingController extends Controller
 
             return (new OrderResource($order))
                 ->additional(['success' => true, 'message' => 'Pesanan berhasil dibuat.'])
+                ->response()
+                ->setStatusCode(201);
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function storeManual(CreateManualOrderRequest $request): JsonResponse
+    {
+        if ($this->activeRole($request) !== 'seller') {
+            throw new AccessDeniedHttpException('Hanya seller yang dapat membuat order manual.');
+        }
+
+        $storeId = $this->sellerStoreId($request);
+        $data = $request->validated();
+
+        try {
+            $order = $this->createManualOrderUseCase->execute(
+                storeId: $storeId,
+                itemInputs: $data['items'],
+                customer: array_filter([
+                    'name' => $data['customer_name'],
+                    'phone' => $data['customer_phone'],
+                    'email' => $data['customer_email'] ?? null,
+                    'address' => $data['address'],
+                    'store_name' => $request->user()?->store?->name ?? 'Toko',
+                ]),
+                courier: (string) $data['courier'],
+                service: $data['service'] ?? null,
+                shippingCost: (float) ($data['shipping_cost'] ?? 0),
+                paymentMethod: (string) $data['payment_method'],
+                paymentStatus: (string) ($data['payment_status'] ?? 'paid'),
+                status: (string) ($data['status'] ?? 'pending')
+            );
+
+            return (new OrderResource($order))
+                ->additional(['success' => true, 'message' => 'Order manual berhasil dibuat.'])
                 ->response()
                 ->setStatusCode(201);
         } catch (\Throwable $exception) {
@@ -196,6 +240,51 @@ class OrderingController extends Controller
         $this->cancelOrderUseCase->execute($id);
 
         return response()->json(['success' => true, 'message' => 'Order berhasil dibatalkan.']);
+    }
+
+    public function destroy(Request $request, int $id): JsonResponse
+    {
+        $role = $this->activeRole($request);
+        if ($role !== 'seller' && $role !== 'admin') {
+            throw new AccessDeniedHttpException('Hanya seller atau admin yang dapat menghapus pesanan.');
+        }
+
+        $subOrder = SubOrderModel::query()->with('parentOrder')->find($id);
+        if (! $subOrder) {
+            return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
+        }
+
+        if ($role === 'seller') {
+            $storeId = $this->sellerStoreId($request);
+            if ((int) $subOrder->store_id !== $storeId) {
+                throw new AccessDeniedHttpException('Pesanan ini bukan milik toko Anda.');
+            }
+        }
+
+        $parent = $subOrder->parentOrder;
+        if ($parent && in_array(strtolower((string) $parent->payment_status), ['paid', 'success'], true)) {
+            throw new AccessDeniedHttpException('Pesanan yang sudah lunas tidak dapat dihapus.');
+        }
+        if (in_array($subOrder->status, ['processing', 'shipped', 'received', 'completed', 'cancelled'], true)) {
+            throw new AccessDeniedHttpException("Pesanan berstatus {$subOrder->status} tidak dapat dihapus.");
+        }
+
+        DB::transaction(function () use ($subOrder): void {
+            $this->stockMovementService->syncSubOrderStatus((int) $subOrder->id, (string) $subOrder->status, 'cancelled');
+            $subOrder->items()->delete();
+            $subOrder->delete();
+
+            $parentId = (int) $subOrder->order_id;
+            if (SubOrderModel::query()->where('order_id', $parentId)->count() === 0) {
+                $order = OrderModel::query()->find($parentId);
+                if ($order) {
+                    DB::table('payments')->where('order_number', $order->order_number)->delete();
+                    $order->delete();
+                }
+            }
+        });
+
+        return response()->json(['success' => true, 'message' => 'Pesanan berhasil dihapus.']);
     }
 
     public function updateStatus(Request $request, int $id): JsonResponse
