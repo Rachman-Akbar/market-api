@@ -44,53 +44,96 @@ class CreateOrderUseCase
         ?string $voucherCode = null,
         string $orderType = 'normal',
         ?string $preorderReleaseAt = null,
-        ?string $scheduledAt = null
+        ?string $scheduledAt = null,
+        array $items = []
     ): Order {
         if (trim($userId) === '') {
             throw new RuntimeException('Sesi Anda telah berakhir. Silakan login kembali.');
         }
 
         $ids = collect($cartItemIds)->map(fn ($id) => (int) $id)->filter()->unique()->values();
-        if ($ids->isEmpty()) {
+        $directQuantities = [];
+        foreach ($items as $line) {
+            $variantId = (int) ($line['product_variant_id'] ?? 0);
+            $quantity = (int) ($line['quantity'] ?? 0);
+
+            if ($variantId > 0 && $quantity > 0) {
+                $directQuantities[$variantId] = (int) ($directQuantities[$variantId] ?? 0) + $quantity;
+            }
+        }
+
+        if ($ids->isEmpty() && $directQuantities === []) {
             throw new RuntimeException('Pilih minimal satu produk untuk melakukan checkout.');
         }
 
-        $cart = CartModel::where('user_id', $userId)->first();
-        if (! $cart) {
-            throw new RuntimeException('Keranjang belanja tidak ditemukan.');
-        }
-
-        $selectedItems = $cart->items()->whereIn('id', $ids)->get();
-        if ($selectedItems->count() !== $ids->count()) {
-            throw new RuntimeException('Sebagian item checkout tidak ditemukan di keranjang Anda.');
-        }
-
-        $variantIds = $selectedItems->pluck('product_variant_id')->map(fn ($id) => (int) $id)->all();
-        $detailsMap = $this->productReader->getVariantsDetails($variantIds);
-
+        $cart = null;
         $groups = [];
         $itemsTotal = 0.0;
-        foreach ($selectedItems as $cartItem) {
-            $details = $detailsMap[(int) $cartItem->product_variant_id] ?? null;
-            if (! $details) {
-                throw new RuntimeException('Data varian produk tidak ditemukan.');
+
+        if ($ids->isNotEmpty()) {
+            $cart = CartModel::where('user_id', $userId)->first();
+            if (! $cart) {
+                throw new RuntimeException('Keranjang belanja tidak ditemukan.');
             }
 
-            $lineTotal = $details->getPrice()->getAmount() * (int) $cartItem->quantity;
-            $itemsTotal += $lineTotal;
-            $groups[$details->getStoreId()][] = [
-                'cart_item_id' => (int) $cartItem->id,
-                'variant_id' => $details->getId(),
-                'product_id' => $details->getProductId(),
-                'store_id' => $details->getStoreId(),
-                'store_name' => $details->getStoreName(),
-                'product_name' => $details->getProductName(),
-                'variant_name' => $details->getName(),
-                'sku' => $details->getSku(),
-                'thumbnail' => $details->getThumbnail(),
-                'price' => $details->getPrice()->getAmount(),
-                'quantity' => (int) $cartItem->quantity,
-            ];
+            $selectedItems = $cart->items()->whereIn('id', $ids)->get();
+            if ($selectedItems->count() !== $ids->count()) {
+                throw new RuntimeException('Sebagian item checkout tidak ditemukan di keranjang Anda.');
+            }
+
+            $variantIds = $selectedItems->pluck('product_variant_id')->map(fn ($id) => (int) $id)->all();
+            $detailsMap = $this->productReader->getVariantsDetails($variantIds);
+
+            foreach ($selectedItems as $cartItem) {
+                $details = $detailsMap[(int) $cartItem->product_variant_id] ?? null;
+                if (! $details) {
+                    throw new RuntimeException('Data varian produk tidak ditemukan.');
+                }
+
+                $lineTotal = $details->getPrice()->getAmount() * (int) $cartItem->quantity;
+                $itemsTotal += $lineTotal;
+                $groups[$details->getStoreId()][] = [
+                    'cart_item_id' => (int) $cartItem->id,
+                    'variant_id' => $details->getId(),
+                    'product_id' => $details->getProductId(),
+                    'store_id' => $details->getStoreId(),
+                    'store_name' => $details->getStoreName(),
+                    'product_name' => $details->getProductName(),
+                    'variant_name' => $details->getName(),
+                    'sku' => $details->getSku(),
+                    'thumbnail' => $details->getThumbnail(),
+                    'price' => $details->getPrice()->getAmount(),
+                    'quantity' => (int) $cartItem->quantity,
+                ];
+            }
+        } else {
+            $variantIds = array_keys($directQuantities);
+            $detailsMap = $this->productReader->getVariantsDetails($variantIds);
+
+            if (count($detailsMap) !== count($variantIds)) {
+                throw new RuntimeException('Beberapa produk tidak tersedia untuk dibeli.');
+            }
+
+            foreach ($directQuantities as $variantId => $quantity) {
+                $details = $detailsMap[(int) $variantId] ?? null;
+                if (! $details) {
+                    throw new RuntimeException('Data varian produk tidak ditemukan.');
+                }
+
+                $itemsTotal += $details->getPrice()->getAmount() * $quantity;
+                $groups[$details->getStoreId()][] = [
+                    'variant_id' => $details->getId(),
+                    'product_id' => $details->getProductId(),
+                    'store_id' => $details->getStoreId(),
+                    'store_name' => $details->getStoreName(),
+                    'product_name' => $details->getProductName(),
+                    'variant_name' => $details->getName(),
+                    'sku' => $details->getSku(),
+                    'thumbnail' => $details->getThumbnail(),
+                    'price' => $details->getPrice()->getAmount(),
+                    'quantity' => $quantity,
+                ];
+            }
         }
 
         $courier = $this->shippingCalculator->normalizeCourier($courier);
@@ -131,15 +174,28 @@ class CreateOrderUseCase
                 throw new RuntimeException('Alamat pengiriman tidak ditemukan.');
             }
 
-            $shippingAddress = collect([
-                $address->full_address,
-                $address->subdistrict,
-                $address->district,
-                $address->city_or_regency,
-                $address->province,
-                $address->postal_code,
-            ])->filter()->implode(', ');
-            $quote = $this->shippingOptionsUseCase->execute($userId, $addressId, $ids->all());
+            $shippingAddress = json_encode([
+                'recipient' => $address->recipient_name,
+                'phone' => $address->phone_number,
+                'address' => collect([
+                    $address->full_address,
+                    $address->subdistrict,
+                    $address->district,
+                    $address->city_or_regency,
+                    $address->province,
+                    $address->postal_code,
+                ])->filter()->implode(', '),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $directQuoteItems = $ids->isEmpty()
+            ? collect($directQuantities)
+                ->map(fn (int $quantity, int $variantId): array => [
+                    'product_variant_id' => $variantId,
+                    'quantity' => $quantity,
+                ])
+                ->values()
+                ->all()
+            : null;
+            $quote = $this->shippingOptionsUseCase->execute($userId, $addressId, $ids->all(), $directQuoteItems);
             $address->refresh();
             $destinationId = trim((string) $address->komerce_destination_id);
             $selectedOption = collect($quote['options'])->first(function (array $option) use ($courier, $service): bool {
@@ -324,7 +380,9 @@ class CreateOrderUseCase
                 'amount' => $itemsTotal,
             ]);
 
-            $cart->items()->whereIn('id', $ids)->delete();
+            if ($cart && $ids->isNotEmpty()) {
+                $cart->items()->whereIn('id', $ids)->delete();
+            }
             $this->notificationService->notifyAdmins([
                 'module' => 'orders',
                 'type' => 'order.created',

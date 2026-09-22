@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Seller;
 
+use App\Domains\Identity\User\Domain\Entities\User;
 use App\Domains\Order\Ordering\Application\UseCases\GetOrdersUseCase;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\OrderModel;
 use App\Domains\Order\Ordering\Infrastructure\Persistence\Models\SubOrderModel;
 use App\Domains\Seller\Finance\Application\Services\SellerFinanceDashboardService;
 use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialTransactionModel;
 use App\Domains\Seller\Stores\Infrastructure\Persistence\Models\StoreModel;
-use App\Domains\Identity\User\Domain\Entities\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\Support\InteractsAsUser;

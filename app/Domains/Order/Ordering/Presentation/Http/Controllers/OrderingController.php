@@ -51,14 +51,22 @@ class OrderingController extends Controller
     {
         $validated = $request->validate([
             'address_id' => ['required', 'integer', 'exists:addresses,id'],
-            'cart_item_ids' => ['required', 'array', 'min:1'],
+            'cart_item_ids' => ['nullable', 'array', 'min:1', 'required_without:items', 'prohibits:items'],
             'cart_item_ids.*' => ['required', 'integer', 'distinct'],
+            'items' => ['nullable', 'array', 'min:1', 'required_without:cart_item_ids', 'prohibits:cart_item_ids'],
+            'items.*.product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:999'],
         ]);
+
+        if (empty($validated['cart_item_ids']) && empty($validated['items'])) {
+            return response()->json(['success' => false, 'message' => 'Pilih minimal satu produk untuk menghitung ongkir.'], 422);
+        }
 
         $data = $this->shippingOptionsUseCase->execute(
             (string) $request->user()->id,
             (int) $validated['address_id'],
-            $validated['cart_item_ids']
+            $validated['cart_item_ids'] ?? [],
+            $validated['items'] ?? null
         );
 
         return response()->json(['success' => true, 'data' => $data]);
@@ -71,14 +79,15 @@ class OrderingController extends Controller
             $order = $this->createOrderUseCase->execute(
                 userId: (string) $request->user()->id,
                 addressId: isset($data['address_id']) ? (int) $data['address_id'] : null,
-                cartItemIds: $data['cart_item_ids'],
+                cartItemIds: $data['cart_item_ids'] ?? [],
                 courier: (string) $data['courier'],
                 service: $data['service'] ?? null,
                 paymentMethod: (string) $data['payment_method'],
                 voucherCode: $data['voucher_code'] ?? null,
                 orderType: $data['order_type'] ?? 'normal',
                 preorderReleaseAt: $data['preorder_release_at'] ?? null,
-                scheduledAt: $data['scheduled_at'] ?? null
+                scheduledAt: $data['scheduled_at'] ?? null,
+                items: $data['items'] ?? []
             );
 
             return (new OrderResource($order))
@@ -107,10 +116,10 @@ class OrderingController extends Controller
                 storeId: $storeId,
                 itemInputs: $data['items'],
                 customer: array_filter([
-                    'name' => $data['customer_name'],
-                    'phone' => $data['customer_phone'],
+                    'name' => $data['customer_name'] ?? null,
+                    'phone' => $data['customer_phone'] ?? null,
                     'email' => $data['customer_email'] ?? null,
-                    'address' => $data['address'],
+                    'address' => $data['address'] ?? null,
                     'store_name' => $request->user()?->store?->name ?? 'Toko',
                 ]),
                 courier: (string) $data['courier'],
@@ -118,7 +127,10 @@ class OrderingController extends Controller
                 shippingCost: (float) ($data['shipping_cost'] ?? 0),
                 paymentMethod: (string) $data['payment_method'],
                 paymentStatus: (string) ($data['payment_status'] ?? 'paid'),
-                status: (string) ($data['status'] ?? 'pending')
+                status: (string) ($data['status'] ?? 'pending'),
+                orderType: (string) ($data['order_type'] ?? 'normal'),
+                preorderReleaseAt: $data['preorder_release_at'] ?? null,
+                scheduledAt: $data['scheduled_at'] ?? null
             );
 
             return (new OrderResource($order))
@@ -198,7 +210,7 @@ class OrderingController extends Controller
 
         $query = SubOrderModel::query()
             ->where('store_id', $storeId)
-            ->with(['parentOrder', 'items', 'store']);
+            ->with(['parentOrder', 'parentOrder.user', 'items', 'store']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->query('status'));
@@ -213,6 +225,8 @@ class OrderingController extends Controller
             'id' => $row->id,
             'order_id' => $row->order_id,
             'order_number' => $row->parentOrder?->order_number,
+            'order_type' => (string) ($row->parentOrder?->order_type ?? 'normal'),
+            'is_manual' => $this->isManualOrder($row->parentOrder),
             'sub_order_number' => $row->sub_order_number,
             'store_id' => $row->store_id,
             'store_name' => $row->store?->name,
@@ -222,6 +236,9 @@ class OrderingController extends Controller
             'service' => $row->service,
             'status' => $row->status,
             'payment_status' => $row->parentOrder?->payment_status,
+            'shipping_address' => $row->parentOrder?->shipping_address,
+            'payment_method' => $row->parentOrder?->payment_method,
+            'user_email' => $row->parentOrder?->user?->email,
             'tracking_number' => $row->tracking_number,
             'items' => $row->items,
             'created_at' => $row->created_at?->toIso8601String(),
@@ -262,6 +279,9 @@ class OrderingController extends Controller
         }
 
         $parent = $subOrder->parentOrder;
+        if ($role === 'seller' && $parent && ! $this->isManualOrder($parent)) {
+            throw new AccessDeniedHttpException('Order marketplace tidak dapat dihapus oleh seller. Batalkan pesanan melalui status.');
+        }
         if ($parent && in_array(strtolower((string) $parent->payment_status), ['paid', 'success'], true)) {
             throw new AccessDeniedHttpException('Pesanan yang sudah lunas tidak dapat dihapus.');
         }
@@ -418,6 +438,227 @@ class OrderingController extends Controller
         return response()->json(['success' => true, 'message' => 'Status order berhasil diperbarui.']);
     }
 
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'customer_name' => ['required', 'string', 'max:255'],
+            'customer_phone' => ['nullable', 'string', 'max:30'],
+            'customer_email' => ['nullable', 'email', 'max:255'],
+            'address' => ['nullable', 'string', 'max:1000'],
+            'courier' => ['nullable', 'string', 'max:50'],
+            'service' => ['nullable', 'string', 'max:100'],
+            'shipping_cost' => ['nullable', 'numeric', 'min:0'],
+            'status' => ['required', 'string', 'in:pending,processing,shipped,received,completed,cancelled'],
+            'tracking_number' => ['nullable', 'string', 'max:255'],
+            'items' => ['nullable', 'array', 'min:1'],
+            'items.*.order_item_id' => ['required', 'integer'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $role = $this->activeRole($request);
+
+        if (! in_array($role, ['seller', 'admin'], true)) {
+            throw new AccessDeniedHttpException('Hanya seller atau admin yang dapat mengubah detail pesanan.');
+        }
+
+        if ($role === 'seller') {
+            $storeId = $this->sellerStoreId($request);
+            $subOrder = SubOrderModel::query()
+                ->where('id', $id)
+                ->where('store_id', $storeId)
+                ->with('parentOrder')
+                ->first();
+        } else {
+            $subOrder = SubOrderModel::query()->with('parentOrder')->find($id);
+        }
+
+        if (! $subOrder) {
+            throw new AccessDeniedHttpException('Pesanan tidak ditemukan untuk toko Anda.');
+        }
+
+        $parent = $subOrder->parentOrder;
+
+        if (! $parent) {
+            return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
+        }
+
+        $editedItems = $validated['items'] ?? null;
+        $isManual = $this->isManualOrder($parent);
+        if ($editedItems !== null && ! $isManual) {
+            throw new AccessDeniedHttpException('Produk hanya dapat diubah pada order manual.');
+        }
+        if ($editedItems !== null && ! in_array($subOrder->status, ['pending', 'processing'], true)) {
+            throw new AccessDeniedHttpException('Produk hanya dapat diubah saat pesanan belum dikirim.');
+        }
+
+        $result = DB::transaction(function () use ($subOrder, $parent, $validated, $editedItems, $isManual): array {
+            $previousStatus = (string) $subOrder->status;
+            $nextStatus = (string) $validated['status'];
+            $transitions = [
+                'pending' => ['processing', 'cancelled'],
+                'processing' => ['shipped', 'cancelled'],
+                'shipped' => ['received', 'completed'],
+                'received' => ['completed'],
+                'completed' => [],
+                'cancelled' => [],
+            ];
+
+            if ($previousStatus !== $nextStatus && ! in_array($nextStatus, $transitions[$previousStatus] ?? [], true)) {
+                throw new AccessDeniedHttpException("Perubahan status dari {$previousStatus} ke {$nextStatus} tidak diizinkan.");
+            }
+
+            $itemsTotal = (float) $subOrder->total_items_price;
+
+            if ($editedItems !== null) {
+                $savedItems = $subOrder->items()->lockForUpdate()->get()->keyBy('id');
+
+                if (count($editedItems) !== $savedItems->count()) {
+                    throw new AccessDeniedHttpException('Jenis produk yang ada di pesanan tidak dapat ditambah atau dihapus.');
+                }
+
+                $itemsTotal = 0.0;
+                $quantityMap = [];
+
+                foreach ($editedItems as $itemInput) {
+                    $saved = $savedItems->get($itemInput['order_item_id']);
+
+                    if (! $saved) {
+                        throw new AccessDeniedHttpException('Item produk tidak ditemukan pada pesanan.');
+                    }
+
+                    $unitPrice = (float) $itemInput['unit_price'];
+                    $quantity = (int) $itemInput['quantity'];
+                    $itemsTotal += $unitPrice * $quantity;
+                    $quantityMap[] = [
+                        'order_item_id' => (int) $saved->id,
+                        'quantity' => $quantity,
+                    ];
+                }
+
+                $this->stockMovementService->reconcileSubOrderItems((int) $subOrder->id, $quantityMap);
+
+                foreach ($editedItems as $itemInput) {
+                    $saved = $savedItems->get($itemInput['order_item_id']);
+                    $saved->forceFill([
+                        'price' => (float) $itemInput['unit_price'],
+                        'quantity' => (int) $itemInput['quantity'],
+                    ])->save();
+                }
+
+                $subOrder->forceFill(['total_items_price' => $itemsTotal])->save();
+            }
+
+            $courier = strtolower(trim((string) ($validated['courier'] ?? ''))) ?: (string) $subOrder->courier;
+            $service = ($validated['service'] ?? null) !== null ? strtoupper(trim((string) $validated['service'])) : $subOrder->service;
+
+            if (! $isManual && in_array($courier, ['ambil_sendiri', 'pickup'], true)) {
+                throw new AccessDeniedHttpException('Order marketplace tidak dapat diubah ke metode ambil sendiri.');
+            }
+
+            $subOrder->forceFill([
+                'courier' => $courier,
+                'service' => $service,
+                'shipping_cost' => $isManual
+                    ? (($validated['shipping_cost'] ?? null) !== null ? (float) $validated['shipping_cost'] : $subOrder->shipping_cost)
+                    : $subOrder->shipping_cost,
+                'tracking_number' => $validated['tracking_number'] ?? $subOrder->tracking_number,
+                'status' => $nextStatus,
+            ])->save();
+
+            if ($previousStatus !== $nextStatus) {
+                $this->stockMovementService->syncSubOrderStatus((int) $subOrder->id, $previousStatus, $nextStatus);
+            }
+
+            if ($nextStatus === 'completed') {
+                $this->autoOrderIncome->recordForSubOrder((int) $subOrder->id, (string) $parent->user_id);
+            }
+
+            if ($isManual) {
+                $name = trim((string) $validated['customer_name']);
+                $phone = trim((string) ($validated['customer_phone'] ?? ''));
+                $address = trim((string) ($validated['address'] ?? ''));
+                $shippingAddress = in_array($courier, ['ambil_sendiri', 'pickup'], true)
+                    ? 'Ambil sendiri di toko'
+                    : json_encode([
+                        'recipient' => $name,
+                        'phone' => $phone,
+                        'address' => $address,
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+                $hasDiscount = (float) $parent->discount_amount > 0 || (float) $parent->shipping_discount_amount > 0;
+                $parent->forceFill([
+                    'shipping_address' => $shippingAddress,
+                    'total_amount' => $hasDiscount
+                        ? $parent->total_amount
+                        : $itemsTotal + (float) $subOrder->shipping_cost,
+                ])->save();
+            }
+
+            if ($previousStatus === $nextStatus) {
+                return [
+                    'parent_changed' => false,
+                    'parent_completed' => false,
+                    'notify' => false,
+                ];
+            }
+
+            $statuses = SubOrderModel::query()->where('order_id', $parent->id)->pluck('status');
+            $parentStatus = 'pending';
+
+            if ($statuses->every(fn (string $status): bool => $status === 'cancelled')) {
+                $parentStatus = 'cancelled';
+            } elseif ($statuses->every(fn (string $status): bool => $status === 'completed')) {
+                $parentStatus = 'completed';
+            } elseif ($statuses->every(fn (string $status): bool => in_array($status, ['received', 'completed'], true))) {
+                $parentStatus = 'received';
+            } elseif ($statuses->every(fn (string $status): bool => in_array($status, ['shipped', 'received', 'completed'], true))) {
+                $parentStatus = 'shipped';
+            } elseif ($statuses->contains(fn (string $status): bool => in_array($status, ['processing', 'shipped', 'received', 'completed'], true))) {
+                $parentStatus = 'processing';
+            }
+
+            $previousParentStatus = (string) $parent->status;
+            $parent->forceFill([
+                'status' => $parentStatus,
+                'received_at' => $parentStatus === 'received' ? ($parent->received_at ?? now()) : $parent->received_at,
+            ])->save();
+
+            $this->stockMovementService->syncOrderStatus((int) $parent->id, $previousParentStatus, $parentStatus);
+
+            return [
+                'parent_changed' => $previousParentStatus !== $parentStatus,
+                'parent_completed' => $previousParentStatus !== 'completed' && $parentStatus === 'completed',
+                'notify' => true,
+                'order_id' => (int) $parent->id,
+                'user_id' => (string) $parent->user_id,
+                'order_type' => (string) ($parent->order_type ?? 'normal'),
+                'parent_status' => $parentStatus,
+            ];
+        });
+
+        if ($result['notify']) {
+            $this->statusNotifier->notifyStatus($result['order_id'], $result['parent_status'] ?? $nextStatus ?? $validated['status']);
+        }
+
+        if ($result['parent_completed']) {
+            $this->missionService->recordEvent((string) $result['user_id'], 'order_completed', 1, [
+                'order_id' => (int) $result['order_id'],
+                'order_type' => (string) $result['order_type'],
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Detail pesanan berhasil diperbarui.',
+            'data' => [
+                'id' => (int) $subOrder->id,
+                'status' => (string) $subOrder->status,
+                'tracking_number' => (string) ($subOrder->tracking_number ?? ''),
+            ],
+        ]);
+    }
+
     /**
      * Kirim notifikasi (chat + email) ke buyer untuk status order saat ini,
      * atau status yang ditentukan. Endpoint ini dipakai engine.js saat order
@@ -462,6 +703,16 @@ class OrderingController extends Controller
                 'notified_email' => $result['email'],
             ],
         ]);
+    }
+
+    private function isManualOrder(?object $order): bool
+    {
+        if (! $order) {
+            return false;
+        }
+
+        return (string) ($order->order_type ?? 'normal') === 'manual'
+            || str_starts_with((string) ($order->order_number ?? ''), 'MAN-');
     }
 
     private function activeRole(Request $request): string

@@ -21,6 +21,7 @@ final class ProductReviewRequest extends FormRequest
             'review' => ['nullable', 'string', 'max:5000'],
             'media' => ['nullable', 'array', 'max:5'],
             'media.*' => ['string', 'max:2048'],
+            'is_active' => ['nullable', 'boolean'],
         ];
     }
 }

@@ -24,9 +24,11 @@ final class GetShippingOptionsUseCase
         private ResolveAddressDestinationUseCase $resolveDestinationUseCase
     ) {}
 
-    public function execute(string $userId, int $addressId, array $cartItemIds): array
+    public function execute(string $userId, int $addressId, array $cartItemIds, ?array $items = null): array
     {
-        $contexts = $this->buildStoreContexts($userId, $addressId, $cartItemIds);
+        $contexts = $items === null
+            ? $this->buildStoreContexts($userId, $addressId, $cartItemIds)
+            : $this->buildDirectStoreContexts($userId, $addressId, $items);
         $aggregated = [];
         $warnings = [];
 
@@ -77,6 +79,8 @@ final class GetShippingOptionsUseCase
             })
             ->sortBy('cost')
             ->values()
+            ->reject(fn (array $option): bool => $this->isPickupOption($option))
+            ->values()
             ->all();
 
         if (! $options) {
@@ -87,6 +91,16 @@ final class GetShippingOptionsUseCase
             'options' => $options,
             'warnings' => collect($warnings)->filter()->unique()->values()->all(),
         ];
+    }
+
+    private function isPickupOption(array $option): bool
+    {
+        $courier = strtolower(trim((string) ($option['courier'] ?? '')));
+
+        return $courier === 'ambil_sendiri'
+            || $courier === 'pickup'
+            || str_contains(strtolower(trim((string) ($option['id'] ?? ''))), 'ambil_sendiri')
+            || strtolower(trim((string) ($option['provider'] ?? ''))) === 'pickup';
     }
 
     public function buildStoreContexts(string $userId, int $addressId, array $cartItemIds): array
@@ -138,6 +152,62 @@ final class GetShippingOptionsUseCase
 
             $contexts[$storeId]['weight'] += $details->getWeight() * (int) $item->quantity;
             $contexts[$storeId]['item_value'] += $details->getPrice()->getAmount() * (int) $item->quantity;
+        }
+
+        return $contexts;
+    }
+
+    public function buildDirectStoreContexts(string $userId, int $addressId, array $items): array
+    {
+        $address = $this->addressRepository->findByIdAndOwner($addressId, $userId, null);
+        if (! $address) {
+            throw new RuntimeException('Alamat pengiriman tidak ditemukan.');
+        }
+
+        $this->refreshDestinationId($address);
+
+        $quantities = [];
+        foreach ($items as $line) {
+            $variantId = (int) ($line['product_variant_id'] ?? 0);
+            $quantity = (int) ($line['quantity'] ?? 0);
+
+            if ($variantId > 0 && $quantity > 0) {
+                $quantities[$variantId] = (int) ($quantities[$variantId] ?? 0) + $quantity;
+            }
+        }
+
+        if ($quantities === []) {
+            throw new RuntimeException('Pilih minimal satu produk untuk melakukan checkout.');
+        }
+
+        $variantIds = array_keys($quantities);
+        $detailsMap = $this->productReader->getVariantsDetails($variantIds);
+
+        if (count($detailsMap) !== count($variantIds)) {
+            throw new RuntimeException('Beberapa produk tidak tersedia untuk dibeli.');
+        }
+
+        $contexts = [];
+
+        foreach ($quantities as $variantId => $quantity) {
+            $details = $detailsMap[(int) $variantId] ?? null;
+
+            if (! $details) {
+                throw new RuntimeException('Data varian produk tidak ditemukan.');
+            }
+
+            if ($details->getStock() < $quantity) {
+                throw new RuntimeException("Stok {$details->getProductName()} tidak mencukupi.");
+            }
+
+            $storeId = $details->getStoreId();
+
+            if (! isset($contexts[$storeId])) {
+                $contexts[$storeId] = $this->storeContext($storeId, $details->getStoreName(), $address);
+            }
+
+            $contexts[$storeId]['weight'] += $details->getWeight() * $quantity;
+            $contexts[$storeId]['item_value'] += $details->getPrice()->getAmount() * $quantity;
         }
 
         return $contexts;

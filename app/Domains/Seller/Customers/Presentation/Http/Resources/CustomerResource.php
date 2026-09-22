@@ -17,10 +17,13 @@ final class CustomerResource extends JsonResource
             'email' => $this->email,
             'avatar' => $this->avatar,
             'is_active' => (bool) $this->is_active,
-            'orders_count' => (int) $this->orders_count,
-            'total_spent' => (float) $this->total_spent,
+            'is_manual' => (bool) ($this->is_manual ?? false),
+            'orders_count' => (int) ($this->orders_count ?? 0),
+            'total_spent' => (float) ($this->total_spent ?? 0),
             'last_order_at' => $this->last_order_at,
             'registered_at' => $this->created_at?->toIso8601String(),
+            'phone' => $this->primary_phone ?? null,
+            'address' => $this->primary_address ?? null,
         ];
     }
 }

@@ -60,7 +60,9 @@ final class ProductReviewController extends Controller
     public function update(ProductReviewRequest $request, int $id, ProductReviewService $service): JsonResponse
     {
         try {
-            $row = $service->update($id, $request->validated(), (string) $request->user()->id);
+            $manage = $this->hasActiveRole($request, 'admin')
+                || $request->user()?->hasPermission('reviews.manage') === true;
+            $row = $service->update($id, $request->validated(), (string) $request->user()->id, $manage);
 
             return (new ProductReviewResource($row))->additional(['success' => true, 'message' => 'Review berhasil diperbarui.'])->response();
         } catch (InvalidArgumentException $exception) {

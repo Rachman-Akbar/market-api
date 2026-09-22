@@ -287,9 +287,9 @@ final class DemoCommerceSeeder extends Seeder
     {
         $addr = $addresses->get($buyerId);
         $recipient = $addr->recipient_name ?? 'Penerima Demo';
-        $full = $addr ? ($addr->full_address.', '.$addr->district.', '.$addr->city_or_regency.', '.$addr->postal_code) : 'Jl. Demo No. 1';
+        $full = $addr ? ($addr->full_address.', '.$addr->subdistrict.', '.$addr->district.', '.$addr->city_or_regency.', '.$addr->postal_code) : 'Jl. Demo No. 1';
 
-        return json_encode(['recipient' => $recipient, 'address' => $full]);
+        return json_encode(['recipient' => $recipient, 'phone' => $addr->phone_number ?? '', 'address' => $full], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     private function destinationFor(string $buyerId, $addresses): string

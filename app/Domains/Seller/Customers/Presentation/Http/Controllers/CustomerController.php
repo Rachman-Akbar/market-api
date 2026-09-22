@@ -11,6 +11,8 @@ use App\Domains\Shared\Presentation\Http\Concerns\ResolvesSellerStoreContext;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 final class CustomerController extends Controller
 {
@@ -29,5 +31,56 @@ final class CustomerController extends Controller
         );
 
         return CustomerResource::collection($rows)->additional(['success' => true])->response();
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $storeId = $this->resolveSellerStoreId($request);
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+            'note' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['boolean'],
+        ]);
+
+        $customer = $this->service->create($validated, $storeId);
+
+        return (new CustomerResource($customer))
+            ->additional(['success' => true, 'message' => 'Pelanggan berhasil ditambahkan.'])
+            ->response()
+            ->setStatusCode(201);
+    }
+
+    public function update(Request $request, string $customer): JsonResponse
+    {
+        $storeId = $this->resolveSellerStoreId($request);
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($customer)],
+            'note' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['boolean'],
+        ]);
+
+        $updated = $this->service->update($customer, $validated, $storeId);
+
+        if ($updated === null) {
+            throw ValidationException::withMessages(['customer' => 'Pelanggan tidak ditemukan pada toko ini.']);
+        }
+
+        return (new CustomerResource($updated))
+            ->additional(['success' => true, 'message' => 'Pelanggan berhasil diperbarui.'])
+            ->response();
+    }
+
+    public function destroy(Request $request, string $customer): JsonResponse
+    {
+        $storeId = $this->resolveSellerStoreId($request);
+        $deleted = $this->service->delete($customer, $storeId);
+
+        if (! $deleted) {
+            throw ValidationException::withMessages(['customer' => 'Pelanggan tidak ditemukan pada toko ini.']);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Pelanggan berhasil dihapus.']);
     }
 }

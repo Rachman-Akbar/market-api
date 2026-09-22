@@ -177,6 +177,98 @@ final class StockMovementService
         $this->applyStatusTransition(null, $subOrderId, $nextStatus);
     }
 
+    /**
+     * Sesuaikan stok (available/reserved) setelah qty order manual diubah.
+     *
+     * @param  array<int, array{order_item_id: int, quantity: int}>  $items
+     */
+    public function reconcileSubOrderItems(int $subOrderId, array $items): void
+    {
+        if ($items === []) {
+            return;
+        }
+
+        $keyed = collect($items)->keyBy('order_item_id');
+        $current = $this->loadOrderItems(null, $subOrderId);
+
+        DB::transaction(function () use ($subOrderId, $keyed, $current): void {
+            foreach ($current as $item) {
+                $target = $keyed->get((int) $item->order_item_id);
+
+                if (! $target) {
+                    throw new InvalidArgumentException('Item pesanan yang dikirim tidak lengkap.');
+                }
+
+                $oldQty = (int) $item->quantity;
+                $newQty = (int) $target['quantity'];
+                $delta = $newQty - $oldQty;
+
+                if ($delta === 0) {
+                    continue;
+                }
+
+                $variant = ProductVariantModel::query()->lockForUpdate()->find((int) $item->variant_id);
+                if (! $variant) {
+                    continue;
+                }
+
+                $maxOrderQty = (int) $variant->max_order_qty;
+                if ($maxOrderQty > 0 && $newQty > $maxOrderQty) {
+                    throw new InvalidArgumentException('Jumlah pesanan melebihi batas order toko (maksimal '.$maxOrderQty.' unit).');
+                }
+
+                $committed = $this->repository->existsForOrderItem((int) $item->order_item_id, 'paid-commit.available')
+                    || $this->repository->existsForOrderItem((int) $item->order_item_id, 'paid-commit.preorder');
+
+                if ($committed) {
+                    $available = max(0, (int) $variant->stock);
+                    if ($delta > 0 && $delta > $available) {
+                        throw new InvalidArgumentException('Stok tidak mencukupi untuk menambah jumlah pesanan.');
+                    }
+
+                    $nextBalance = (int) $variant->stock - $delta;
+                    $variant->forceFill(['stock' => $nextBalance])->save();
+
+                    $this->saveItemMovement(
+                        (int) ($item->order_id ?? $subOrderId),
+                        $item,
+                        'manual-edit.available.'.substr((string) microtime(), 2, 6),
+                        'outbound',
+                        -1 * $delta,
+                        $nextBalance,
+                        'available',
+                        'order_adjusted',
+                        $delta > 0 ? 'Qty pesanan manual ditambah' : 'Qty pesanan manual dikurangi',
+                        (string) $subOrderId
+                    );
+
+                    continue;
+                }
+
+                $available = max(0, (int) $variant->stock - (int) $variant->stock_reserved - (int) $variant->stock_booked);
+                if ($delta > 0 && $delta > $available) {
+                    throw new InvalidArgumentException('Stok tidak mencukupi. Tersedia '.$available.' unit.');
+                }
+
+                $nextReserved = (int) $variant->stock_reserved + $delta;
+                $variant->forceFill(['stock_reserved' => $nextReserved])->save();
+
+                $this->saveItemMovement(
+                    (int) ($item->order_id ?? $subOrderId),
+                    $item,
+                    'manual-edit.reserved.'.substr((string) microtime(), 2, 6),
+                    'adjust',
+                    $delta,
+                    $nextReserved,
+                    'reserved',
+                    'order_adjusted',
+                    $delta > 0 ? 'Reservasi pesanan manual ditambah' : 'Reservasi pesanan manual dikurangi',
+                    (string) $subOrderId
+                );
+            }
+        });
+    }
+
     private function applyStatusTransition(?int $orderId, ?int $subOrderId, string $nextStatus): void
     {
         DB::transaction(function () use ($orderId, $subOrderId, $nextStatus): void {

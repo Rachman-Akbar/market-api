@@ -35,7 +35,7 @@ final class CreateManualOrderUseCase
 
     /**
      * @param  array<int, array{variant_id: int, quantity: int}>  $itemInputs
-     * @param  array{name: string, phone: string, email?: ?string}  $customer
+     * @param  array{name?: string, phone?: string, email?: ?string, address?: string}  $customer
      */
     public function execute(
         int $storeId,
@@ -46,10 +46,21 @@ final class CreateManualOrderUseCase
         float $shippingCost,
         string $paymentMethod,
         string $paymentStatus,
-        string $status
+        string $status,
+        string $orderType = 'normal',
+        ?string $preorderReleaseAt = null,
+        ?string $scheduledAt = null
     ): Order {
         $courier = strtolower(trim($courier));
         $paymentMethod = strtolower(trim($paymentMethod));
+        $orderType = strtolower(trim($orderType));
+
+        if (! in_array($orderType, ['normal', 'preorder', 'booking'], true)) {
+            throw new RuntimeException('Metode pembelian tidak valid.');
+        }
+        if ($orderType === 'booking' && $scheduledAt === null) {
+            throw new RuntimeException('Tanggal kirim wajib diisi untuk metode pembelian booking.');
+        }
 
         $inputs = [];
         foreach ($itemInputs as $input) {
@@ -129,9 +140,9 @@ final class CreateManualOrderUseCase
         $order = new Order(
             id: null,
             orderNumber: $orderNumber,
-            orderType: 'normal',
-            preorderReleaseAt: null,
-            scheduledAt: null,
+            orderType: $orderType,
+            preorderReleaseAt: $orderType === 'preorder' ? $preorderReleaseAt : null,
+            scheduledAt: $orderType === 'booking' ? $scheduledAt : null,
             receivedAt: $paid ? now()->toDateTimeString() : null,
             userId: $userId,
             voucherId: null,
@@ -196,11 +207,14 @@ final class CreateManualOrderUseCase
             return 'Ambil sendiri di toko';
         }
 
-        return implode(' - ', array_filter([
-            trim((string) ($customer['name'] ?? '')),
-            trim((string) ($customer['phone'] ?? '')),
-            trim((string) ($customer['address'] ?? '')),
-        ]));
+        $recipient = trim((string) ($customer['name'] ?? ''));
+        $address = trim((string) ($customer['address'] ?? ''));
+
+        return json_encode([
+            'recipient' => $recipient !== '' ? $recipient : 'Pelanggan Umum',
+            'phone' => trim((string) ($customer['phone'] ?? '')),
+            'address' => $address !== '' ? $address : 'Datang langsung ke toko',
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     private function resolveCustomerUserId(int $storeId, array $customer): string
@@ -217,10 +231,11 @@ final class CreateManualOrderUseCase
         $candidateEmail = $email !== '' ? $email : 'guest-'.$storeId.'-'.Str::lower(Str::random(12)).'@manual.order';
 
         $userId = (string) Str::uuid();
+        $userName = trim((string) ($customer['name'] ?? ''));
         DB::table('users')->insert([
             'id' => $userId,
             'email' => $candidateEmail,
-            'name' => trim((string) ($customer['name'] ?? '')),
+            'name' => $userName !== '' ? $userName : 'Pelanggan Umum',
             'password' => null,
             'is_email_verified' => false,
             'is_active' => true,

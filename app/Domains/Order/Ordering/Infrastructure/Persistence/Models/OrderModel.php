@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Order\Ordering\Infrastructure\Persistence\Models;
 
+use App\Domains\Identity\User\Domain\Entities\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrderModel extends Model
@@ -27,5 +29,10 @@ class OrderModel extends Model
     public function subOrders(): HasMany
     {
         return $this->hasMany(SubOrderModel::class, 'order_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

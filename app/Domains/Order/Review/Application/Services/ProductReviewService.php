@@ -69,19 +69,27 @@ final class ProductReviewService
         });
     }
 
-    public function update(int $id, array $data, string $userId): ProductReviewModel
+    public function update(int $id, array $data, string $userId, bool $manage = false): ProductReviewModel
     {
         $model = $this->repository->find($id);
 
-        if (! $model || $model->user_id !== $userId) {
+        if (! $model || (! $manage && $model->user_id !== $userId)) {
             throw new InvalidArgumentException('Review tidak ditemukan.');
         }
 
-        $model->fill([
-            'rating' => (int) $data['rating'],
-            'review' => $data['review'] ?? null,
-            'media' => $data['media'] ?? null,
-        ]);
+        $update = [];
+
+        if ($model->user_id === $userId) {
+            $update['rating'] = (int) $data['rating'];
+            $update['review'] = $data['review'] ?? null;
+            $update['media'] = $data['media'] ?? null;
+        }
+
+        if ($manage && array_key_exists('is_active', $data)) {
+            $update['is_active'] = filter_var($data['is_active'], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        $model->fill($update);
 
         return $this->repository->save($model);
     }

@@ -251,4 +251,227 @@ class ManualOrderTest extends TestCase
 
         $this->assertNotNull(DB::table('sub_orders')->find($foreignSubOrderId));
     }
+
+    public function test_seller_can_update_order_detail_and_status(): void
+    {
+        $created = $this->postJson('/api/v1/order/orderings/manual', $this->basePayload())->assertStatus(201)->json('data.order_number');
+
+        $order = DB::table('orders')->where('order_number', $created)->first();
+        $subOrder = DB::table('sub_orders')->where('order_id', $order->id)->first();
+
+        $response = $this->patchJson('/api/v1/order/orderings/'.$subOrder->id, [
+            'customer_name' => 'Nama Baru',
+            'customer_phone' => '081299991111',
+            'customer_email' => null,
+            'address' => 'Jl. Baru No. 7, Bandung',
+            'courier' => 'sicepat',
+            'service' => 'REG',
+            'shipping_cost' => 20000,
+            'status' => 'shipped',
+            'tracking_number' => 'SICE12345678',
+        ]);
+
+        $response->assertStatus(200)->assertJsonPath('success', true);
+        $response->assertJsonPath('data.status', 'shipped');
+        $response->assertJsonPath('data.tracking_number', 'SICE12345678');
+
+        $savedSub = DB::table('sub_orders')->find($subOrder->id);
+        $this->assertSame('shipped', $savedSub->status);
+        $this->assertSame('sicepat', $savedSub->courier);
+        $this->assertSame('REG', $savedSub->service);
+        $this->assertSame('SICE12345678', $savedSub->tracking_number);
+        $this->assertEqualsWithDelta(20000, (float) $savedSub->shipping_cost, 0.01);
+
+        $savedOrder = DB::table('orders')->find($order->id);
+        $this->assertSame('shipped', $savedOrder->status);
+        $this->assertSame('Nama Baru - 081299991111 - Jl. Baru No. 7, Bandung', $savedOrder->shipping_address);
+        $this->assertEqualsWithDelta(120000, (float) $savedOrder->total_amount, 0.01);
+    }
+
+    public function test_order_detail_cannot_be_updated_with_illegal_status_transition(): void
+    {
+        $created = $this->postJson('/api/v1/order/orderings/manual', $this->basePayload())->assertStatus(201)->json('data.order_number');
+
+        $order = DB::table('orders')->where('order_number', $created)->first();
+        $subOrder = DB::table('sub_orders')->where('order_id', $order->id)->first();
+
+        $this->patchJson('/api/v1/order/orderings/'.$subOrder->id, [
+            'customer_name' => 'Nama Baru',
+            'status' => 'completed',
+        ])->assertStatus(403);
+
+        $this->assertSame('processing', DB::table('sub_orders')->find($subOrder->id)->status);
+    }
+
+    public function test_order_of_other_store_cannot_be_updated(): void
+    {
+        $otherUser = $this->makeUser();
+        $foreignStore = $this->makeStore($otherUser);
+
+        $foreignOrderId = (int) DB::table('orders')->insertGetId([
+            'order_number' => 'DOL-UPD-'.Str::upper(Str::random(6)),
+            'user_id' => $otherUser->id,
+            'status' => 'pending',
+            'payment_status' => 'unpaid',
+            'payment_method' => 'tunai_toko',
+            'shipping_address' => 'Alamat pihak lain',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $foreignSubOrderId = (int) DB::table('sub_orders')->insertGetId([
+            'order_id' => $foreignOrderId,
+            'store_id' => $foreignStore->id,
+            'sub_order_number' => 'DOL-SUB-UPD-'.Str::upper(Str::random(6)),
+            'total_items_price' => 10000,
+            'shipping_cost' => 0,
+            'courier' => 'jne',
+            'destination_id' => 'MANUAL-X',
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->patchJson('/api/v1/order/orderings/'.$foreignSubOrderId, [
+            'customer_name' => 'Orang Luar',
+            'status' => 'processing',
+        ])->assertStatus(403);
+
+        $this->assertSame('pending', DB::table('sub_orders')->find($foreignSubOrderId)->status);
+    }
+
+    public function test_manual_order_is_marked_with_manual_order_type(): void
+    {
+        $created = $this->postJson('/api/v1/order/orderings/manual', $this->basePayload())
+            ->assertStatus(201)
+            ->json('data.order_number');
+
+        $order = DB::table('orders')->where('order_number', $created)->first();
+        $this->assertSame('manual', $order->order_type);
+
+        $subOrder = DB::table('sub_orders')->where('order_id', $order->id)->first();
+
+        $list = $this->getJson('/api/v1/order/orderings/stores/'.$this->storeId.'?per_page=20')
+            ->assertStatus(200)
+            ->json('data.data');
+
+        $row = collect($list)->first(fn (array $row) => (int) $row['id'] === (int) $subOrder->id);
+
+        $this->assertNotNull($row);
+        $this->assertSame('manual', $row['order_type']);
+        $this->assertTrue($row['is_manual']);
+    }
+
+    public function test_items_of_paid_manual_order_can_be_edited_and_stock_reconciled(): void
+    {
+        $created = $this->postJson('/api/v1/order/orderings/manual', $this->basePayload())
+            ->assertStatus(201)
+            ->json('data.order_number');
+
+        $order = DB::table('orders')->where('order_number', $created)->first();
+        $subOrder = DB::table('sub_orders')->where('order_id', $order->id)->first();
+        $itemId = (int) DB::table('order_items')->where('sub_order_id', $subOrder->id)->value('id');
+
+        $before = DB::table('product_variants')->find($this->variantId);
+        $this->assertSame(8, (int) $before->stock);
+        $this->assertSame(0, (int) $before->stock_reserved);
+
+        $this->patchJson('/api/v1/order/orderings/'.$subOrder->id, [
+            'customer_name' => 'Pembeli Manual',
+            'address' => 'Jl. Kasir No. 9, Jakarta',
+            'courier' => 'jne',
+            'shipping_cost' => 15000,
+            'status' => 'processing',
+            'items' => [
+                ['order_item_id' => $itemId, 'quantity' => 3, 'unit_price' => 60000],
+            ],
+        ])->assertStatus(200)->assertJsonPath('success', true);
+
+        $after = DB::table('product_variants')->find($this->variantId);
+        $this->assertSame(7, (int) $after->stock);
+
+        $item = DB::table('order_items')->find($itemId);
+        $this->assertSame(3, (int) $item->quantity);
+        $this->assertEqualsWithDelta(60000, (float) $item->price, 0.01);
+
+        $this->assertEqualsWithDelta(180000, (float) DB::table('sub_orders')->find($subOrder->id)->total_items_price, 0.01);
+        $this->assertEqualsWithDelta(195000, (float) DB::table('orders')->find($order->id)->total_amount, 0.01);
+    }
+
+    public function test_items_of_marketplace_order_cannot_be_edited(): void
+    {
+        $otherUser = $this->makeUser();
+        $productId = (int) DB::table('product_variants')->where('id', $this->variantId)->value('product_id');
+
+        $orderId = (int) DB::table('orders')->insertGetId([
+            'order_number' => 'MRK-'.Str::upper(Str::random(6)),
+            'user_id' => $otherUser->id,
+            'order_type' => 'normal',
+            'status' => 'processing',
+            'payment_status' => 'paid',
+            'payment_method' => 'midtrans',
+            'shipping_address' => 'Alamat marketplace',
+            'total_amount' => 100000,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $subOrderId = (int) DB::table('sub_orders')->insertGetId([
+            'order_id' => $orderId,
+            'store_id' => $this->storeId,
+            'sub_order_number' => 'MRK-SUB-'.Str::upper(Str::random(6)),
+            'total_items_price' => 100000,
+            'shipping_cost' => 0,
+            'courier' => 'jne',
+            'destination_id' => 'MRK-X',
+            'status' => 'processing',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $itemId = (int) DB::table('order_items')->insertGetId([
+            'sub_order_id' => $subOrderId,
+            'product_id' => $productId,
+            'variant_id' => $this->variantId,
+            'product_name' => 'Produk Kasir',
+            'sku' => 'SKU-MRK',
+            'price' => 50000,
+            'quantity' => 2,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->patchJson('/api/v1/order/orderings/'.$subOrderId, [
+            'customer_name' => 'Orang Marketplace',
+            'status' => 'processing',
+            'items' => [
+                ['order_item_id' => $itemId, 'quantity' => 1, 'unit_price' => 50000],
+            ],
+        ])->assertStatus(403);
+
+        $this->assertSame(2, (int) DB::table('order_items')->find($itemId)->quantity);
+    }
+
+    public function test_items_of_manual_order_cannot_be_edited_after_shipped(): void
+    {
+        $payload = $this->basePayload();
+        $payload['status'] = 'shipped';
+
+        $created = $this->postJson('/api/v1/order/orderings/manual', $payload)
+            ->assertStatus(201)
+            ->json('data.order_number');
+
+        $order = DB::table('orders')->where('order_number', $created)->first();
+        $subOrder = DB::table('sub_orders')->where('order_id', $order->id)->first();
+        $itemId = (int) DB::table('order_items')->where('sub_order_id', $subOrder->id)->value('id');
+
+        $this->patchJson('/api/v1/order/orderings/'.$subOrder->id, [
+            'customer_name' => 'Pembeli Manual',
+            'status' => 'shipped',
+            'items' => [
+                ['order_item_id' => $itemId, 'quantity' => 5, 'unit_price' => 50000],
+            ],
+        ])->assertStatus(403);
+
+        $this->assertSame(2, (int) DB::table('order_items')->find($itemId)->quantity);
+    }
 }
