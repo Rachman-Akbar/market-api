@@ -51,6 +51,7 @@ class ScheduleController extends Controller
             'priority' => ['nullable', 'string', 'in:low,normal,high,urgent'],
             'color' => ['nullable', 'string', 'max:20'],
             'date' => ['required', 'date'],
+            'recurrence' => ['nullable', 'string', 'in:none,monthly,yearly'],
             'start_time' => ['nullable', 'date_format:H:i'],
             'end_time' => ['nullable', 'date_format:H:i', 'after_or_equal:start_time'],
             'is_all_day' => ['nullable', 'boolean'],
@@ -69,6 +70,7 @@ class ScheduleController extends Controller
         $validated['is_active'] = true;
         $validated['is_completed'] = false;
         $validated['status'] = $validated['status'] ?? 'todo';
+        $validated['recurrence'] = $validated['recurrence'] ?? 'none';
 
         $schedule = $this->service->create($validated);
 
@@ -102,6 +104,7 @@ class ScheduleController extends Controller
                 'priority' => $schedule->priority,
                 'color' => $schedule->color,
                 'date' => $schedule->date,
+                'recurrence' => $schedule->recurrence,
                 'start_time' => $schedule->startTime,
                 'end_time' => $schedule->endTime,
                 'is_all_day' => $schedule->isAllDay,
@@ -126,6 +129,7 @@ class ScheduleController extends Controller
             'priority' => ['sometimes', 'string', 'in:low,normal,high,urgent'],
             'color' => ['nullable', 'string', 'max:20'],
             'date' => ['sometimes', 'date'],
+            'recurrence' => ['sometimes', 'string', 'in:none,monthly,yearly'],
             'start_time' => ['nullable', 'date_format:H:i'],
             'end_time' => ['nullable', 'date_format:H:i', 'after_or_equal:start_time'],
             'is_all_day' => ['sometimes', 'boolean'],
@@ -293,6 +297,7 @@ class ScheduleController extends Controller
             'priority' => $schedule->priority,
             'color' => $schedule->color,
             'date' => $schedule->date,
+            'recurrence' => $schedule->recurrence,
             'start_time' => $schedule->startTime,
             'end_time' => $schedule->endTime,
             'is_all_day' => $schedule->isAllDay,

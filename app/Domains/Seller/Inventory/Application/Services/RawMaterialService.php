@@ -11,6 +11,7 @@ use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialMo
 use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialStockMovementModel;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 final class RawMaterialService
@@ -68,7 +69,10 @@ final class RawMaterialService
                 throw new InvalidArgumentException('Bahan baku tidak ditemukan.');
             }
 
-            $code = trim((string) $data['code']);
+            $code = trim((string) ($data['code'] ?? ''));
+            if ($code === '') {
+                $code = $id ? (string) $model->code : $this->generateCode((string) ($data['name'] ?? ''), $storeId);
+            }
             $duplicate = RawMaterialModel::query()->where('store_id', $storeId)->where('code', $code)->when($id, fn ($query) => $query->where('id', '<>', $id))->exists();
             if ($duplicate) {
                 throw new InvalidArgumentException('Kode bahan baku sudah digunakan pada toko ini.');
@@ -93,6 +97,24 @@ final class RawMaterialService
             ])->save();
 
             return $model->refresh();
+        });
+    }
+
+    public function delete(int $id, ?int $storeId): RawMaterialModel
+    {
+        return DB::transaction(function () use ($id, $storeId): RawMaterialModel {
+            $material = RawMaterialModel::query()
+                ->when($storeId !== null, fn ($query) => $query->where('store_id', $storeId))
+                ->lockForUpdate()
+                ->find($id);
+
+            if (! $material) {
+                throw new InvalidArgumentException('Bahan baku tidak ditemukan.');
+            }
+
+            $material->delete();
+
+            return $material;
         });
     }
 
@@ -188,6 +210,25 @@ final class RawMaterialService
 
             return $material->refresh();
         });
+    }
+
+    private function generateCode(string $name, int $storeId): string
+    {
+        $slug = Str::upper(Str::slug($name));
+        if ($slug === '') {
+            $slug = 'MAT';
+        }
+        $base = 'RM-'.Str::substr($slug, 0, 6);
+
+        for ($i = 1; $i <= 100; $i++) {
+            $candidate = $i === 1 ? $base : $base.'-'.str_pad((string) $i, 2, '0', STR_PAD_LEFT);
+            $exists = RawMaterialModel::query()->where('store_id', $storeId)->where('code', $candidate)->exists();
+            if (! $exists) {
+                return $candidate;
+            }
+        }
+
+        return $base.'-'.Str::upper(Str::random(4));
     }
 
     private function referenceNumber(RawMaterialModel $material, string $movementType, mixed $provided): string

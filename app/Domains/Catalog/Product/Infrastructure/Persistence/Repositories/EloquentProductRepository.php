@@ -513,6 +513,14 @@ final class EloquentProductRepository implements ProductRepositoryInterface
             });
         }
 
+        if (filter_var($filters['safe_stock'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $query->whereDoesntHave('variants', function (Builder $variantQuery): void {
+                $variantQuery
+                    ->where('min_stock', '>', 0)
+                    ->whereColumn('stock', '<=', 'min_stock');
+            });
+        }
+
         if (! empty($filters['seller_id'])) {
             $sellerId = (string) $filters['seller_id'];
             $query->whereHas('store', fn (Builder $storeQuery) => $storeQuery->where('user_id', $sellerId));

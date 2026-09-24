@@ -28,6 +28,7 @@ class ScheduleModel extends Model
         'priority',
         'color',
         'date',
+        'recurrence',
         'start_time',
         'end_time',
         'is_all_day',

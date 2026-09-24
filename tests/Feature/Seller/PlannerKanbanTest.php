@@ -170,4 +170,51 @@ class PlannerKanbanTest extends TestCase
             'status' => 'in_progress',
         ]);
     }
+
+    public function test_monthly_recurring_schedule_appears_in_following_month_grid(): void
+    {
+        $seller = $this->actingAsRole('seller');
+        $this->makeStore($seller);
+
+        $id = $this->postJson('/api/v1/seller/planner', [
+            'title' => 'Bayar tagihan listrik',
+            'date' => '2026-01-15',
+            'type' => 'reminder',
+            'priority' => 'high',
+            'recurrence' => 'monthly',
+        ])->assertCreated()->assertJsonPath('data.recurrence', 'monthly')->json('data.id');
+
+        $march = $this->getJson('/api/v1/seller/planner/grid?year=2026&month=3')
+            ->assertOk()
+            ->json('data.grid');
+
+        $dates = array_column($march, 'date');
+        $this->assertContains('2026-03-15', $dates);
+
+        $occurrence = collect($march)->firstWhere('date', '2026-03-15');
+        $titles = collect($occurrence['schedules'])->pluck('title')->all();
+        $this->assertContains('Bayar tagihan listrik', $titles);
+        $this->assertSame('monthly', $occurrence['schedules'][0]['recurrence'] ?? null);
+    }
+
+    public function test_yearly_recurring_schedule_appears_next_year_grid(): void
+    {
+        $seller = $this->actingAsRole('seller');
+        $this->makeStore($seller);
+
+        $this->postJson('/api/v1/seller/planner', [
+            'title' => 'Perpanjang STNK',
+            'date' => '2025-03-01',
+            'type' => 'reminder',
+            'recurrence' => 'yearly',
+        ])->assertCreated()->assertJsonPath('data.recurrence', 'yearly');
+
+        $grid = $this->getJson('/api/v1/seller/planner/grid?year=2026&month=3')
+            ->assertOk()
+            ->json('data.grid');
+
+        $occurrence = collect($grid)->firstWhere('date', '2026-03-01');
+        $titles = $occurrence ? collect($occurrence['schedules'])->pluck('title')->all() : [];
+        $this->assertContains('Perpanjang STNK', $titles);
+    }
 }

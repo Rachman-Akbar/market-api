@@ -34,6 +34,15 @@ final class RawMaterialController extends Controller
         return $this->save($request, $id);
     }
 
+    public function destroy(Request $request, int $id): JsonResponse
+    {
+        try {
+            return response()->json(['success' => true, 'data' => $this->service->delete($id, $this->scope($request))]);
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+    }
+
     public function adjust(Request $request, int $id): JsonResponse
     {
         $data = $request->validate([
@@ -66,7 +75,7 @@ final class RawMaterialController extends Controller
     {
         $data = $request->validate([
             'store_id' => ['nullable', 'integer', 'exists:stores,id'],
-            'code' => ['required', 'string', 'max:100'],
+            'code' => ['nullable', 'string', 'max:100'],
             'name' => ['required', 'string', 'max:255'],
             'unit' => ['required', 'string', 'max:50'],
             'minimum_stock' => ['nullable', 'numeric', 'min:0'],

@@ -23,3 +23,16 @@ php artisan serve --host=0.0.0.0 --port=8000    # dari market-api
 php artisan reverb:start                        # dari market-api
 npm run dev                                     # dari market-frontend
 adb reverse tcp:8000 tcp:8000                 
+
+
+
+1. Kegunaan "Sepanjang hari" pada fitur jadwal
+is_all_day menandai jadwal sebagai acara sehari penuh tanpa jam mulai/selesai — cocok untuk tagihan/deadline (listrik, sewa, tanggal pentol) yang waktunya tidak penting. Efeknya:
+- Field Jam Mulai/Jam Selesai disembunyikan; baru jadwal default ke is_all_day: true.
+- Backend menghitung durasi null dan ekspor CSV menampilkan "Seharian" (Schedule.php:52, ScheduleService.php:117).
+- Catatan yang saya perbaiki: sebelumnya jika user mengetik jam lalu mencentang "Sepanjang hari", sisa jam masih ikut tersimpan. Sekarang mencentangnya otomatis mengosongkan jam di ScheduleForm.jsx, jadi backend benar-benar mengirim null.
+2. Kode bahan baku otomatis dibuat
+- Backend (RawMaterialService.php): code kini opsional; bila kosong akan digenerate unik per toko dengan pola RM-<slug-nama> (mis. RM-GULA, jika bentrok jadi RM-GULA-02, dst.) — mengikuti pola GenerateUniqueSku yang sudah ada di repo. Saat edit, kode kosong dipertahankan memakai kode lama.
+- Controller (RawMaterialController.php:78): validasi code diubah required → nullable.
+- Frontend (RawMaterialsPage.jsx): field Kode jadi opsional dengan hint, dan toast setelah simpan menampilkan kode yang dibuat otomatis. Juga diperbarui pada quick-create ProductCostingFields.jsx (kode opsional, hanya nama wajib).
+Verifikasi: php -l backend bersih, npm run lint (tidak ada warning baru di file yang diubah), npm run build sukses.

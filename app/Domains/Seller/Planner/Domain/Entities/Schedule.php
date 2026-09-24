@@ -14,6 +14,14 @@ final class Schedule
 
     public const STATUSES = [self::STATUS_TODO, self::STATUS_IN_PROGRESS, self::STATUS_DONE];
 
+    public const RECURRENCE_NONE = 'none';
+
+    public const RECURRENCE_MONTHLY = 'monthly';
+
+    public const RECURRENCE_YEARLY = 'yearly';
+
+    public const RECURRENCES = [self::RECURRENCE_NONE, self::RECURRENCE_MONTHLY, self::RECURRENCE_YEARLY];
+
     public function __construct(
         public ?int $id,
         public string $userId,
@@ -24,6 +32,7 @@ final class Schedule
         public string $priority,
         public string $color,
         public string $date,
+        public string $recurrence,
         public ?string $startTime,
         public ?string $endTime,
         public bool $isAllDay,
@@ -50,5 +59,35 @@ final class Schedule
         $end = strtotime($this->endTime);
 
         return max(0, (int) round(($end - $start) / 60));
+    }
+
+    public function onDate(string $dateString): self
+    {
+        return new self(
+            id: $this->id,
+            userId: $this->userId,
+            storeId: $this->storeId,
+            title: $this->title,
+            description: $this->description,
+            type: $this->type,
+            priority: $this->priority,
+            color: $this->color,
+            date: $dateString,
+            recurrence: $this->recurrence,
+            startTime: $this->startTime,
+            endTime: $this->endTime,
+            isAllDay: $this->isAllDay,
+            status: $this->status,
+            position: $this->position,
+            assignee: $this->assignee,
+            label: $this->label,
+            isCompleted: $this->isCompleted,
+            completedAt: $this->completedAt,
+            completionProof: $this->completionProof,
+            metadata: $this->metadata,
+            isActive: $this->isActive,
+            createdAt: $this->createdAt,
+            updatedAt: $this->updatedAt,
+        );
     }
 }

@@ -117,7 +117,6 @@ final class SpreadsheetModuleRegistry
                 'model' => RawMaterialModel::class,
                 'roles' => ['admin', 'seller'],
                 'image_fields' => [],
-                'bulk_delete_enabled' => false,
                 'headers' => ['id', 'store_name', 'code', 'name', 'unit', 'minimum_stock', 'average_cost', 'is_active'],
                 'examples' => self::rawMaterialExamples(),
                 'guides' => [

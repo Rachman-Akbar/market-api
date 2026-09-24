@@ -42,13 +42,14 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
     {
         $models = ScheduleModel::where('user_id', $userId)
             ->where('is_active', true)
-            ->where('date', '>=', $fromDate)
-            ->where('date', '<=', $toDate)
+            ->whereBetween('date', [$fromDate, $toDate])
             ->orderBy('date')
             ->orderBy('start_time')
             ->get();
 
-        return $models->map(fn ($m) => $this->toEntity($m))->all();
+        $items = $models->map(fn ($m) => $this->toEntity($m))->all();
+
+        return $this->expandRecurring($items, $fromDate, $toDate);
     }
 
     public function getGridData(string $userId, int $year, int $month): array
@@ -68,13 +69,14 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
 
         $models = ScheduleModel::where('store_id', $storeId)
             ->where('is_active', true)
-            ->where('date', '>=', $startDate)
-            ->where('date', '<=', $endDate)
+            ->whereBetween('date', [$startDate, $endDate])
             ->orderBy('date')
             ->orderBy('start_time')
             ->get();
 
-        return $this->buildGrid($models->map(fn ($m) => $this->toEntity($m))->all(), $year, $month);
+        $items = $this->expandRecurring($models->map(fn ($m) => $this->toEntity($m))->all(), $startDate, $endDate);
+
+        return $this->buildGrid($items, $year, $month);
     }
 
     public function getBoard(?string $userId, ?int $storeId, bool $isAdmin, array $filters = []): array
@@ -265,6 +267,7 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
                     'status' => $s->status,
                     'priority' => $s->priority,
                     'color' => $s->color,
+                    'recurrence' => $s->recurrence,
                     'start_time' => $s->startTime,
                     'end_time' => $s->endTime,
                     'is_all_day' => $s->isAllDay,
@@ -283,6 +286,84 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
         ];
     }
 
+    private function expandRecurring(array $items, string $fromDate, string $toDate): array
+    {
+        $baseKeys = [];
+
+        foreach ($items as $item) {
+            $baseKeys["{$item->id}|{$item->date}"] = true;
+        }
+
+        $recurring = ScheduleModel::query()
+            ->where('is_active', true)
+            ->where('recurrence', '!=', Schedule::RECURRENCE_NONE)
+            ->get()
+            ->map(fn ($m) => $this->toEntity($m));
+
+        $occurrences = [];
+
+        foreach ($recurring as $schedule) {
+            $dates = $this->recurringOccurrenceDates($schedule->date, $schedule->recurrence, $fromDate, $toDate);
+
+            foreach ($dates as $dateString) {
+                $key = "{$schedule->id}|{$dateString}";
+
+                if (isset($baseKeys[$key]) || isset($occurrences[$key])) {
+                    continue;
+                }
+
+                $occurrences[$key] = $schedule->onDate($dateString);
+            }
+        }
+
+        $merged = [...$items, ...array_values($occurrences)];
+
+        usort($merged, fn (Schedule $left, Schedule $right): int => [$left->date, (string) $left->startTime]
+            <=> [$right->date, (string) $right->startTime]);
+
+        return $merged;
+    }
+
+    private function recurringOccurrenceDates(string $anchorDate, string $recurrence, string $fromDate, string $toDate): array
+    {
+        $anchor = Carbon::parse($anchorDate);
+        $from = Carbon::parse($fromDate);
+        $to = Carbon::parse($toDate);
+        $dates = [];
+
+        if ($recurrence === Schedule::RECURRENCE_MONTHLY) {
+            $cursor = Carbon::create($from->year, $from->month, 1)->startOfMonth();
+            $endCursor = Carbon::create($to->year, $to->month, 1)->endOfMonth();
+
+            while ($cursor->lte($endCursor)) {
+                $day = min((int) $anchor->day, $cursor->daysInMonth);
+                $occurrence = Carbon::create($cursor->year, $cursor->month, $day);
+
+                if ($occurrence->between($from, $to)) {
+                    $dates[] = $occurrence->toDateString();
+                }
+
+                $cursor->addMonth();
+            }
+        } elseif ($recurrence === Schedule::RECURRENCE_YEARLY) {
+            $year = (int) $from->year;
+            $endYear = (int) $to->year;
+
+            while ($year <= $endYear) {
+                $day = min((int) $anchor->day, Carbon::create($year, (int) $anchor->month, 1)->daysInMonth);
+                $occurrence = Carbon::create($year, (int) $anchor->month, $day);
+
+                if ($occurrence->between($from, $to)) {
+                    $dates[] = $occurrence->toDateString();
+                }
+
+                $year++;
+            }
+        }
+
+        return array_values(array_unique($dates));
+    }
+
     private function cardShape(ScheduleModel $model): array
     {
         return [
@@ -299,6 +380,7 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
             'priority' => (string) ($model->priority ?: 'normal'),
             'color' => (string) ($model->color ?: '#10B981'),
             'date' => $model->date,
+            'recurrence' => (string) ($model->recurrence ?: Schedule::RECURRENCE_NONE),
             'start_time' => $model->start_time,
             'end_time' => $model->end_time,
             'is_all_day' => (bool) $model->is_all_day,
@@ -322,6 +404,7 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
             priority: (string) ($model->priority ?: 'normal'),
             color: (string) ($model->color ?: '#10B981'),
             date: $model->date,
+            recurrence: (string) ($model->recurrence ?: Schedule::RECURRENCE_NONE),
             startTime: $model->start_time,
             endTime: $model->end_time,
             isAllDay: (bool) $model->is_all_day,

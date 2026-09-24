@@ -11,6 +11,7 @@ Route::middleware(['auth:sanctum', 'active.user', 'verified.email', 'role:seller
         Route::get('materials', [RawMaterialController::class, 'index']);
         Route::post('materials', [RawMaterialController::class, 'store']);
         Route::put('materials/{id}', [RawMaterialController::class, 'update'])->whereNumber('id');
+        Route::delete('materials/{id}', [RawMaterialController::class, 'destroy'])->whereNumber('id');
         Route::post('materials/{id}/stock', [RawMaterialController::class, 'adjust'])->whereNumber('id');
         Route::get('material-movements', [RawMaterialController::class, 'movements']);
         Route::get('cost-impacts', [RawMaterialController::class, 'costImpacts']);
