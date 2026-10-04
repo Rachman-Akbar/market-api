@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Domains\Seller\Inventory\Application\Services;
 
 use App\Domains\Catalog\Product\Costing\Application\Services\ProductCostingService;
+use App\Domains\Shared\Codes\Application\Services\CodePatternService;
 use App\Domains\Catalog\Product\Costing\Infrastructure\Persistence\Models\ProductCostingImpactModel;
 use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialCostHistoryModel;
 use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialModel;
 use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialStockMovementModel;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 final class RawMaterialService
@@ -19,6 +19,7 @@ final class RawMaterialService
     public function __construct(
         private ProductCostingService $productCostingService,
         private RawMaterialMutasiNotifier $mutasiNotifier,
+        private CodePatternService $codePatterns,
     ) {}
 
     public function paginate(array $filters, int $perPage, ?int $storeId): LengthAwarePaginator
@@ -214,21 +215,11 @@ final class RawMaterialService
 
     private function generateCode(string $name, int $storeId): string
     {
-        $slug = Str::upper(Str::slug($name));
-        if ($slug === '') {
-            $slug = 'MAT';
-        }
-        $base = 'RM-'.Str::substr($slug, 0, 6);
-
-        for ($i = 1; $i <= 100; $i++) {
-            $candidate = $i === 1 ? $base : $base.'-'.str_pad((string) $i, 2, '0', STR_PAD_LEFT);
-            $exists = RawMaterialModel::query()->where('store_id', $storeId)->where('code', $candidate)->exists();
-            if (! $exists) {
-                return $candidate;
-            }
-        }
-
-        return $base.'-'.Str::upper(Str::random(4));
+        return $this->codePatterns->unique('material_code', $storeId, [
+            'name' => $name,
+            'type' => 'RM',
+            'seq' => RawMaterialModel::query()->where('store_id', $storeId)->count() + 1,
+        ], fn (string $code): bool => RawMaterialModel::query()->where('store_id', $storeId)->where('code', $code)->exists());
     }
 
     private function referenceNumber(RawMaterialModel $material, string $movementType, mixed $provided): string
@@ -238,18 +229,25 @@ final class RawMaterialService
             return $provided;
         }
 
-        $prefix = match ($movementType) {
-            'restock' => 'RM-RSK',
-            'usage' => 'RM-USG',
-            'production_usage' => 'RM-PRD',
-            default => 'RM-ADJ',
+        $movement = match ($movementType) {
+            'restock' => 'RSK',
+            'usage' => 'USG',
+            'production_usage' => 'PRD',
+            default => 'ADJ',
         };
         $sequence = RawMaterialStockMovementModel::query()
             ->where('store_id', $material->store_id)
             ->whereDate('occurred_at', today()->toDateString())
             ->count() + 1;
 
-        return $prefix.'-'.today()->format('Ymd').'-'.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
+        return $this->codePatterns->unique('material_reference', (int) $material->store_id, [
+            'movement' => $movement,
+            'name' => (string) $material->name,
+            'seq' => $sequence,
+        ], fn (string $reference): bool => RawMaterialStockMovementModel::query()
+            ->where('store_id', $material->store_id)
+            ->where('reference_number', $reference)
+            ->exists());
     }
 
     private function recordCostHistory(RawMaterialModel $material, float $oldCost, float $newCost, ?int $movementId, string $referenceType, ?string $referenceNumber, mixed $occurredAt): RawMaterialCostHistoryModel

@@ -5,16 +5,19 @@ declare(strict_types=1);
 namespace App\Domains\Seller\Finance\Application\Services;
 
 use App\Domains\Seller\Finance\Domain\Repositories\FinancialTransactionRepositoryInterface;
+use App\Domains\Shared\Codes\Application\Services\CodePatternService;
 use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialPaymentHistoryModel;
 use App\Domains\Seller\Finance\Infrastructure\Persistence\Models\FinancialTransactionModel;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 final class FinancialTransactionService
 {
-    public function __construct(private FinancialTransactionRepositoryInterface $repository) {}
+    public function __construct(
+        private FinancialTransactionRepositoryInterface $repository,
+        private CodePatternService $codePatterns,
+    ) {}
 
     public function paginate(array $filters, int $perPage, ?int $storeId): LengthAwarePaginator
     {
@@ -71,12 +74,13 @@ final class FinancialTransactionService
                     : min($amount, max(0, round((float) ($data['paid_amount'] ?? 0), 2))))
                 : 0.0;
             $status = $this->resolveStatus($type, $amount, $paidAmount, (string) ($data['status'] ?? 'open'));
+            $providedReference = trim((string) ($data['reference_number'] ?? ''));
 
             $model->fill([
                 'store_id' => $storeId,
                 'order_id' => $orderId,
                 'user_id' => $data['user_id'] ?? null,
-                'reference_number' => $model->reference_number ?: $this->referenceNumber((string) $data['type']),
+                'reference_number' => $model->reference_number ?: ($providedReference !== '' ? $providedReference : $this->referenceNumber($type, $sellerStoreId !== null ? (int) $sellerStoreId : ($data['store_id'] ?? null))),
                 'type' => $type,
                 'title' => trim((string) $data['title']),
                 'description' => $data['description'] ?? null,
@@ -183,8 +187,11 @@ final class FinancialTransactionService
         return $paidAmount >= $amount ? 'paid' : 'partial';
     }
 
-    private function referenceNumber(string $type): string
+    private function referenceNumber(string $type, ?int $storeId = null): string
     {
-        return strtoupper(substr($type, 0, 3)).'-'.now()->format('YmdHis').'-'.Str::upper(Str::random(5));
+        return $this->codePatterns->unique('invoice_reference', $storeId, [
+            'type' => $type,
+            'seq' => $this->codePatterns->sequenceFor('financial_transactions', 'created_at', $storeId),
+        ], fn (string $candidate): bool => FinancialTransactionModel::query()->where('reference_number', $candidate)->exists());
     }
 }

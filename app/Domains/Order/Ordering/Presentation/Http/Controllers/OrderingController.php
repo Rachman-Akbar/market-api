@@ -130,7 +130,8 @@ class OrderingController extends Controller
                 status: (string) ($data['status'] ?? 'pending'),
                 orderType: (string) ($data['order_type'] ?? 'normal'),
                 preorderReleaseAt: $data['preorder_release_at'] ?? null,
-                scheduledAt: $data['scheduled_at'] ?? null
+                scheduledAt: $data['scheduled_at'] ?? null,
+                orderNumber: $data['order_number'] ?? null
             );
 
             return (new OrderResource($order))

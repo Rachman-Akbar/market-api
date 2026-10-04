@@ -9,6 +9,7 @@ use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialMo
 use App\Domains\Seller\Inventory\Infrastructure\Persistence\Models\RawMaterialStockMovementModel;
 use App\Domains\Seller\Stock\Domain\Repositories\StockMovementRepositoryInterface;
 use App\Domains\Seller\Stock\Infrastructure\Persistence\Models\StockMovementModel;
+use App\Domains\Shared\Codes\Application\Services\CodePatternService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,8 @@ final class StockMovementService
         'preorder' => 'stock_preorder',
     ];
 
-    public function __construct(private StockMovementRepositoryInterface $repository) {}
+    public function __construct(private StockMovementRepositoryInterface $repository,
+        private CodePatternService $codePatterns) {}
 
     public function paginate(array $filters, int $perPage, ?int $storeId): LengthAwarePaginator
     {
@@ -58,7 +60,7 @@ final class StockMovementService
             }
 
             $referenceType = (string) ($data['reference_type'] ?? 'manual');
-            $referenceId = $data['reference_id'] ?? null;
+            $providedReferenceId = strtoupper(trim((string) ($data['reference_id'] ?? '')));
             $occurredAt = $data['occurred_at'] ?? now();
             $requestedType = strtolower(trim((string) ($data['movement_type'] ?? '')));
             $allowedTypes = ['inbound', 'outbound', 'adjustment', 'release', 'reservation', 'production'];
@@ -70,6 +72,10 @@ final class StockMovementService
             $movementType = $requestedType !== ''
                 ? $requestedType
                 : ($delta > 0 ? 'inbound' : 'outbound');
+
+            $referenceId = $providedReferenceId !== ''
+                ? $providedReferenceId
+                : $this->generateMovementReference($storeId, $movementType);
 
             if ($delta > 0 && $movementType !== 'release') {
                 $this->consumeRawMaterialsForProduction(
@@ -267,6 +273,27 @@ final class StockMovementService
                 );
             }
         });
+    }
+
+    private function generateMovementReference(int $storeId, string $movementType): string
+    {
+        $movement = match ($movementType) {
+            'inbound' => 'MASUK',
+            'outbound' => 'KELUAR',
+            'production' => 'PRODUKSI',
+            'release' => 'RILIS',
+            'reservation' => 'RESERVASI',
+            default => 'ADJ',
+        };
+
+        return $this->codePatterns->unique('stock_reference', $storeId, [
+            'movement' => $movement,
+            'type' => 'STK',
+            'seq' => $this->codePatterns->sequenceFor('stock_movements', 'occurred_at', $storeId),
+        ], fn (string $reference): bool => StockMovementModel::query()
+            ->where('store_id', $storeId)
+            ->where('reference_id', $reference)
+            ->exists());
     }
 
     private function applyStatusTransition(?int $orderId, ?int $subOrderId, string $nextStatus): void

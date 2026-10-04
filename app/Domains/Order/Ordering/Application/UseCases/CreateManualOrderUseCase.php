@@ -10,6 +10,7 @@ use App\Domains\Order\Ordering\Domain\Entities\Order;
 use App\Domains\Order\Ordering\Domain\Entities\OrderItem;
 use App\Domains\Order\Ordering\Domain\Entities\SubOrder;
 use App\Domains\Order\Ordering\Domain\Repositories\OrderRepositoryInterface;
+use App\Domains\Shared\Codes\Application\Services\CodePatternService;
 use App\Domains\Order\Payment\Domain\Entities\Payment;
 use App\Domains\Order\Payment\Domain\Repositories\PaymentRepositoryInterface;
 use App\Domains\Seller\Stock\Application\Services\StockMovementService;
@@ -30,7 +31,8 @@ final class CreateManualOrderUseCase
         private OrderRepositoryInterface $orderRepository,
         private ProductForCartReaderInterface $productReader,
         private PaymentRepositoryInterface $paymentRepository,
-        private StockMovementService $stockMovementService
+        private StockMovementService $stockMovementService,
+        private CodePatternService $codePatterns
     ) {}
 
     /**
@@ -49,7 +51,8 @@ final class CreateManualOrderUseCase
         string $status,
         string $orderType = 'normal',
         ?string $preorderReleaseAt = null,
-        ?string $scheduledAt = null
+        ?string $scheduledAt = null,
+        ?string $orderNumber = null
     ): Order {
         $courier = strtolower(trim($courier));
         $paymentMethod = strtolower(trim($paymentMethod));
@@ -132,7 +135,14 @@ final class CreateManualOrderUseCase
 
         $userId = $this->resolveCustomerUserId($storeId, $customer);
 
-        $orderNumber = 'MAN-'.now()->format('YmdHis').'-'.Str::upper(bin2hex(random_bytes(3)));
+        $providedOrderNumber = strtoupper(trim((string) $orderNumber));
+        $orderNumber = $providedOrderNumber !== ''
+            ? $providedOrderNumber
+            : $this->codePatterns->unique('order_number', $storeId, [
+                'type' => 'MAN',
+                'store' => (string) ($customer['store_name'] ?? ''),
+                'seq' => (int) DB::table('orders')->where('store_id', $storeId)->count() + 1,
+            ], fn (string $candidate): bool => DB::table('orders')->where('order_number', $candidate)->exists());
         $shippingAddress = $this->shippingAddress($customer, $courier);
         $grossAmount = max(0.0, $itemsTotal + $shippingCost);
         $paid = $paymentStatus === 'paid';

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Order\Ordering\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CreateManualOrderRequest extends FormRequest
 {
@@ -16,6 +17,7 @@ class CreateManualOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'order_number' => ['nullable', 'string', 'max:60', 'regex:/^[A-Za-z0-9._\-\/]+$/', Rule::unique('orders', 'order_number')],
             'customer_name' => ['nullable', 'string', 'max:150'],
             'customer_phone' => ['nullable', 'string', 'max:30'],
             'customer_email' => ['nullable', 'email', 'max:150'],

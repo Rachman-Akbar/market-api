@@ -9,6 +9,7 @@ use App\Domains\Catalog\Product\Domain\Entities\ProductVariant;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductAttributeValueRepositoryInterface;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductImageRepositoryInterface;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductRepositoryInterface;
+use App\Domains\Shared\Codes\Application\Services\CodePatternService;
 use App\Domains\Catalog\Product\Domain\Repositories\ProductVariantRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -20,8 +21,8 @@ final class UpdateProductUseCase
         private readonly ProductRepositoryInterface $products,
         private readonly ProductVariantRepositoryInterface $variants,
         private readonly ProductAttributeValueRepositoryInterface $attributeValues,
-        private readonly ProductImageRepositoryInterface $productImages
-    ) {}
+        private readonly ProductImageRepositoryInterface $productImages,
+        private readonly CodePatternService $codePatterns) {}
 
     public function execute(int|string $id, array $data): Product
     {
@@ -147,35 +148,13 @@ final class UpdateProductUseCase
 
     private function generateSku(array $payload, int $storeId): string
     {
-        $parts = [];
-
-        if (! empty($payload['name'])) {
-            $parts[] = (string) $payload['name'];
-        }
-
-        if (! empty($payload['brand'])) {
-            $parts[] = (string) $payload['brand'];
-        }
-
-        if (! empty($payload['primary_category_id'])) {
-            $parts[] = 'CAT'.(string) $payload['primary_category_id'];
-        }
-
-        $base = Str::upper(Str::slug(implode('-', array_filter($parts))));
-        $base = $base === '' ? 'PRODUCT' : Str::substr($base, 0, 40);
-        $date = now()->format('ymd');
-        $counter = 1;
-
-        do {
-            $sku = $base.'-'.$date.'-'.str_pad((string) $counter, 4, '0', STR_PAD_LEFT);
-            $exists = DB::table('product_variants')
-                ->where('sku', $sku)
-                ->where('store_id', $storeId)
-                ->exists();
-            $counter++;
-        } while ($exists);
-
-        return $sku;
+        return $this->codePatterns->unique('sku', $storeId, [
+            'name' => (string) ($payload['name'] ?? ''),
+            'brand' => (string) ($payload['brand'] ?? ''),
+            'category' => empty($payload['primary_category_id']) ? '' : 'CAT'.(string) $payload['primary_category_id'],
+            'type' => 'SKU',
+            'seq' => (int) DB::table('product_variants')->where('store_id', $storeId)->count() + 1,
+        ], fn (string $sku): bool => DB::table('product_variants')->where('sku', $sku)->where('store_id', $storeId)->exists());
     }
 
     private function normalizeAttributeValues(array $items): array
