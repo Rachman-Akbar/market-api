@@ -44,4 +44,15 @@ return [
         'base_url' => env('SHIPPING_BASE_URL'),
     ],
 
+    'emailjs' => [
+        'enabled' => (bool) env('EMAILJS_ENABLED', false),
+        'url' => env('EMAILJS_URL', 'https://api.emailjs.com/api/v1.0/email/send'),
+        'service_id' => env('EMAILJS_SERVICE_ID'),
+        'template_id' => env('EMAILJS_TEMPLATE_ID'),
+        'public_key' => env('EMAILJS_PUBLIC_KEY'),
+        'access_token' => env('EMAILJS_ACCESS_TOKEN'),
+        'from_email' => env('EMAILJS_FROM_EMAIL', env('MAIL_FROM_ADDRESS')),
+        'from_name' => env('EMAILJS_FROM_NAME', env('MAIL_FROM_NAME', 'MarketKu')),
+    ],
+
 ];
